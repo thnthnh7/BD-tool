@@ -100,15 +100,28 @@ function parseModelJson(content: string) {
   };
 
   try {
-    return tryParse(stripped);
+    const parsed = tryParse(stripped);
+    if (normalizeBrief(parsed).modules.length) return parsed;
   } catch {
-    const start = stripped.indexOf("{");
+    // continue to extract embedded JSON
+  }
+
+  const marker = stripped.indexOf('"modules"');
+  if (marker >= 0) {
+    const start = stripped.lastIndexOf("{", marker);
     const end = stripped.lastIndexOf("}");
     if (start >= 0 && end > start) {
       return tryParse(stripped.slice(start, end + 1));
     }
-    throw new Error("Model response is not valid JSON");
   }
+
+  const start = stripped.indexOf("{");
+  const end = stripped.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    return tryParse(stripped.slice(start, end + 1));
+  }
+
+  throw new Error("Model response is not valid JSON");
 }
 
 function compactCatalog(catalog: unknown[]) {
@@ -135,27 +148,32 @@ function collectTextParts(value: unknown): string {
   return "";
 }
 
+function looksLikeBriefJson(value: string) {
+  return value.includes('"modules"') || value.includes("'modules'");
+}
+
 function extractMessageContent(payload: unknown): string {
   const response = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
   const choices = Array.isArray(response.choices) ? response.choices : [];
   const first = choices[0] && typeof choices[0] === "object" ? (choices[0] as Record<string, unknown>) : {};
   const message = first.message && typeof first.message === "object" ? (first.message as Record<string, unknown>) : {};
 
+  // Prefer content over reasoning_content — reasoning models often put prose in reasoning.
   const candidates = [
     message.content,
-    message.reasoning_content,
     message.text,
     first.text,
     first.content,
     response.output_text,
     response.content,
     response.result,
+    message.reasoning_content,
   ];
 
-  for (const candidate of candidates) {
-    const value = collectTextParts(candidate).trim();
-    if (value) return value;
-  }
+  const texts = candidates.map((candidate) => collectTextParts(candidate).trim()).filter(Boolean);
+  const withModules = texts.find(looksLikeBriefJson);
+  if (withModules) return withModules;
+  if (texts[0]) return texts[0];
 
   // Some gateways return the brief object directly instead of chat-completions shape.
   if (Array.isArray(response.modules)) {
@@ -197,8 +215,8 @@ async function callNineRouter(params: {
     const body: Record<string, unknown> = {
       model: params.model,
       messages: [{ role: "user", content: params.userPrompt }],
-      temperature: 0.2,
-      max_tokens: 2_500,
+      temperature: 0.1,
+      max_tokens: 3_500,
       stream: false,
     };
     if (params.useJsonObjectFormat) {
@@ -246,12 +264,18 @@ function buildUserPrompt(requirements: string, catalog: Array<{ name: string; su
       : "";
 
   return `Bạn là BA/solution consultant phần mềm Việt Nam.
-Phân tích yêu cầu khách và trả về ĐÚNG 1 JSON object (không markdown).
+Nhiệm vụ: phân tích yêu cầu khách và TRẢ VỀ DUY NHẤT 1 JSON object hợp lệ.
+
+CẤM:
+- Không dịch yêu cầu.
+- Không viết lý luận / giải thích / markdown.
+- Không viết chữ trước hoặc sau JSON.
+- Output phải bắt đầu bằng { và kết thúc bằng }.
 
 Quy tắc:
 - Giá là số nguyên VND.
-- Tổng báo giá lấy từ modules (tối đa 5).
-- deliverables là phụ lục (tối đa 8), map về moduleName.
+- modules tối đa 5 (bắt buộc có ít nhất 3).
+- deliverables tối đa 8, mỗi cái map moduleName.
 - priority chỉ: Cao | Trung | Thấp.
 
 Schema:
@@ -291,18 +315,18 @@ export async function POST(request: NextRequest) {
   }
 
   const catalog = compactCatalog(Array.isArray(body.catalog) ? body.catalog : []);
-  // Vercel Hobby ~60s hard limit. Keep total upstream budget under ~50s.
-  const deadline = Date.now() + 50_000;
+  // Vercel Hobby ~60s hard limit. Prefer 1 JSON-mode call, then 1 short fallback.
+  const deadline = Date.now() + 52_000;
   const attempts = [
-    { useJsonObjectFormat: false, includeCatalog: false },
-    { useJsonObjectFormat: false, includeCatalog: catalog.length > 0 },
+    { useJsonObjectFormat: true, includeCatalog: false },
+    { useJsonObjectFormat: true, includeCatalog: catalog.length > 0 },
   ] as const;
 
   const attemptErrors: string[] = [];
 
   for (let index = 0; index < attempts.length; index += 1) {
     const remaining = deadline - Date.now();
-    if (remaining < 8_000) {
+    if (remaining < 10_000) {
       attemptErrors.push(`attempt ${index + 1}: skipped — remaining ${remaining}ms`);
       break;
     }
@@ -315,7 +339,7 @@ export async function POST(request: NextRequest) {
       model,
       userPrompt,
       useJsonObjectFormat: attempt.useJsonObjectFormat,
-      timeoutMs: Math.min(45_000, remaining - 2_000),
+      timeoutMs: Math.min(48_000, remaining - 2_000),
     });
 
     if (result.aborted) {
