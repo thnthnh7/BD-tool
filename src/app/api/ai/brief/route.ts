@@ -3,7 +3,7 @@ import { jsonrepair } from "jsonrepair";
 import type { AiBriefResult } from "@/lib/ai/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 90;
+export const maxDuration = 120;
 
 const MAX_REQUIREMENTS_LENGTH = 20_000;
 const WINDOW_MS = 10 * 60 * 1000;
@@ -89,11 +89,175 @@ function parseModelJson(content: string) {
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/, "");
+
+  const tryParse = (value: string) => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      return JSON.parse(jsonrepair(value)) as unknown;
+    }
+  };
+
   try {
-    return JSON.parse(stripped) as unknown;
+    return tryParse(stripped);
   } catch {
-    return JSON.parse(jsonrepair(stripped)) as unknown;
+    const start = stripped.indexOf("{");
+    const end = stripped.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return tryParse(stripped.slice(start, end + 1));
+    }
+    throw new Error("Model response is not valid JSON");
   }
+}
+
+function compactCatalog(catalog: unknown[]) {
+  return catalog.slice(0, 12).map((item) => {
+    const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+    return {
+      name: text(row.name),
+      suggestedPrice: number(row.suggestedPrice),
+    };
+  }).filter((item) => item.name);
+}
+
+function collectTextParts(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value.map((part) => collectTextParts(part)).join("");
+  }
+  if (value && typeof value === "object") {
+    const row = value as Record<string, unknown>;
+    if (typeof row.text === "string") return row.text;
+    if (typeof row.content === "string") return row.content;
+    if (Array.isArray(row.content)) return collectTextParts(row.content);
+  }
+  return "";
+}
+
+function extractMessageContent(payload: unknown): string {
+  const response = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  const choices = Array.isArray(response.choices) ? response.choices : [];
+  const first = choices[0] && typeof choices[0] === "object" ? (choices[0] as Record<string, unknown>) : {};
+  const message = first.message && typeof first.message === "object" ? (first.message as Record<string, unknown>) : {};
+
+  const candidates = [
+    message.content,
+    message.reasoning_content,
+    message.text,
+    first.text,
+    first.content,
+    response.output_text,
+    response.content,
+    response.result,
+  ];
+
+  for (const candidate of candidates) {
+    const value = collectTextParts(candidate).trim();
+    if (value) return value;
+  }
+
+  // Some gateways return the brief object directly instead of chat-completions shape.
+  if (Array.isArray(response.modules)) {
+    return JSON.stringify(response);
+  }
+
+  return "";
+}
+
+function describeUpstreamPayload(payload: unknown, raw: string) {
+  const response = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  const choices = Array.isArray(response.choices) ? response.choices : [];
+  const first = choices[0] && typeof choices[0] === "object" ? (choices[0] as Record<string, unknown>) : {};
+  const message = first.message && typeof first.message === "object" ? (first.message as Record<string, unknown>) : {};
+
+  return [
+    `keys=${Object.keys(response).slice(0, 8).join(",") || "none"}`,
+    `choices=${choices.length}`,
+    `finish=${text(first.finish_reason) || "n/a"}`,
+    `msgKeys=${Object.keys(message).slice(0, 8).join(",") || "none"}`,
+    `contentType=${message.content === null ? "null" : typeof message.content}`,
+    `raw=${raw.replace(/\s+/g, " ").slice(0, 220)}`,
+  ].join("; ");
+}
+
+async function callNineRouter(params: {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  userPrompt: string;
+  useJsonObjectFormat: boolean;
+  timeoutMs: number;
+}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), params.timeoutMs);
+  const started = Date.now();
+
+  try {
+    const body: Record<string, unknown> = {
+      model: params.model,
+      messages: [{ role: "user", content: params.userPrompt }],
+      temperature: 0.2,
+      max_tokens: 4_000,
+      stream: false,
+    };
+    if (params.useJsonObjectFormat) {
+      body.response_format = { type: "json_object" };
+    }
+
+    const upstream = await fetch(`${params.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${params.apiKey}`,
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    const raw = await upstream.text();
+    return {
+      ok: upstream.ok,
+      status: upstream.status,
+      raw,
+      elapsedMs: Date.now() - started,
+      aborted: false,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return {
+      ok: false,
+      status: 0,
+      raw: message,
+      elapsedMs: Date.now() - started,
+      aborted: message.toLowerCase().includes("abort"),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function buildUserPrompt(requirements: string, catalog: Array<{ name: string; suggestedPrice: number }>) {
+  const catalogBlock =
+    catalog.length > 0
+      ? `\nCatalog tham khảo (không bắt buộc):\n${JSON.stringify(catalog)}`
+      : "";
+
+  return `Bạn là BA/solution consultant phần mềm Việt Nam.
+Phân tích yêu cầu khách và trả về ĐÚNG 1 JSON object (không markdown).
+
+Quy tắc:
+- Giá là số nguyên VND.
+- Tổng báo giá lấy từ modules (tối đa 5).
+- deliverables là phụ lục (tối đa 8), map về moduleName.
+- priority chỉ: Cao | Trung | Thấp.
+
+Schema:
+{"projectName":"","projectType":"Web App","executiveSummary":"","businessGoals":[],"targetUsers":[],"assumptions":[],"outOfScope":[],"modules":[{"name":"","description":"","quantity":1,"unitPrice":0,"pricingReason":""}],"deliverables":[{"name":"","description":"","moduleName":"","priority":"Cao","effortDays":1,"referencePrice":0,"acceptanceCriteria":[]}],"timeline":"","recommendedTechStack":[],"risks":[],"clarifyingQuestions":[]}
+
+YÊU CẦU KHÁCH HÀNG:
+${requirements}${catalogBlock}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -125,109 +289,86 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Yêu cầu tối đa ${MAX_REQUIREMENTS_LENGTH.toLocaleString("vi-VN")} ký tự.` }, { status: 400 });
   }
 
-  const catalog = Array.isArray(body.catalog) ? body.catalog.slice(0, 100) : [];
-  const systemPrompt = `Bạn là Senior Business Analyst và Solution Consultant tại công ty phát triển phần mềm Việt Nam.
-Nhiệm vụ: phân tích yêu cầu thô của khách hàng, tạo brief giải pháp, tự đề xuất modules thương mại và giá VND hợp lý để BD review.
+  const catalog = compactCatalog(Array.isArray(body.catalog) ? body.catalog : []);
+  const attempts = [
+    { useJsonObjectFormat: false, includeCatalog: false, timeoutMs: 90_000 },
+    { useJsonObjectFormat: true, includeCatalog: false, timeoutMs: 90_000 },
+    { useJsonObjectFormat: false, includeCatalog: true, timeoutMs: 100_000 },
+  ] as const;
 
-Quy tắc bắt buộc:
-- Chỉ trả về JSON hợp lệ, không markdown, không giải thích ngoài JSON.
-- Giá phải là số nguyên VND, không dùng chuỗi tiền tệ.
-- Tổng báo giá lấy từ modules. Deliverables là phụ lục chức năng, mỗi deliverable phải map về moduleName.
-- Đề xuất giá độc lập dựa trên độ phức tạp, effort, rủi ro và tích hợp; catalog chỉ là dữ liệu tham khảo.
-- Không bịa yêu cầu trọng yếu. Điều chưa rõ phải đưa vào assumptions hoặc clarifyingQuestions.
-- Phân biệt scope và out-of-scope rõ ràng.
-- priority chỉ nhận "Cao", "Trung", hoặc "Thấp".
+  const attemptErrors: string[] = [];
 
-Schema JSON:
-{
-  "projectName": "string",
-  "projectType": "Web App | Mobile App | MVP | Internal Tool | Maintenance | Custom Software",
-  "executiveSummary": "string",
-  "businessGoals": ["string"],
-  "targetUsers": ["string"],
-  "assumptions": ["string"],
-  "outOfScope": ["string"],
-  "modules": [{
-    "name": "string",
-    "description": "string",
-    "quantity": 1,
-    "unitPrice": 0,
-    "pricingReason": "string"
-  }],
-  "deliverables": [{
-    "name": "string",
-    "description": "string",
-    "moduleName": "string",
-    "priority": "Cao",
-    "effortDays": 1,
-    "referencePrice": 0,
-    "acceptanceCriteria": ["string"]
-  }],
-  "timeline": "string",
-  "recommendedTechStack": ["string"],
-  "risks": ["string"],
-  "clarifyingQuestions": ["string"]
-}`;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 85_000);
-
-  try {
-    const upstream = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: `YÊU CẦU KHÁCH HÀNG:\n${requirements}\n\nCATALOG THAM KHẢO HIỆN CÓ:\n${JSON.stringify(catalog)}`,
-          },
-        ],
-        temperature: 0.25,
-        max_tokens: 8_000,
-        response_format: { type: "json_object" },
-        stream: false,
-      }),
-      cache: "no-store",
-      signal: controller.signal,
+  for (let index = 0; index < attempts.length; index += 1) {
+    const attempt = attempts[index];
+    const userPrompt = buildUserPrompt(requirements, attempt.includeCatalog ? catalog : []);
+    const result = await callNineRouter({
+      baseUrl,
+      apiKey,
+      model,
+      userPrompt,
+      useJsonObjectFormat: attempt.useJsonObjectFormat,
+      timeoutMs: attempt.timeoutMs,
     });
 
-    const raw = await upstream.text();
-    if (!upstream.ok) {
-      return NextResponse.json(
-        { error: `9Router trả lỗi ${upstream.status}.`, details: raw.slice(0, 500) },
-        { status: 502 },
-      );
+    if (result.aborted) {
+      attemptErrors.push(`attempt ${index + 1}: timeout after ${result.elapsedMs}ms`);
+      continue;
     }
 
-    const response = JSON.parse(raw) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = response.choices?.[0]?.message?.content;
-    if (!content) {
-      return NextResponse.json({ error: "AI không trả nội dung brief." }, { status: 502 });
+    if (!result.ok) {
+      attemptErrors.push(`attempt ${index + 1}: upstream ${result.status} — ${result.raw.slice(0, 180)}`);
+      continue;
     }
 
-    const brief = normalizeBrief(parseModelJson(content));
-    if (!brief.modules.length) {
-      return NextResponse.json({ error: "AI không đề xuất module hợp lệ. Hãy mô tả yêu cầu chi tiết hơn." }, { status: 422 });
-    }
+    try {
+      const parsed = JSON.parse(result.raw) as unknown;
+      const content = extractMessageContent(parsed);
+      if (!content) {
+        attemptErrors.push(
+          `attempt ${index + 1}: empty content (${result.elapsedMs}ms) — ${describeUpstreamPayload(parsed, result.raw)}`,
+        );
+        continue;
+      }
 
-    return NextResponse.json({ brief });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    const timeoutError = message.toLowerCase().includes("abort");
-    return NextResponse.json(
-      { error: timeoutError ? "9Router phản hồi quá thời gian cho phép." : "Không thể xử lý phản hồi từ 9Router.", details: message },
-      { status: 502 },
-    );
-  } finally {
-    clearTimeout(timeout);
+      let brief: AiBriefResult;
+      try {
+        brief = normalizeBrief(parseModelJson(content));
+      } catch {
+        brief = normalizeBrief({});
+      }
+
+      if (!brief.modules.length) {
+        const fallbackBrief = normalizeBrief(parsed);
+        if (fallbackBrief.modules.length) {
+          return NextResponse.json({
+            brief: fallbackBrief,
+            meta: { attempts: index + 1, elapsedMs: result.elapsedMs },
+          });
+        }
+        attemptErrors.push(
+          `attempt ${index + 1}: no modules (${result.elapsedMs}ms) — content=${content.replace(/\s+/g, " ").slice(0, 220)}`,
+        );
+        continue;
+      }
+
+      return NextResponse.json({
+        brief,
+        meta: { attempts: index + 1, elapsedMs: result.elapsedMs },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown parse error";
+      attemptErrors.push(`attempt ${index + 1}: parse failed — ${message} — raw=${result.raw.slice(0, 180)}`);
+    }
   }
+
+  const timedOut = attemptErrors.length > 0 && attemptErrors.every((item) => item.includes("timeout"));
+  return NextResponse.json(
+    {
+      error: timedOut
+        ? "9Router phản hồi quá thời gian cho phép."
+        : "Không thể lấy brief hợp lệ từ 9Router sau nhiều lần thử.",
+      details: attemptErrors.join(" | ").slice(0, 1200),
+    },
+    { status: 502 },
+  );
 }
