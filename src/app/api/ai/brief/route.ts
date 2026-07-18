@@ -3,7 +3,8 @@ import { jsonrepair } from "jsonrepair";
 import type { AiBriefResult } from "@/lib/ai/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+/** Vercel Hobby clamps to 60s; keep budget under that so retries still finish. */
+export const maxDuration = 60;
 
 const MAX_REQUIREMENTS_LENGTH = 20_000;
 const WINDOW_MS = 10 * 60 * 1000;
@@ -197,7 +198,7 @@ async function callNineRouter(params: {
       model: params.model,
       messages: [{ role: "user", content: params.userPrompt }],
       temperature: 0.2,
-      max_tokens: 4_000,
+      max_tokens: 2_500,
       stream: false,
     };
     if (params.useJsonObjectFormat) {
@@ -290,15 +291,22 @@ export async function POST(request: NextRequest) {
   }
 
   const catalog = compactCatalog(Array.isArray(body.catalog) ? body.catalog : []);
+  // Vercel Hobby ~60s hard limit. Keep total upstream budget under ~50s.
+  const deadline = Date.now() + 50_000;
   const attempts = [
-    { useJsonObjectFormat: false, includeCatalog: false, timeoutMs: 90_000 },
-    { useJsonObjectFormat: true, includeCatalog: false, timeoutMs: 90_000 },
-    { useJsonObjectFormat: false, includeCatalog: true, timeoutMs: 100_000 },
+    { useJsonObjectFormat: false, includeCatalog: false },
+    { useJsonObjectFormat: false, includeCatalog: catalog.length > 0 },
   ] as const;
 
   const attemptErrors: string[] = [];
 
   for (let index = 0; index < attempts.length; index += 1) {
+    const remaining = deadline - Date.now();
+    if (remaining < 8_000) {
+      attemptErrors.push(`attempt ${index + 1}: skipped — remaining ${remaining}ms`);
+      break;
+    }
+
     const attempt = attempts[index];
     const userPrompt = buildUserPrompt(requirements, attempt.includeCatalog ? catalog : []);
     const result = await callNineRouter({
@@ -307,7 +315,7 @@ export async function POST(request: NextRequest) {
       model,
       userPrompt,
       useJsonObjectFormat: attempt.useJsonObjectFormat,
-      timeoutMs: attempt.timeoutMs,
+      timeoutMs: Math.min(45_000, remaining - 2_000),
     });
 
     if (result.aborted) {
@@ -365,7 +373,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(
     {
       error: timedOut
-        ? "9Router phản hồi quá thời gian cho phép."
+        ? "9Router phản hồi quá thời gian cho phép (giới hạn ~60s trên Vercel). Thử lại hoặc kiểm tra ngrok/VPS."
         : "Không thể lấy brief hợp lệ từ 9Router sau nhiều lần thử.",
       details: attemptErrors.join(" | ").slice(0, 1200),
     },

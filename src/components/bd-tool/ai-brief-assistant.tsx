@@ -30,10 +30,8 @@ export function AiBriefAssistant({ catalog, onApply }: AiBriefAssistantProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requirements,
-          catalog: catalog.map((module) => ({
+          catalog: catalog.slice(0, 12).map((module) => ({
             name: module.name,
-            category: module.category,
-            description: module.description,
             suggestedPrice: module.suggestedPrice,
           })),
         }),
@@ -85,7 +83,7 @@ export function AiBriefAssistant({ catalog, onApply }: AiBriefAssistantProps) {
         className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-zinc-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {loading ? <LoaderCircle size={18} className="animate-spin" /> : <Sparkles size={18} />}
-        {loading ? "Đang phân tích yêu cầu..." : "Tạo brief & báo giá bằng AI"}
+        {loading ? "Đang gọi 9Router (có thể 30–60 giây)..." : "Tạo brief & báo giá bằng AI"}
       </button>
 
       {error ? (
