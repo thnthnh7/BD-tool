@@ -174,9 +174,9 @@ function ShellNav({
   return (
     <aside className="sticky top-0 hidden h-screen w-72 shrink-0 border-r border-zinc-200 bg-white p-5 lg:block">
       <div className="flex items-center gap-3">
-        <Image src="/brand/logo.jpg" alt="Cap Saint Jacques Tek" width={44} height={44} className="rounded-2xl" priority />
+        <Image src="/brand/logo.jpg" alt="CJTEK" width={44} height={44} className="rounded-2xl" priority />
         <div>
-          <p className="text-sm font-black">CSJ Tek</p>
+          <p className="text-sm font-black">CJTEK</p>
           <p className="text-xs text-zinc-500">BD Quote Tool</p>
         </div>
       </div>
@@ -1237,8 +1237,8 @@ export function BdToolApp() {
         <main className="min-w-0 flex-1 p-4 md:p-8">
           <div className="mb-5 flex items-center justify-between lg:hidden">
             <div className="flex items-center gap-3">
-              <Image src="/brand/logo.jpg" alt="Cap Saint Jacques Tek" width={42} height={42} className="rounded-2xl" />
-              <strong>CSJ Tek BD Tool</strong>
+              <Image src="/brand/logo.jpg" alt="CJTEK" width={42} height={42} className="rounded-2xl" />
+              <strong>CJTEK BD Tool</strong>
             </div>
             <select value={activeView} onChange={(event) => setActiveView(event.target.value as View)} className="rounded-xl border px-3 py-2 text-sm">
               <option value="dashboard">Dashboard</option>

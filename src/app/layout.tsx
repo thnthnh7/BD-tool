@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CSJ Tek BD Quote Tool",
-  description: "Internal quotation builder for Cap Saint Jacques Tek",
+  title: "CJTEK BD Quote Tool",
+  description: "Internal quotation builder for CJTEK",
 };
 
 export default function RootLayout({

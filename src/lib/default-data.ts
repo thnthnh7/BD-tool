@@ -2,7 +2,7 @@ import type { AppData, CompanySettings, ServiceModule } from "./types";
 
 export const defaultSettings: CompanySettings = {
   companyName: "CÔNG TY TNHH CAP SAINT JACQUES TEK",
-  shortName: "Cap Saint Jacques Tek",
+  shortName: "CJTEK",
   taxCode: "0319520814",
   address:
     "Tầng 1, Số 207A Nguyễn Văn Thủ, Phường Tân Định, Thành phố Hồ Chí Minh, Việt Nam",
@@ -15,7 +15,7 @@ export const defaultSettings: CompanySettings = {
   vatRate: 0,
   quoteValidityDays: 30,
   about:
-    "Cap Saint Jacques Tek cung cấp dịch vụ tư vấn, thiết kế và phát triển phần mềm theo nhu cầu, tập trung vào giải pháp thực tế, dễ vận hành và có khả năng mở rộng.",
+    "CJTEK cung cấp dịch vụ tư vấn, thiết kế và phát triển phần mềm theo nhu cầu, tập trung vào giải pháp thực tế, dễ vận hành và có khả năng mở rộng.",
   terms: [
     "Báo giá có hiệu lực trong vòng 30 ngày kể từ ngày phát hành.",
     "Phạm vi công việc có thể được điều chỉnh theo phản hồi và yêu cầu thực tế của khách hàng.",
