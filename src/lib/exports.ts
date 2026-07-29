@@ -64,6 +64,16 @@ function thinBorder(color = "FFE5E7EB"): Partial<ExcelJS.Borders> {
   return { top: edge, left: edge, bottom: edge, right: edge };
 }
 
+/** Estimate Excel row height (points) for wrapped text in a fixed column width. */
+function wrappedRowHeight(text: string, colWidth: number, lineHeight = 16, padding = 12) {
+  const charsPerLine = Math.max(12, Math.floor(colWidth * 0.95));
+  const explicitLines = text.split("\n");
+  const lines = explicitLines.reduce((sum, part) => {
+    return sum + Math.max(1, Math.ceil(Math.max(part.length, 1) / charsPerLine));
+  }, 0);
+  return Math.max(36, lines * lineHeight + padding);
+}
+
 export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Quote, client: Client | null): Promise<ArrayBuffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = settings.shortName;
@@ -103,12 +113,14 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
     properties: { defaultRowHeight: 22 },
   });
 
+  const COL = { sl: 6, item: 70, price: 22, qty: 8, total: 24 } as const;
+
   sheet.columns = [
-    { key: "sl", width: 6 },
-    { key: "item", width: 55 },
-    { key: "price", width: 20 },
-    { key: "qty", width: 8 },
-    { key: "total", width: 22 },
+    { key: "sl", width: COL.sl },
+    { key: "item", width: COL.item },
+    { key: "price", width: COL.price },
+    { key: "qty", width: COL.qty },
+    { key: "total", width: COL.total },
   ];
 
   // —— Header ——
@@ -223,7 +235,12 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
   for (let i = 0; i < minBodyRows; i += 1) {
     const item = quote.items[i];
     const row = sheet.getRow(rowIndex);
-    row.height = item?.description ? 48 : 32;
+    if (item) {
+      const cellText = item.description ? `${item.name}\n${item.description}` : item.name;
+      row.height = wrappedRowHeight(cellText, COL.item);
+    } else {
+      row.height = 32;
+    }
     const isZebra = i % 2 === 1;
 
     const cells = [1, 2, 3, 4, 5].map((col) => row.getCell(col));
@@ -416,14 +433,24 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
   const delivSheet = workbook.addWorksheet("Chuc nang ban giao", {
     pageSetup: { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1 },
   });
+  const DELIV_COL = {
+    stt: 6,
+    name: 36,
+    desc: 55,
+    priority: 12,
+    days: 10,
+    price: 22,
+    notes: 22,
+  } as const;
+
   delivSheet.columns = [
-    { width: 6 },
-    { width: 32 },
-    { width: 48 },
-    { width: 12 },
-    { width: 10 },
-    { width: 20 },
-    { width: 20 },
+    { width: DELIV_COL.stt },
+    { width: DELIV_COL.name },
+    { width: DELIV_COL.desc },
+    { width: DELIV_COL.priority },
+    { width: DELIV_COL.days },
+    { width: DELIV_COL.price },
+    { width: DELIV_COL.notes },
   ];
 
   delivSheet.mergeCells("A1:G1");
@@ -474,6 +501,7 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
       row.getCell(1).value = i + 1;
       row.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
       row.getCell(2).value = d.name;
+      row.getCell(2).alignment = { wrapText: true, vertical: "middle" };
       row.getCell(3).value = d.description;
       row.getCell(3).alignment = { wrapText: true, vertical: "middle" };
       row.getCell(4).value = d.priority;
@@ -483,8 +511,14 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
       row.getCell(6).value = d.referencePrice ?? 0;
       applyMoney(row.getCell(6));
       row.getCell(7).value = "notes" in d ? d.notes || "" : "";
+      const tallest = Math.max(
+        wrappedRowHeight(d.name || "", DELIV_COL.name),
+        wrappedRowHeight(d.description || "", DELIV_COL.desc),
+      );
+      row.height = tallest;
+    } else {
+      row.height = 32;
     }
-    row.height = 34;
   }
 
   const delivEnd = delivStart + delivCount - 1;
