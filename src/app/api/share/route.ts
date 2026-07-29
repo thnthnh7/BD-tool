@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const id = await saveSharedQuote(slimSharedPayload(body));
+    const id = await saveSharedQuote(slimSharedPayload(body, { stripDataLogos: false }));
     const origin = request.nextUrl.origin;
     return NextResponse.json({ id, url: `${origin}/p/${id}` });
   } catch (error) {

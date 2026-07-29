@@ -7,12 +7,19 @@ export type SharedQuotePayload = {
   quote: Quote;
 };
 
-/** Drop bulky data-URI logos so share storage/URLs stay small. */
-export function slimSharedPayload(payload: SharedQuotePayload): SharedQuotePayload {
+/** Prepare share payload. Strip data-URI logos only for long ?data= URLs. */
+export function slimSharedPayload(
+  payload: SharedQuotePayload,
+  options?: { stripDataLogos?: boolean },
+): SharedQuotePayload {
+  const stripDataLogos = options?.stripDataLogos ?? true;
   const client = payload.client
     ? {
         ...payload.client,
-        logoUrl: payload.client.logoUrl?.startsWith("data:") ? undefined : payload.client.logoUrl,
+        logoUrl:
+          stripDataLogos && payload.client.logoUrl?.startsWith("data:")
+            ? undefined
+            : payload.client.logoUrl,
       }
     : null;
 
@@ -24,7 +31,7 @@ export function slimSharedPayload(payload: SharedQuotePayload): SharedQuotePaylo
 }
 
 export function encodeSharedQuote(payload: SharedQuotePayload) {
-  return compressToEncodedURIComponent(JSON.stringify(slimSharedPayload(payload)));
+  return compressToEncodedURIComponent(JSON.stringify(slimSharedPayload(payload, { stripDataLogos: true })));
 }
 
 export function decodeSharedQuote(encoded: string): SharedQuotePayload | null {
