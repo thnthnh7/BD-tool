@@ -104,11 +104,11 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
   });
 
   sheet.columns = [
-    { key: "sl", width: 8 },
-    { key: "item", width: 42 },
-    { key: "price", width: 16 },
-    { key: "qty", width: 10 },
-    { key: "total", width: 18 },
+    { key: "sl", width: 6 },
+    { key: "item", width: 55 },
+    { key: "price", width: 20 },
+    { key: "qty", width: 8 },
+    { key: "total", width: 22 },
   ];
 
   // —— Header ——
@@ -418,12 +418,12 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
   });
   delivSheet.columns = [
     { width: 6 },
-    { width: 28 },
-    { width: 40 },
+    { width: 32 },
+    { width: 48 },
     { width: 12 },
     { width: 10 },
-    { width: 16 },
-    { width: 18 },
+    { width: 20 },
+    { width: 20 },
   ];
 
   delivSheet.mergeCells("A1:G1");
