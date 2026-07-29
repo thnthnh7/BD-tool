@@ -8,6 +8,7 @@ import {
   Copy,
   FileSpreadsheet,
   FileText,
+  HardDrive,
   LayoutDashboard,
   MonitorPlay,
   PackagePlus,
@@ -22,7 +23,8 @@ import { useMemo, useState } from "react";
 import type { AiBriefResult } from "@/lib/ai/types";
 import { exportContractDocx } from "@/lib/contracts/generate-docx";
 import { deliverablesFromItems } from "@/lib/deliverables";
-import { exportQuoteToExcel, exportQuoteToPdf } from "@/lib/exports";
+import { buildQuoteExcelBuffer, buildExportFileName, exportQuoteToExcel, exportQuoteToPdf } from "@/lib/exports";
+import { uploadExcelToDrive, type DriveUploadResult } from "@/lib/google-drive";
 import { fileToCompressedDataUrl } from "@/lib/image";
 import { encodeSharedQuote } from "@/lib/share";
 import { createId, createPublicId, loadAppData, resetAppData, saveAppData } from "@/lib/storage";
@@ -660,6 +662,8 @@ function QuoteWizard({
   const [step, setStep] = useState(1);
   const [quote, setQuote] = useState<Quote>(() => initialQuote || createEmptyQuote(data));
   const [copied, setCopied] = useState(false);
+  const [driveStatus, setDriveStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [driveLink, setDriveLink] = useState<string | null>(null);
 
   const client = data.clients.find((item) => item.id === quote.clientId) || null;
   const totals = calculateQuoteTotals(quote);
@@ -818,10 +822,49 @@ function QuoteWizard({
   }
 
   async function copyShareLink() {
+    if (!canSave) return;
+    try {
+      const response = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: data.settings, client, quote }),
+      });
+      if (response.ok) {
+        const result = (await response.json()) as { url?: string };
+        if (result.url) {
+          await navigator.clipboard.writeText(result.url);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1800);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Short share link failed:", error);
+    }
+
+    // Fallback: long URL (legacy) if Blob storage is unavailable
     const payload = encodeSharedQuote({ settings: data.settings, client, quote });
     await navigator.clipboard.writeText(`${window.location.origin}/p?data=${payload}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
+  }
+
+  async function uploadToDrive() {
+    if (!canSave) return;
+    setDriveStatus("uploading");
+    setDriveLink(null);
+    try {
+      const buffer = await buildQuoteExcelBuffer(data.settings, quote, client);
+      const fileName = buildExportFileName(quote, client, "xlsx");
+      const result = await uploadExcelToDrive(buffer, fileName);
+      setDriveLink(result.webViewLink);
+      setDriveStatus("done");
+      setTimeout(() => setDriveStatus("idle"), 8000);
+    } catch (err) {
+      console.error("Drive upload failed:", err);
+      setDriveStatus("error");
+      setTimeout(() => setDriveStatus("idle"), 4000);
+    }
   }
 
   return (
@@ -1167,6 +1210,15 @@ function QuoteWizard({
                 <SecondaryButton disabled={!canSave} onClick={() => exportQuoteToExcel(data.settings, quote, client)}>
                   <FileSpreadsheet size={16} /> Excel
                 </SecondaryButton>
+                <SecondaryButton disabled={!canSave || driveStatus === "uploading"} onClick={uploadToDrive}>
+                  <HardDrive size={16} />
+                  {driveStatus === "uploading" ? "Đang upload…" : driveStatus === "done" ? "✓ Đã upload" : driveStatus === "error" ? "Lỗi upload" : "Google Drive"}
+                </SecondaryButton>
+                {driveLink && (
+                  <a href={driveLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-emerald-600 underline hover:text-emerald-700">
+                    Mở file trên Drive ↗
+                  </a>
+                )}
                 <SecondaryButton disabled={!canSave} onClick={() => exportQuoteToPdf(data.settings, quote, client)}>
                   <MonitorPlay size={16} /> PDF
                 </SecondaryButton>
