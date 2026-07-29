@@ -1,5 +1,3 @@
-"use client";
-
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 import type { Client, CompanySettings, Quote } from "./types";
 
