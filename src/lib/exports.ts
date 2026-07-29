@@ -382,35 +382,23 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
 
   const totalsRow = totalRow + 1;
 
-  // —— Footer: Terms + Signature ——
+  // —— Footer: Terms ——
   const footerStart = totalsRow + 2;
-  sheet.mergeCells(`A${footerStart}:C${footerStart}`);
+  sheet.mergeCells(`A${footerStart}:E${footerStart}`);
   sheet.getCell(`A${footerStart}`).value = "Terms & Conditions";
   sheet.getCell(`A${footerStart}`).font = { bold: true, size: FONT.body, color: { argb: ink } };
 
   settings.terms.forEach((term, index) => {
     const r = footerStart + 1 + index;
-    sheet.mergeCells(`A${r}:C${r}`);
+    sheet.mergeCells(`A${r}:E${r}`);
     sheet.getCell(`A${r}`).value = `${index + 1}. ${term}`;
     sheet.getCell(`A${r}`).font = { size: FONT.muted, color: { argb: muted } };
     sheet.getCell(`A${r}`).alignment = { wrapText: true, vertical: "top" };
     sheet.getRow(r).height = 34;
   });
 
-  const signRow = footerStart;
-  sheet.getCell(`D${signRow}`).value = "Authorised Sign.";
-  sheet.getCell(`D${signRow}`).font = { bold: true, size: FONT.body, color: { argb: ink } };
-  sheet.getCell(`D${signRow}`).alignment = { horizontal: "right" };
-  sheet.mergeCells(`D${signRow + 3}:E${signRow + 3}`);
-  sheet.getCell(`D${signRow + 3}`).border = {
-    bottom: { style: "thin", color: { argb: "FFAAAAAA" } },
-  };
-  sheet.getCell(`D${signRow + 4}`).value = settings.shortName;
-  sheet.getCell(`D${signRow + 4}`).font = { size: FONT.muted, color: { argb: muted } };
-  sheet.getCell(`D${signRow + 4}`).alignment = { horizontal: "right" };
-
   // —— Contact bar ——
-  const contactRow = footerStart + Math.max(settings.terms.length, 4) + 3;
+  const contactRow = footerStart + settings.terms.length + 2;
   sheet.mergeCells(`A${contactRow}:E${contactRow}`);
   sheet.getRow(contactRow).height = 3;
   sheet.getCell(`A${contactRow}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: mint } };
