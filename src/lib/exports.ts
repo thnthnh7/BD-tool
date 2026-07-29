@@ -141,38 +141,38 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
     // Logo optional — continue without blocking export
   }
 
-  sheet.mergeCells("B1:C2");
+  sheet.mergeCells("B1:B2");
   const companyCell = sheet.getCell("B1");
   companyCell.value = settings.companyName;
   companyCell.font = { bold: true, size: FONT.company, color: { argb: ink } };
   companyCell.alignment = { vertical: "middle", wrapText: true };
 
-  sheet.mergeCells("B3:C3");
   sheet.getCell("B3").value = `MST: ${settings.taxCode}`;
   sheet.getCell("B3").font = { size: FONT.label, color: { argb: muted } };
 
-  sheet.mergeCells("B4:C4");
   sheet.getCell("B4").value = settings.address;
   sheet.getCell("B4").font = { size: FONT.muted, color: { argb: muted } };
   sheet.getCell("B4").alignment = { wrapText: true };
   sheet.getRow(4).height = 32;
 
-  sheet.mergeCells("D1:E2");
-  const titleCell = sheet.getCell("D1");
+  sheet.mergeCells("C1:E2");
+  const titleCell = sheet.getCell("C1");
   titleCell.value = "QUOTE";
   titleCell.font = { bold: true, size: FONT.quote, color: { argb: ink } };
   titleCell.alignment = { horizontal: "right", vertical: "middle" };
 
-  sheet.getCell("D3").value = "Quote #";
-  sheet.getCell("D3").font = { size: FONT.label, color: { argb: muted } };
-  sheet.getCell("D3").alignment = { horizontal: "right" };
+  sheet.mergeCells("C3:D3");
+  sheet.getCell("C3").value = "Quote #";
+  sheet.getCell("C3").font = { size: FONT.label, color: { argb: muted } };
+  sheet.getCell("C3").alignment = { horizontal: "right", vertical: "middle" };
   sheet.getCell("E3").value = quote.publicId;
   sheet.getCell("E3").font = { bold: true, size: FONT.label, color: { argb: ink } };
   sheet.getCell("E3").alignment = { horizontal: "right" };
 
-  sheet.getCell("D4").value = "Date";
-  sheet.getCell("D4").font = { size: FONT.label, color: { argb: muted } };
-  sheet.getCell("D4").alignment = { horizontal: "right" };
+  sheet.mergeCells("C4:D4");
+  sheet.getCell("C4").value = "Date";
+  sheet.getCell("C4").font = { size: FONT.label, color: { argb: muted } };
+  sheet.getCell("C4").alignment = { horizontal: "right", vertical: "middle" };
   sheet.getCell("E4").value = formatQuoteDate(quote.createdAt);
   sheet.getCell("E4").font = { bold: true, size: FONT.label, color: { argb: ink } };
   sheet.getCell("E4").alignment = { horizontal: "right" };
@@ -186,26 +186,28 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
   sheet.getCell("A8").value = "Quote to:";
   sheet.getCell("A8").font = { size: FONT.label, bold: true, color: { argb: muted } };
 
-  sheet.mergeCells("A9:C9");
+  sheet.mergeCells("A9:B9");
   sheet.getCell("A9").value = client?.companyName || "Chưa cập nhật";
   sheet.getCell("A9").font = { bold: true, size: FONT.client, color: { argb: ink } };
 
-  sheet.mergeCells("A10:C10");
+  sheet.mergeCells("A10:B10");
   const contactLine = [client?.contactName, client?.email, client?.phone].filter(Boolean).join(" · ");
   sheet.getCell("A10").value = contactLine || "—";
   sheet.getCell("A10").font = { size: FONT.label, color: { argb: muted } };
 
-  sheet.getCell("D8").value = "Project";
-  sheet.getCell("D8").font = { size: FONT.label, bold: true, color: { argb: muted } };
-  sheet.getCell("D8").alignment = { horizontal: "right" };
+  sheet.mergeCells("C8:D8");
+  sheet.getCell("C8").value = "Project";
+  sheet.getCell("C8").font = { size: FONT.label, bold: true, color: { argb: muted } };
+  sheet.getCell("C8").alignment = { horizontal: "right", vertical: "middle" };
   sheet.mergeCells("E8:E9");
   sheet.getCell("E8").value = quote.title || "—";
   sheet.getCell("E8").font = { bold: true, size: FONT.body, color: { argb: ink } };
   sheet.getCell("E8").alignment = { horizontal: "right", vertical: "top", wrapText: true };
 
-  sheet.getCell("D10").value = "Valid until";
-  sheet.getCell("D10").font = { size: FONT.label, color: { argb: muted } };
-  sheet.getCell("D10").alignment = { horizontal: "right" };
+  sheet.mergeCells("C10:D10");
+  sheet.getCell("C10").value = "Valid until";
+  sheet.getCell("C10").font = { size: FONT.label, color: { argb: muted } };
+  sheet.getCell("C10").alignment = { horizontal: "right", vertical: "middle" };
   sheet.getCell("E10").value = formatQuoteDate(quote.validUntil);
   sheet.getCell("E10").font = { bold: true, size: FONT.label, color: { argb: ink } };
   sheet.getCell("E10").alignment = { horizontal: "right" };
@@ -297,15 +299,17 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
 
   // —— Totals with live formulas (edit % / line items in Excel) ——
   // Layout:
-  //   B = editable rate (%) for Discount / Tax
-  //   C = label
+  //   A = editable rate (%) for Discount / Tax
+  //   C = label (wide enough via Price column)
   //   D:E = calculated amount
   let r = bodyEnd + 2;
 
   // Hint
+  sheet.mergeCells(`A${r}:E${r}`);
   sheet.getCell(`A${r}`).value = "Sửa Price / Qty / % bên dưới — Total & tổng tự tính bằng công thức.";
   sheet.getCell(`A${r}`).font = { size: FONT.muted, italic: true, color: { argb: muted } };
-  sheet.mergeCells(`A${r}:E${r}`);
+  sheet.getCell(`A${r}`).alignment = { wrapText: true, vertical: "middle" };
+  sheet.getRow(r).height = 22;
   r += 1;
 
   const subRow = r;
@@ -320,20 +324,18 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
   r += 1;
 
   const discRateRow = r;
-  sheet.getCell(`A${discRateRow}`).value = "Discount %";
-  sheet.getCell(`A${discRateRow}`).font = { size: FONT.label, color: { argb: muted } };
-  sheet.getCell(`B${discRateRow}`).value = quote.discount;
-  sheet.getCell(`B${discRateRow}`).numFmt = '0"%"';
-  sheet.getCell(`B${discRateRow}`).font = { bold: true, size: FONT.body, color: { argb: ink } };
-  sheet.getCell(`B${discRateRow}`).alignment = { horizontal: "center", vertical: "middle" };
-  sheet.getCell(`B${discRateRow}`).border = thinBorder();
-  sheet.getCell(`B${discRateRow}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: mintSoft } };
-  sheet.getCell(`C${discRateRow}`).value = "Discount";
+  sheet.getCell(`A${discRateRow}`).value = quote.discount;
+  sheet.getCell(`A${discRateRow}`).numFmt = '0"%"';
+  sheet.getCell(`A${discRateRow}`).font = { bold: true, size: FONT.body, color: { argb: ink } };
+  sheet.getCell(`A${discRateRow}`).alignment = { horizontal: "center", vertical: "middle" };
+  sheet.getCell(`A${discRateRow}`).border = thinBorder();
+  sheet.getCell(`A${discRateRow}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: mintSoft } };
+  sheet.getCell(`C${discRateRow}`).value = "Discount %";
   sheet.getCell(`C${discRateRow}`).font = { size: FONT.body, color: { argb: ink } };
   sheet.getCell(`C${discRateRow}`).alignment = { horizontal: "right", vertical: "middle" };
   sheet.mergeCells(`D${discRateRow}:E${discRateRow}`);
   sheet.getCell(`D${discRateRow}`).value = {
-    formula: `-D${subRow}*B${discRateRow}/100`,
+    formula: `-D${subRow}*A${discRateRow}/100`,
     result: -totals.discountAmount,
   };
   sheet.getCell(`D${discRateRow}`).numFmt = moneyFmt;
@@ -342,20 +344,18 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
   r += 1;
 
   const taxRateRow = r;
-  sheet.getCell(`A${taxRateRow}`).value = "Tax / VAT %";
-  sheet.getCell(`A${taxRateRow}`).font = { size: FONT.label, color: { argb: muted } };
-  sheet.getCell(`B${taxRateRow}`).value = quote.vatRate;
-  sheet.getCell(`B${taxRateRow}`).numFmt = '0"%"';
-  sheet.getCell(`B${taxRateRow}`).font = { bold: true, size: FONT.body, color: { argb: ink } };
-  sheet.getCell(`B${taxRateRow}`).alignment = { horizontal: "center", vertical: "middle" };
-  sheet.getCell(`B${taxRateRow}`).border = thinBorder();
-  sheet.getCell(`B${taxRateRow}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: mintSoft } };
-  sheet.getCell(`C${taxRateRow}`).value = "Tax";
+  sheet.getCell(`A${taxRateRow}`).value = quote.vatRate;
+  sheet.getCell(`A${taxRateRow}`).numFmt = '0"%"';
+  sheet.getCell(`A${taxRateRow}`).font = { bold: true, size: FONT.body, color: { argb: ink } };
+  sheet.getCell(`A${taxRateRow}`).alignment = { horizontal: "center", vertical: "middle" };
+  sheet.getCell(`A${taxRateRow}`).border = thinBorder();
+  sheet.getCell(`A${taxRateRow}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: mintSoft } };
+  sheet.getCell(`C${taxRateRow}`).value = "Tax / VAT %";
   sheet.getCell(`C${taxRateRow}`).font = { size: FONT.body, color: { argb: ink } };
   sheet.getCell(`C${taxRateRow}`).alignment = { horizontal: "right", vertical: "middle" };
   sheet.mergeCells(`D${taxRateRow}:E${taxRateRow}`);
   sheet.getCell(`D${taxRateRow}`).value = {
-    formula: `(D${subRow}+D${discRateRow})*B${taxRateRow}/100`,
+    formula: `(D${subRow}+D${discRateRow})*A${taxRateRow}/100`,
     result: totals.vatAmount,
   };
   sheet.getCell(`D${taxRateRow}`).numFmt = moneyFmt;
