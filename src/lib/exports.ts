@@ -113,7 +113,7 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
     properties: { defaultRowHeight: 22 },
   });
 
-  const COL = { sl: 6, item: 70, price: 22, qty: 8, total: 24 } as const;
+  const COL = { sl: 18, item: 70, price: 22, qty: 8, total: 24 } as const;
 
   sheet.columns = [
     { key: "sl", width: COL.sl },
@@ -384,6 +384,7 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
 
   // —— Footer: Terms + Signature ——
   const footerStart = totalsRow + 2;
+  sheet.mergeCells(`A${footerStart}:C${footerStart}`);
   sheet.getCell(`A${footerStart}`).value = "Terms & Conditions";
   sheet.getCell(`A${footerStart}`).font = { bold: true, size: FONT.body, color: { argb: ink } };
 
