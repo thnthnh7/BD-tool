@@ -513,39 +513,43 @@ export function Slideshow({ settings, quote, client, allowExport = true }: Slide
 
       <SlideShell theme={slide.theme} accent={settings.accentColor}>
         {renderSlide(slide, settings, client)}
-
-        <div className="absolute bottom-6 left-8 right-8 z-10 flex items-center justify-between">
-          <button
-            onClick={() => setActive((value) => Math.max(0, value - 1))}
-            disabled={safeActive === 0}
-            className={`rounded-full p-3 disabled:opacity-30 ${slide.theme === "dark" ? "bg-white/10 text-white" : "bg-zinc-900/10 text-zinc-900"}`}
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div className="flex items-center gap-2">
-            {slides.map((item, index) => (
-              <button
-                key={`${item.layout}-${item.title}-${index}`}
-                onClick={() => setActive(index)}
-                className="h-2 rounded-full transition-all"
-                style={{
-                  width: index === safeActive ? 30 : 8,
-                  backgroundColor:
-                    index === safeActive ? settings.accentColor : slide.theme === "dark" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)",
-                }}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-          <button
-            onClick={() => setActive((value) => Math.min(slides.length - 1, value + 1))}
-            disabled={safeActive === slides.length - 1}
-            className={`rounded-full p-3 disabled:opacity-30 ${slide.theme === "dark" ? "bg-white/10 text-white" : "bg-zinc-900/10 text-zinc-900"}`}
-          >
-            <ArrowRight size={18} />
-          </button>
-        </div>
       </SlideShell>
+
+      <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-zinc-950 px-4 py-3 sm:px-6">
+        <button
+          type="button"
+          onClick={() => setActive((value) => Math.max(0, value - 1))}
+          disabled={safeActive === 0}
+          className="rounded-full bg-white/10 p-3 text-white disabled:opacity-30"
+          aria-label="Previous slide"
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <div className="flex max-w-[60%] flex-wrap items-center justify-center gap-2">
+          {slides.map((item, index) => (
+            <button
+              key={`${item.layout}-${item.title}-${index}`}
+              type="button"
+              onClick={() => setActive(index)}
+              className="h-2 rounded-full transition-all"
+              style={{
+                width: index === safeActive ? 30 : 8,
+                backgroundColor: index === safeActive ? settings.accentColor : "rgba(255,255,255,0.25)",
+              }}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setActive((value) => Math.min(slides.length - 1, value + 1))}
+          disabled={safeActive === slides.length - 1}
+          className="rounded-full bg-white/10 p-3 text-white disabled:opacity-30"
+          aria-label="Next slide"
+        >
+          <ArrowRight size={18} />
+        </button>
+      </div>
     </section>
   );
 }
