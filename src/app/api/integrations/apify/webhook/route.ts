@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   const event = payload.eventType || "";
   const datasetId = payload.resource?.defaultDatasetId || job.apify_dataset_id;
   const runId = payload.resource?.id || job.apify_run_id;
-  const failed = event.includes("FAILED") || event.includes("ABORTED") || event.includes("TIMED-OUT");
+  const failed = event.includes("FAILED") || event.includes("ABORTED") || event.includes("TIMED_OUT");
 
   if (failed) {
     await supabase

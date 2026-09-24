@@ -394,7 +394,7 @@ export async function startApifyActorRun(input: { actorSlug: string; body: Recor
   const webhooks = Buffer.from(
     JSON.stringify([
       {
-        eventTypes: ["ACTOR.RUN.SUCCEEDED", "ACTOR.RUN.FAILED", "ACTOR.RUN.ABORTED", "ACTOR.RUN.TIMED-OUT"],
+        eventTypes: ["ACTOR.RUN.SUCCEEDED", "ACTOR.RUN.FAILED", "ACTOR.RUN.ABORTED", "ACTOR.RUN.TIMED_OUT"],
         requestUrl: input.webhookUrl,
       },
     ]),
