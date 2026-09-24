@@ -1,0 +1,35 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  width: auto;
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.img {
+  display: block;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  object-fit: contain;
+  object-position: left center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.navbar {
+  height: 40px;
+  width: auto;
+  overflow: visible;
+}
+
+.compact {
+  height: 32px;
+  width: auto;
+}
+
+.lockup {
+  height: 48px;
+  width: auto;
+  max-width: 100%;
+}

@@ -1,27 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonrepair } from "jsonrepair";
 import type { AiBriefResult } from "@/lib/ai/types";
+import { completeChat } from "@/features/ai/server/complete";
 
 export const runtime = "nodejs";
 /** Vercel Hobby clamps to 60s; keep budget under that so retries still finish. */
 export const maxDuration = 60;
 
 const MAX_REQUIREMENTS_LENGTH = 20_000;
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_REQUESTS_PER_WINDOW = 10;
-const requestLog = new Map<string, number[]>();
-
-function getClientIp(request: NextRequest) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-}
-
-function isRateLimited(ip: string) {
-  const now = Date.now();
-  const active = (requestLog.get(ip) || []).filter((timestamp) => now - timestamp < WINDOW_MS);
-  active.push(now);
-  requestLog.set(ip, active);
-  return active.length > MAX_REQUESTS_PER_WINDOW;
-}
 
 function text(value: unknown, fallback = "") {
   return typeof value === "string" ? value.trim() : fallback;
@@ -286,19 +272,6 @@ ${requirements}${catalogBlock}`;
 }
 
 export async function POST(request: NextRequest) {
-  const ip = getClientIp(request);
-  if (isRateLimited(ip)) {
-    return NextResponse.json({ error: "Đã vượt giới hạn 10 yêu cầu / 10 phút." }, { status: 429 });
-  }
-
-  const baseUrl = process.env.NINE_ROUTER_BASE_URL?.replace(/\/$/, "");
-  const apiKey = process.env.NINE_ROUTER_API_KEY;
-  const model = process.env.NINE_ROUTER_MODEL;
-
-  if (!baseUrl || !apiKey || !model) {
-    return NextResponse.json({ error: "Server chưa cấu hình 9Router." }, { status: 503 });
-  }
-
   let body: { requirements?: unknown; catalog?: unknown };
   try {
     body = (await request.json()) as { requirements?: unknown; catalog?: unknown };
@@ -315,7 +288,6 @@ export async function POST(request: NextRequest) {
   }
 
   const catalog = compactCatalog(Array.isArray(body.catalog) ? body.catalog : []);
-  // Vercel Hobby ~60s hard limit. Prefer 1 JSON-mode call, then 1 short fallback.
   const deadline = Date.now() + 52_000;
   const attempts = [
     { useJsonObjectFormat: true, includeCatalog: false },
@@ -333,32 +305,28 @@ export async function POST(request: NextRequest) {
 
     const attempt = attempts[index];
     const userPrompt = buildUserPrompt(requirements, attempt.includeCatalog ? catalog : []);
-    const result = await callNineRouter({
-      baseUrl,
-      apiKey,
-      model,
-      userPrompt,
-      useJsonObjectFormat: attempt.useJsonObjectFormat,
+    const completion = await completeChat({
+      messages: [{ role: "user", content: userPrompt }],
+      temperature: 0.1,
+      maxTokens: 3_500,
+      responseFormat: attempt.useJsonObjectFormat ? { type: "json_object" } : { type: "text" },
       timeoutMs: Math.min(48_000, remaining - 2_000),
+      consumePlatformQuota: index === 0,
     });
 
-    if (result.aborted) {
-      attemptErrors.push(`attempt ${index + 1}: timeout after ${result.elapsedMs}ms`);
-      continue;
-    }
-
-    if (!result.ok) {
-      attemptErrors.push(`attempt ${index + 1}: upstream ${result.status} — ${result.raw.slice(0, 180)}`);
+    if ("error" in completion) {
+      if (completion.status === 429) {
+        return NextResponse.json({ error: completion.error }, { status: 429 });
+      }
+      attemptErrors.push(`attempt ${index + 1}: ${completion.error}`);
       continue;
     }
 
     try {
-      const parsed = JSON.parse(result.raw) as unknown;
-      const content = extractMessageContent(parsed);
+      const parsed = JSON.parse(completion.data.raw) as unknown;
+      const content = completion.data.content || extractMessageContent(parsed);
       if (!content) {
-        attemptErrors.push(
-          `attempt ${index + 1}: empty content (${result.elapsedMs}ms) — ${describeUpstreamPayload(parsed, result.raw)}`,
-        );
+        attemptErrors.push(`attempt ${index + 1}: empty content — ${describeUpstreamPayload(parsed, completion.data.raw)}`);
         continue;
       }
 
@@ -374,22 +342,20 @@ export async function POST(request: NextRequest) {
         if (fallbackBrief.modules.length) {
           return NextResponse.json({
             brief: fallbackBrief,
-            meta: { attempts: index + 1, elapsedMs: result.elapsedMs },
+            meta: { attempts: index + 1, source: completion.data.source },
           });
         }
-        attemptErrors.push(
-          `attempt ${index + 1}: no modules (${result.elapsedMs}ms) — content=${content.replace(/\s+/g, " ").slice(0, 220)}`,
-        );
+        attemptErrors.push(`attempt ${index + 1}: no modules — content=${content.replace(/\s+/g, " ").slice(0, 220)}`);
         continue;
       }
 
       return NextResponse.json({
         brief,
-        meta: { attempts: index + 1, elapsedMs: result.elapsedMs },
+        meta: { attempts: index + 1, source: completion.data.source },
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown parse error";
-      attemptErrors.push(`attempt ${index + 1}: parse failed — ${message} — raw=${result.raw.slice(0, 180)}`);
+      attemptErrors.push(`attempt ${index + 1}: parse failed — ${message} — raw=${completion.data.raw.slice(0, 180)}`);
     }
   }
 

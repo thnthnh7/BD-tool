@@ -14,7 +14,7 @@ function safeFileName(value: string) {
     .slice(0, 80);
 }
 
-export function buildExportFileName(quote: Quote, client: Client | null, extension: "xlsx" | "pdf") {
+export function buildExportFileName(quote: Quote, client: Client | null, extension: "xlsx" | "pdf" | "pptx") {
   const clientPart = client?.companyName || "Khach-hang";
   const date = new Date().toISOString().slice(0, 10);
   return `Bao-gia_${safeFileName(clientPart)}_${safeFileName(quote.title)}_${date}.${extension}`;
@@ -32,7 +32,7 @@ async function fetchAsBase64(path: string) {
   });
 }
 
-function downloadBlob(blob: Blob, fileName: string) {
+export function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -131,8 +131,10 @@ export async function buildQuoteExcelBuffer(settings: CompanySettings, quote: Qu
   sheet.getRow(5).height = 14;
 
   try {
+    if (!settings.logoPath) throw new Error("no logo");
     const logo = await fetchAsBase64(settings.logoPath);
-    const imageId = workbook.addImage({ base64: logo, extension: "jpeg" });
+    const extension = logo.startsWith("data:image/png") ? "png" : logo.startsWith("data:image/gif") ? "gif" : "jpeg";
+    const imageId = workbook.addImage({ base64: logo, extension });
     sheet.addImage(imageId, {
       tl: { col: 0.15, row: 0.2 },
       ext: { width: 52, height: 52 },
@@ -543,11 +545,18 @@ export async function exportQuoteToExcel(settings: CompanySettings, quote: Quote
 export async function exportQuoteToPdf(settings: CompanySettings, quote: Quote, client: Client | null) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const totals = calculateQuoteTotals(quote);
-  const logo = await fetchAsBase64(settings.logoPath);
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 48;
 
-  doc.addImage(logo, "JPEG", 48, y, 52, 52);
+  if (settings.logoPath) {
+    try {
+      const logo = await fetchAsBase64(settings.logoPath);
+      const format = logo.startsWith("data:image/png") ? "PNG" : "JPEG";
+      doc.addImage(logo, format, 48, y, 52, 52);
+    } catch {
+      // Logo optional — continue without blocking export
+    }
+  }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.text(settings.companyName, 116, y + 16);

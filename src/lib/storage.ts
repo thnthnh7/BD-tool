@@ -42,7 +42,7 @@ function normalizeQuote(quote: Quote, settings = defaultData.settings): Quote {
             trigger: "Sau khi nghiệm thu",
           },
         ],
-    techStack: quote.techStack?.length ? quote.techStack : ["React.js", "Next.js", "Tailwind CSS", "PostgreSQL"],
+    techStack: quote.techStack?.length ? quote.techStack : ["React.js", "Next.js", "Mantine", "PostgreSQL"],
     warrantyMonths: quote.warrantyMonths ?? settings.defaultWarrantyMonths,
     maintenanceFeeMonthly: quote.maintenanceFeeMonthly ?? settings.defaultMaintenanceFee,
   };

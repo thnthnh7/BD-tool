@@ -1,0 +1,89 @@
+.stage {
+  min-height: 540px;
+  overflow: hidden;
+}
+
+.pad {
+  padding: 36px 40px;
+}
+
+.signalCover,
+.signalPrice,
+.signalSplit {
+  display: grid;
+  min-height: 540px;
+}
+
+.neoCover {
+  display: grid;
+  min-height: 540px;
+  grid-template-rows: 1.2fr 0.8fr;
+}
+
+.neoCells,
+.neoPrice {
+  display: grid;
+}
+
+.ledger {
+  display: grid;
+  gap: 6px;
+  padding: 14px 0;
+  border-top: 1px solid;
+}
+
+.blueModules,
+.blueSplit {
+  display: grid;
+  gap: 16px;
+}
+
+.broadCols {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 62em) {
+  .signalCover {
+    grid-template-columns: 280px 1fr;
+  }
+
+  .signalPrice {
+    grid-template-columns: 1.15fr 0.85fr;
+  }
+
+  .signalSplit {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .neoCells {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .neoPrice {
+    grid-template-columns: 1.4fr 0.8fr 0.8fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  .ledger {
+    grid-template-columns: 1.1fr 1.5fr auto;
+    gap: 16px;
+    align-items: baseline;
+  }
+
+  .blueModules,
+  .blueSplit {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .broadCols {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .emeraldSpread {
+    display: grid;
+    grid-template-columns: 1.4fr 0.6fr;
+    gap: 32px;
+    align-items: start;
+  }
+}

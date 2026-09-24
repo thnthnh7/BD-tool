@@ -1,9 +1,10 @@
 import { Suspense } from "react";
+import { PublicQuoteLoading } from "@/app/p/public-quote-frame";
 import { PublicPresentation } from "./public-presentation";
 
 export default function PublicPresentationPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">Loading quote...</div>}>
+    <Suspense fallback={<PublicQuoteLoading label="Loading quote..." />}>
       <PublicPresentation />
     </Suspense>
   );

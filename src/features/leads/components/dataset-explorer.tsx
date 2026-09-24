@@ -1,0 +1,144 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Anchor, Badge, Box, Button, Checkbox, Code, Drawer, Group, Menu, Pagination, Popover, ScrollArea, Select, Stack, Table, Tabs, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, Download, Search, SquareArrowOutUpRight } from "lucide-react";
+import type { Json } from "@/lib/database.types";
+import { datasetColumns, datasetCsv, datasetRecord, datasetValue, defaultDatasetColumns, filterDataset, safeDatasetUrl, sortDataset, type DatasetRow } from "@/features/leads/dataset";
+import classes from "./dataset-explorer.module.css";
+
+function download(content: string, filename: string, type: string) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function Value({ value, onExpand }: { value: Json | undefined; onExpand?: () => void }) {
+  if (value == null || value === "") return <Text c="dimmed" size="sm">—</Text>;
+  if (typeof value === "boolean") return <Badge color={value ? "teal" : "gray"}>{value ? "Có" : "Không"}</Badge>;
+  if (typeof value === "object") {
+    const label = Array.isArray(value) ? `${value.length} mục` : `${Object.keys(value).length} trường`;
+    return onExpand ? <Button variant="subtle" size="compact-sm" onClick={onExpand}>{label}</Button> : <Text size="sm">{label}</Text>;
+  }
+  const url = typeof value === "string" ? safeDatasetUrl(value) : null;
+  if (url) return <Anchor href={url} target="_blank" rel="noopener noreferrer" size="sm" lineClamp={2}>{String(value)}</Anchor>;
+  return <Text size="sm" lineClamp={3}>{typeof value === "number" ? value.toLocaleString("vi-VN") : value}</Text>;
+}
+
+/** Nested arrays have their own paging and item details; never flatten away the parent record. */
+function NestedArray({ values }: { values: Json[] }) {
+  const [page, setPage] = useState(1);
+  const [detail, setDetail] = useState<number | null>(null);
+  const rows = useMemo(() => values.map((value, index) => ({ id: String(index), label: String(index + 1), data: datasetRecord(value) })), [values]);
+  const columns = useMemo(() => datasetColumns(rows).filter((column) => column.path.length === 1), [rows]);
+  const pageCount = Math.max(1, Math.ceil(rows.length / 10));
+  return <Stack gap="xs">
+    <Text size="xs" c="dimmed">{values.length} mục con trong bản ghi này</Text>
+    <Box className={classes.nested}>
+      <Table withTableBorder horizontalSpacing="xs" verticalSpacing="xs">
+        <Table.Thead><Table.Tr><Table.Th>#</Table.Th>{columns.map((column) => <Table.Th key={column.key}>{column.label}</Table.Th>)}</Table.Tr></Table.Thead>
+        <Table.Tbody>{rows.slice((page - 1) * 10, page * 10).map((row) => <Table.Tr key={row.id}>
+          <Table.Td><Button variant="subtle" size="compact-xs" onClick={() => setDetail(Number(row.id))}>{row.label}</Button></Table.Td>
+          {columns.map((column) => <Table.Td key={column.key} miw={140}><Value value={datasetValue(row.data, column.path)} onExpand={() => setDetail(Number(row.id))} /></Table.Td>)}
+        </Table.Tr>)}</Table.Tbody>
+      </Table>
+    </Box>
+    {pageCount > 1 && <Pagination size="sm" total={pageCount} value={page} onChange={setPage} />}
+    {detail !== null && <Box><Group justify="space-between"><Text size="sm" fw={600}>Mục {detail + 1}</Text><Button size="compact-xs" variant="subtle" onClick={() => setDetail(null)}>Đóng</Button></Group><Code block className={classes.json}>{JSON.stringify(values[detail], null, 2)}</Code></Box>}
+  </Stack>;
+}
+
+function DetailValue({ value }: { value: Json | undefined }) {
+  if (Array.isArray(value)) return value.length ? <NestedArray values={value} /> : <Text c="dimmed" size="sm">Danh sách trống</Text>;
+  if (value && typeof value === "object") return <Code block className={classes.json}>{JSON.stringify(value, null, 2)}</Code>;
+  if (typeof value === "string" && !safeDatasetUrl(value)) return <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>{value || "—"}</Text>;
+  return <Value value={value} />;
+}
+
+export function DatasetExplorer({ rows, filename, emptyMessage = "Chưa có bản ghi. Kết quả sẽ xuất hiện sau khi đồng bộ." }: { rows: DatasetRow[]; filename: string; emptyMessage?: string }) {
+  const columns = useMemo(() => datasetColumns(rows), [rows]);
+  const defaults = useMemo(() => defaultDatasetColumns(columns), [columns]);
+  const [selection, setSelection] = useState<string[] | null>(null);
+  const [columnQuery, setColumnQuery] = useState("");
+  const [query, setQuery] = useState("");
+  const [field, setField] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState("20");
+  const [sort, setSort] = useState<{ key: string; desc: boolean } | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [focusField, setFocusField] = useState<string | null>(null);
+  const selected = selection ?? defaults;
+  const visible = columns.filter((column) => selected.includes(column.key));
+  const matched = useMemo(() => filterDataset(rows, query, columns.find((column) => column.key === field)), [rows, query, field, columns]);
+  const ordered = useMemo(() => sortDataset(matched, columns.find((column) => column.key === sort?.key), sort?.desc ?? false), [matched, columns, sort]);
+  const totalPages = Math.max(1, Math.ceil(ordered.length / Number(pageSize)));
+  const currentPage = Math.min(page, totalPages);
+  const offset = (currentPage - 1) * Number(pageSize);
+  const detail = rows.find((row) => row.id === detailId);
+  const focusedColumn = columns.find((column) => column.key === focusField);
+  const fields = detail ? Object.entries(detail.data) : [];
+  function openDetail(row: DatasetRow, column?: string) { setDetailId(row.id); setFocusField(column ?? null); }
+
+  return <>
+    <Stack gap="sm" className={classes.toolbar}>
+      <Group justify="space-between" gap="sm">
+        <Group gap="xs" style={{ flex: 1 }}>
+          <TextInput aria-label="Tìm trong kết quả" placeholder="Tìm trong kết quả…" leftSection={<Search size={15} />} value={query} onChange={(event) => { setQuery(event.currentTarget.value); setPage(1); }} style={{ flex: 1, minWidth: 180 }} />
+          <Select aria-label="Trường tìm kiếm" placeholder="Tất cả trường" clearable searchable value={field} data={columns.map((column) => ({ value: column.key, label: column.label }))} onChange={(value) => { setField(value); setPage(1); }} w={200} />
+        </Group>
+        <Group gap="xs">
+          <Popover width={320} position="bottom-end" shadow="md">
+            <Popover.Target><Button variant="default" leftSection={<Columns3 size={15} />}>Cột ({visible.length})</Button></Popover.Target>
+            <Popover.Dropdown>
+              <Stack gap="sm">
+                <Group justify="space-between"><Text fw={600} size="sm">Trường dữ liệu</Text><Button variant="subtle" size="compact-xs" onClick={() => setSelection(null)}>Mặc định</Button></Group>
+                <TextInput placeholder="Tìm trường…" aria-label="Tìm cột" value={columnQuery} onChange={(event) => setColumnQuery(event.currentTarget.value)} />
+                <ScrollArea h={260}><Checkbox.Group value={selected} onChange={(value) => { if (value.length) setSelection(value); }}><Stack gap="xs">{columns.filter((column) => column.label.toLowerCase().includes(columnQuery.toLowerCase())).map((column) => <Checkbox key={column.key} value={column.key} label={column.label} />)}</Stack></Checkbox.Group></ScrollArea>
+              </Stack>
+            </Popover.Dropdown>
+          </Popover>
+          <Menu position="bottom-end">
+            <Menu.Target><Button variant="light" leftSection={<Download size={15} />} disabled={!matched.length}>Xuất dữ liệu</Button></Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>{matched.length.toLocaleString("vi-VN")} bản ghi đang lọc</Menu.Label>
+              <Menu.Item onClick={() => download(datasetCsv(ordered, visible), `${filename}.csv`, "text/csv;charset=utf-8")}>CSV · các cột đang hiển thị</Menu.Item>
+              <Menu.Item onClick={() => download(JSON.stringify(ordered.map((row) => row.data), null, 2), `${filename}.json`, "application/json")}>JSON · toàn bộ trường</Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      </Group>
+      <Text size="xs" c="dimmed">{rows.length.toLocaleString("vi-VN")} bản ghi gốc · {columns.filter((column) => column.path.length === 1).length} trường · Bấm “Chi tiết” hoặc một nhóm dữ liệu để xem đầy đủ.</Text>
+    </Stack>
+    {ordered.length ? <Box className={classes.tableViewport}>
+      <Table className={classes.table}>
+        <Table.Thead><Table.Tr><Table.Th className={classes.rowNumber}>#</Table.Th>{visible.map((column) => <Table.Th key={column.key} aria-sort={sort?.key === column.key ? sort.desc ? "descending" : "ascending" : "none"}>
+          <UnstyledButton className={classes.sortButton} onClick={() => { setSort({ key: column.key, desc: sort?.key === column.key ? !sort.desc : false }); setPage(1); }}><Group gap={6} wrap="nowrap">{column.label}{sort?.key === column.key ? sort.desc ? <ArrowDown size={12} /> : <ArrowUp size={12} /> : <ArrowUpDown size={12} />}</Group></UnstyledButton>
+        </Table.Th>)}<Table.Th>Chi tiết</Table.Th></Table.Tr></Table.Thead>
+        <Table.Tbody>{ordered.slice(offset, offset + Number(pageSize)).map((row, index) => <Table.Tr key={row.id}>
+          <Table.Td className={classes.rowNumber}>{offset + index + 1}</Table.Td>
+          {visible.map((column) => <Table.Td className={classes.cell} key={column.key}><Value value={datasetValue(row.data, column.path)} onExpand={() => openDetail(row, column.key)} /></Table.Td>)}
+          <Table.Td><Button size="compact-sm" variant="subtle" aria-label={`Chi tiết ${row.label}`} onClick={() => openDetail(row)}><SquareArrowOutUpRight size={15} /></Button></Table.Td>
+        </Table.Tr>)}</Table.Tbody>
+      </Table>
+    </Box> : <Stack align="center" gap={6} py={48} px="md"><Search size={22} /><Text fw={600} size="sm">{rows.length ? "Không có kết quả khớp" : "Chưa có kết quả"}</Text><Text size="sm" c="dimmed">{rows.length ? "Thử từ khóa khác hoặc tìm trên tất cả trường." : emptyMessage}</Text>{query && <Button variant="subtle" size="compact-sm" onClick={() => { setQuery(""); setField(null); }}>Xóa bộ lọc</Button>}</Stack>}
+    <Group justify="space-between" p="md" gap="sm">
+      <Text size="sm" c="dimmed">{ordered.length ? offset + 1 : 0}–{Math.min(offset + Number(pageSize), ordered.length)} / {ordered.length.toLocaleString("vi-VN")} bản ghi</Text>
+      <Group><Select aria-label="Số dòng mỗi trang" w={115} value={pageSize} data={[{ value: "20", label: "20 dòng" }, { value: "50", label: "50 dòng" }, { value: "100", label: "100 dòng" }]} onChange={(value) => { setPageSize(value || "20"); setPage(1); }} /><Pagination size="sm" total={totalPages} value={currentPage} onChange={setPage} /></Group>
+    </Group>
+    <Drawer opened={Boolean(detail)} onClose={() => setDetailId(null)} position="right" size="lg" title={<Text fw={600}>Chi tiết bản ghi</Text>} classNames={{ body: classes.details }}>
+      {detail && <Stack>
+        <Text fw={600}>{detail.label}</Text>
+        <Tabs key={`${detail.id}-${focusField}`} defaultValue="fields">
+          <Tabs.List><Tabs.Tab value="fields">Dữ liệu</Tabs.Tab><Tabs.Tab value="json">JSON</Tabs.Tab></Tabs.List>
+          <Tabs.Panel value="fields" pt="md">
+            {focusedColumn ? <Stack><Group justify="space-between"><Text fw={600} size="sm">{focusedColumn.label}</Text><Button variant="subtle" size="compact-sm" onClick={() => setFocusField(null)}>Tất cả trường</Button></Group><DetailValue value={datasetValue(detail.data, focusedColumn.path)} /></Stack> : fields.map(([key, value]) => <Box key={key} className={classes.field}><Text size="xs" c="dimmed" mb={6}>{key}</Text><DetailValue value={value} /></Box>)}
+          </Tabs.Panel>
+          <Tabs.Panel value="json" pt="md"><Code block className={classes.json}>{JSON.stringify(detail.data, null, 2)}</Code></Tabs.Panel>
+        </Tabs>
+      </Stack>}
+    </Drawer>
+  </>;
+}

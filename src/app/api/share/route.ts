@@ -1,24 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { slimSharedPayload, type SharedQuotePayload } from "@/lib/share";
-import { saveSharedQuote } from "@/lib/share-store";
+import { createShareId, isValidShareId } from "@/lib/share-id";
 
 export const runtime = "nodejs";
-
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_REQUESTS_PER_WINDOW = 20;
-const requestLog = new Map<string, number[]>();
-
-function getClientIp(request: NextRequest) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-}
-
-function isRateLimited(ip: string) {
-  const now = Date.now();
-  const active = (requestLog.get(ip) || []).filter((timestamp) => now - timestamp < WINDOW_MS);
-  active.push(now);
-  requestLog.set(ip, active);
-  return active.length > MAX_REQUESTS_PER_WINDOW;
-}
 
 function isPayload(value: unknown): value is SharedQuotePayload {
   if (!value || typeof value !== "object") return false;
@@ -27,8 +12,19 @@ function isPayload(value: unknown): value is SharedQuotePayload {
 }
 
 export async function POST(request: NextRequest) {
-  if (isRateLimited(getClientIp(request))) {
-    return NextResponse.json({ error: "Too many share requests. Try again later." }, { status: 429 });
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: membership } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", userData.user.id)
+    .maybeSingle();
+  if (!membership) {
+    return NextResponse.json({ error: "No workspace" }, { status: 403 });
   }
 
   let body: unknown;
@@ -37,17 +33,24 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-
   if (!isPayload(body)) {
     return NextResponse.json({ error: "Missing settings or quote" }, { status: 400 });
   }
 
-  try {
-    const id = await saveSharedQuote(slimSharedPayload(body, { stripDataLogos: false }));
-    const origin = request.nextUrl.origin;
-    return NextResponse.json({ id, url: `${origin}/p/${id}` });
-  } catch (error) {
-    console.error("Share create failed:", error);
-    return NextResponse.json({ error: "Failed to create short link" }, { status: 500 });
+  const payload = slimSharedPayload(body, { stripDataLogos: false });
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const id = createShareId();
+    if (!isValidShareId(id)) continue;
+    const { error } = await supabase.from("public_quotes").insert({
+      id,
+      workspace_id: membership.workspace_id,
+      payload: payload as never,
+    });
+    if (!error) {
+      const origin = request.nextUrl.origin;
+      return NextResponse.json({ id, url: `${origin}/p/${id}` });
+    }
   }
+
+  return NextResponse.json({ error: "Failed to create short link" }, { status: 500 });
 }

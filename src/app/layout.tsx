@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Be_Vietnam_Pro, Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
+import { mantineHtmlProps } from "@mantine/core";
+import { LeadelyProvider } from "@/components/leadely-provider";
+import "@mantine/core/styles.css";
+import "@mantine/notifications/styles.css";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,9 +16,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const deckSans = Be_Vietnam_Pro({
+  variable: "--font-deck",
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const deckSerif = Source_Serif_4({
+  variable: "--font-deck-serif",
+  subsets: ["latin", "vietnamese"],
+  weight: ["600", "700"],
+});
+
 export const metadata: Metadata = {
-  title: "CJTEK BD Quote Tool",
-  description: "Internal quotation builder for CJTEK",
+  title: "Leadely",
+  description: "AI BD assistant — quotes, slideshows and contracts.",
 };
 
 export default function RootLayout({
@@ -23,8 +39,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="vi" {...mantineHtmlProps} className={`${geistSans.variable} ${geistMono.variable} ${deckSans.variable} ${deckSerif.variable}`}>
+      <body>
+        <LeadelyProvider>{children}</LeadelyProvider>
+      </body>
     </html>
   );
 }

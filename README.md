@@ -1,74 +1,40 @@
-# CSJ Tek — BD Quote Tool
+# BD Quote Tool (SaaS)
 
-Internal tool for Cap Saint Jacques Tek to build software quotations, slideshows, Excel exports, and service contracts (DOCX).
+Báo giá phần mềm cho cá nhân và công ty: quotes, slideshow, Excel/PDF/DOCX, AI brief, billing SePay.
+
+Một account = một role = một workspace (hoặc một platform role). Một portal `/app`.
 
 ## Stack
 
-- Next.js 16 (App Router) + TypeScript + Tailwind
-- Local-first storage (`localStorage`)
-- ExcelJS (Excel with live formulas)
-- `docx` (contract Word export)
-- 9Router-compatible AI brief generation (server-side API)
-- Share links encode quote payload in URL (`/p?data=...`)
+- Next.js 16 + TypeScript + Mantine
+- Supabase (Auth, Postgres + RLS, Storage)
+- Vercel (app + cron)
+- SePay VietQR webhook + Payment Gateway IPN
 
-## Run locally
+## Local
 
-```bash
-npm install
-npm run dev
-```
+1. Copy `.env.example` → `.env.local` (URL/key Supabase đã có trong `.env.example` mẫu).
+2. Thêm `SUPABASE_SERVICE_ROLE_KEY` từ Supabase dashboard (cần cho webhook SePay, cron, bootstrap platform admin).
+3. `npm install && npm run dev`
 
-Open [http://localhost:3000](http://localhost:3000).
+Project Supabase: `bd-tool` (`ap-southeast-1`), ref `eewoirdimfpfborwdbzx`. Schema trong `supabase/migrations/`.
 
-On Windows PowerShell, if `npm` scripts are blocked:
+## Bootstrap platform admin
 
-```powershell
-npm.cmd run dev
-```
+Đặt `PLATFORM_BOOTSTRAP_EMAIL` trùng email bạn đăng ký đầu tiên (khi bảng `platform_admins` còn trống) và có service role key. Hoặc mời từ `/app/platform/plans`.
 
-## Deploy to Vercel
+CSJ Tek: tạo workspace company tên CJTEK khi onboarding (settings mặc định lấy từ `src/lib/default-data.ts`). Dùng email BD riêng; email ops cho platform.
 
-1. Push this repo to GitHub.
-2. Import the project in [Vercel](https://vercel.com/new).
-3. Framework preset: **Next.js** (auto-detected).
-4. Build command: `npm run build` · Output: default.
-5. Deploy.
+## Env
 
-### Important notes after deploy
+Xem `.env.example`. SePay: `SEPAY_BANK_ACCOUNT`, `SEPAY_BANK_NAME`, `SEPAY_WEBHOOK_SECRET`, Gateway `SEPAY_MERCHANT_ID` / `SEPAY_SECRET_KEY`.
 
-- **Quotes / clients / modules** are stored in the browser `localStorage` of whoever uses the admin UI. They are not shared across devices unless you migrate to a database later.
-- **Share links** (`/p?data=...`) work on Vercel without a database because the quote is embedded in the URL.
-- **AI Brief (Phase 7)** requires these Vercel Environment Variables:
+Webhook: `POST /api/billing/sepay/webhook`
+Cron: `GET /api/billing/cron` (Vercel `0 2 * * *`, header `Authorization: Bearer $CRON_SECRET`)
 
-```text
-NINE_ROUTER_BASE_URL=https://your-9router-host/v1
-NINE_ROUTER_API_KEY=...
-NINE_ROUTER_MODEL=...
-```
+## Auth
 
-The API key is only read by the server route and is never sent to the browser.
-
-## Main flows
-
-1. Settings — company legal + bank info  
-2. Clients — customer legal fields  
-3. Modules — pricing catalog (suggestions only; prices editable)  
-4. New quote — AI brief review/apply + modules + **deliverables** + payment milestones  
-5. Export Excel (formulas) / PDF / slideshow share link / **Contract DOCX**
-
-## Company seed
-
-- CÔNG TY TNHH CAP SAINT JACQUES TEK  
-- MST: 0319520814  
-- Logo: `public/brand/logo.jpg`
-
-## Phase status
-
-| Phase | Status |
-|---|---|
-| Excel invoice layout + SUM formulas | Done |
-| Deliverables appendix | Done |
-| Contract fields + DOCX | Done |
-| Edit quote / polish | Done |
-| Vercel-ready | Done (this README) |
-| AI via 9Router | Done |
+- `/signup` → Owner + workspace personal|company
+- Invite team: Admin/Member (company)
+- Platform invite: super_admin/support
+- Google OAuth: bật provider trên Supabase Auth

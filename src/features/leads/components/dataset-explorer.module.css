@@ -1,0 +1,11 @@
+.toolbar { padding: 16px; border-bottom: 1px solid var(--mantine-color-gray-2); }
+.tableViewport { overflow: auto; max-height: 620px; }
+.table { min-width: 780px; }
+.table thead { position: sticky; top: 0; z-index: 1; background: var(--mantine-color-body); }
+.cell { min-width: 150px; max-width: 280px; overflow-wrap: anywhere; }
+.rowNumber { width: 54px; min-width: 54px; color: var(--mantine-color-dimmed); }
+.details { overflow-wrap: anywhere; }
+.json { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; max-height: 560px; overflow: auto; }
+.field { padding: 12px 0; border-bottom: 1px solid var(--mantine-color-gray-2); }
+.sortButton { font-size: 12px; color: inherit; width: 100%; }
+.nested { max-width: 100%; overflow: auto; }

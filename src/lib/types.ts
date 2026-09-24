@@ -121,8 +121,18 @@ export type Quote = {
   techStack: string[];
   warrantyMonths: number;
   maintenanceFeeMonthly: number;
-  createdAt: string;
-  updatedAt: string;
+    createdAt: string;
+    updatedAt: string;
+    dealId?: string;
+    revisionNumber?: number;
+    quoteStatusV2?: string;
+    deckStyle?: string;
+    presentationSource?: "generated" | "upload";
+    proposalPdfPath?: string;
+    proposalPdfName?: string;
+    contractDocxPath?: string;
+    contractDocxName?: string;
+    contractStatus?: "draft" | "sent" | "signed" | "void";
 };
 
 export type AppData = {

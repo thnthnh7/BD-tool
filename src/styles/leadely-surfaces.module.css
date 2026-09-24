@@ -1,0 +1,27 @@
+.panel {
+  background: var(--ld-surface);
+  border-color: var(--ld-border);
+  box-shadow: none;
+}
+
+.aiPanel {
+  background: var(--ld-gradient-ai);
+  border-color: color-mix(in srgb, var(--mantine-color-leadely-5) 22%, var(--ld-border));
+}
+
+.aiAction {
+  background: var(--ld-surface);
+  border: 1px solid var(--ld-border);
+  border-radius: 8px;
+  min-height: 40px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+/* Doubled class keeps this above the shared `.panel` rule regardless of bundle order. */
+.currentPlan.currentPlan {
+  border-color: color-mix(in srgb, var(--mantine-color-leadely-5) 45%, var(--ld-border));
+  background: #ecfdf5;
+}
