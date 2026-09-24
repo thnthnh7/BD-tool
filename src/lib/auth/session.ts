@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { applyPlanOverrides, parsePlan, type ParsedPlan, type PlanStatus } from "@/lib/entitlements";
 
@@ -30,7 +31,7 @@ export type SessionContext =
       locked: boolean;
     };
 
-export async function getSessionContext(): Promise<SessionContext | null> {
+export const getSessionContext = cache(async function getSessionContext(): Promise<SessionContext | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
@@ -97,7 +98,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     planStatus: workspace.plan_status as PlanStatus,
     locked: workspace.locked || Boolean(workspace.archived_at),
   };
-}
+});
 
 export async function requireUser() {
   const context = await getSessionContext();

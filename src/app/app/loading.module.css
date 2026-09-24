@@ -1,0 +1,57 @@
+.stack,
+.heading,
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.stack { gap: 16px; }
+.heading { gap: 8px; }
+.panel {
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.title,
+.subtitle,
+.identity,
+.action,
+.progress,
+.input,
+.item {
+  display: block;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #eef2f6 25%, #f8fafc 45%, #eef2f6 65%);
+  background-size: 240% 100%;
+  animation: pulse 1.25s ease-in-out infinite;
+}
+.title { width: 180px; height: 28px; }
+.subtitle { width: min(420px, 70%); height: 14px; }
+.identity { width: 220px; height: 36px; }
+.action { width: 110px; height: 32px; }
+.progress { width: 100%; height: 8px; }
+.input { width: 100%; height: 38px; }
+.item { width: 100%; height: 58px; }
+
+@keyframes pulse {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title,
+  .subtitle,
+  .identity,
+  .action,
+  .progress,
+  .input,
+  .item { animation: none; }
+}

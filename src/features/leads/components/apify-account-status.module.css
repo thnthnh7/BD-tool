@@ -1,0 +1,103 @@
+.compactCard {
+  background: var(--mantine-color-white);
+}
+
+.compactLayout {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.85fr) minmax(360px, 1.5fr);
+  align-items: center;
+  gap: 22px;
+}
+
+.account,
+.accountText,
+.metric {
+  min-width: 0;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 22px;
+}
+
+.settingsSummary {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.85fr) minmax(360px, 1.5fr);
+  align-items: center;
+  gap: 28px;
+}
+
+.settingsMeta {
+  padding-left: 52px;
+}
+
+.tokenDetails {
+  flex: 1 1 420px;
+}
+
+.statusDot,
+.statusWarning {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 999px;
+  background: var(--mantine-color-teal-6);
+  box-shadow: 0 0 0 3px var(--mantine-color-teal-0);
+}
+
+.statusWarning {
+  background: var(--mantine-color-orange-6);
+  box-shadow: 0 0 0 3px var(--mantine-color-orange-0);
+}
+
+.metaRow {
+  padding-left: 46px;
+}
+
+@media (max-width: 62em) {
+  .compactLayout {
+    grid-template-columns: minmax(180px, 1fr) minmax(320px, 1.5fr);
+    gap: 14px;
+  }
+
+  .metrics {
+    gap: 14px;
+  }
+}
+
+@media (max-width: 48em) {
+  .compactLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .metaRow {
+    padding-left: 0;
+  }
+
+  .settingsSummary {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .settingsMeta {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 30em) {
+  .compactLayout {
+    gap: 12px;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+}

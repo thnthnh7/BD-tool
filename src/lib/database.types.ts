@@ -1355,6 +1355,7 @@ export type Database = {
           store_url: string | null;
           categories: string[];
           pricing_model: string | null;
+          pricing_info: Json | null;
           notice: string | null;
           review_rating: number | null;
           review_count: number;
@@ -1379,6 +1380,7 @@ export type Database = {
           store_url?: string | null;
           categories?: string[];
           pricing_model?: string | null;
+          pricing_info?: Json | null;
           notice?: string | null;
           review_rating?: number | null;
           review_count?: number;

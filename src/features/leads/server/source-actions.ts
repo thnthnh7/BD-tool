@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { MAPS_SLUG } from "@/features/leads/maps-source";
 import { ensureSourceContract } from "@/features/leads/server/actor-schema";
 import { withWorkspace } from "@/lib/events";
+import type { Json } from "@/lib/database.types";
 const SOURCES_PAGE_SIZE = 200;
 
 export type SourceListFilters = {
@@ -41,6 +42,7 @@ export async function listScrapeSources(filters: SourceListFilters) {
       slug: string;
       categories: string[];
       pricing_model: string | null;
+      pricing_info: Json | null;
       review_rating: number | null;
       review_count: number;
       total_users: number;
@@ -96,6 +98,7 @@ export async function listScrapeSources(filters: SourceListFilters) {
     slug: row.slug,
     categories: row.categories,
     pricing_model: row.pricing_model,
+    pricing_info: row.pricing_info,
     review_rating: row.review_rating,
     review_count: row.review_count,
     total_users: row.total_users,

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/leadely/page-header";
 import { LinkButton } from "@/components/mantine-link";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { installScrapeSourceAction, listScrapeSources, uninstallScrapeSourceAction } from "@/features/leads/server/source-actions";
-import { sourceCardDetails } from "@/features/leads/server/source-card-details";
+import { summarizePricing, type ActorPricing } from "@/features/leads/source-pricing";
 import { requireWorkspace } from "@/lib/auth/session";
 import { readListQuery } from "@/lib/list-page";
 import classes from "@/features/leads/components/source-cards.module.css";
@@ -29,12 +29,6 @@ export default async function LeadSourcesPage({ searchParams }: {
   const category = CATEGORIES.includes(params.category || "") ? params.category || "" : "";
   const context = await requireWorkspace();
   const [payload, apify] = await Promise.all([listScrapeSources({ q, page, adapter: "", installed, category }), getCurrentWorkspaceApifyStatus()]);
-  const details = new Map<string, Awaited<ReturnType<typeof sourceCardDetails>>>();
-  for (let index = 0; index < payload.rows.length; index += 6) {
-    await Promise.all(payload.rows.slice(index, index + 6).map(async (source) => {
-      details.set(source.id, await sourceCardDetails(source.slug));
-    }));
-  }
   const canManage = context.memberRole !== "member" && Boolean(context.plan.features.lead_scrape);
   const extra = { installed, category };
   return <Stack gap="lg">
@@ -55,13 +49,12 @@ export default async function LeadSourcesPage({ searchParams }: {
     {payload.total === 0 ? <EmptyState icon={<Library size={18} />} title="Không có nguồn phù hợp" description="Thử đổi từ khóa hoặc bộ lọc để tìm actor Pay per event." /> : <>
       <div className={classes.grid}>
         {payload.rows.map((source) => {
-          const detail = details.get(source.id);
-          const pricing = detail?.pricing;
+          const pricing = summarizePricing(source.pricing_info as ActorPricing | undefined);
           const author = source.slug.split("/")[0];
           return <article key={source.id} className={classes.card} aria-label={source.title}>
             <div className={classes.body}>
               <Group gap="sm" wrap="nowrap" align="flex-start">
-                <Avatar src={source.picture_url || detail?.picture} radius="sm" size={40}>{initial(source.title)}</Avatar>
+                <Avatar src={source.picture_url || undefined} radius="sm" size={40}>{initial(source.title)}</Avatar>
                 <div className={classes.title}>
                   <Text fw={600} size="sm" truncate title={source.title}>{source.title}</Text>
                   <Text size="xs" c="dimmed" truncate title={source.slug} ff="monospace">{source.slug}</Text>

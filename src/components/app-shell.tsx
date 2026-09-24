@@ -270,6 +270,7 @@ function ShellLink({
     <NavLink
       component={Link}
       href={item.href}
+      prefetch={false}
       label={item.label}
       leftSection={<Icon size={18} />}
       active={navItemActive(pathname, item.href)}

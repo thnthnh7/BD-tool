@@ -1,8 +1,9 @@
-import { Anchor, Avatar, Badge, Box, Divider, Group, Paper, Progress, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
-import { ExternalLink, Gauge, MemoryStick } from "lucide-react";
+import { Avatar, Badge, Box, Divider, Group, Paper, Progress, Stack, Text, TextInput } from "@mantine/core";
 import { LinkButton } from "@/components/mantine-link";
 import { ActionForm } from "@/features/crm/components/action-form";
-import { refreshApifyConnectionAction, saveApifyTokenAction, unlinkApifyConnectionAction } from "@/features/leads/server/apify-connection";
+import { saveApifyTokenAction } from "@/features/leads/server/apify-connection";
+import { ApifyRefreshButton, ApifyUnlinkButton } from "./apify-refresh-button";
+import classes from "./apify-account-status.module.css";
 
 type Connection = {
   apify_username: string;
@@ -58,34 +59,64 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
   const usagePercent = usageMax > 0 ? Math.min(100, usageCurrent / usageMax * 100) : 0;
   const memoryPercent = memoryMax > 0 ? Math.min(100, memoryCurrent / memoryMax * 100) : 0;
 
+  if (compact) {
+    const accountMeta = [connection.apify_plan_id, connection.auth_method === "api_token" ? `Token ••••${connection.token_last_four || ""}` : "OAuth"].filter(Boolean).join(" · ");
+    return <Paper withBorder radius="lg" p="sm" className={classes.compactCard}>
+      <Box className={classes.compactLayout}>
+        <Group wrap="nowrap" gap="sm" className={classes.account}>
+          <Avatar src={connection.apify_avatar_url || undefined} radius="xl" size={34}>{connection.apify_username.slice(0, 1).toUpperCase()}</Avatar>
+          <Stack gap={1} className={classes.accountText}>
+            <Group gap={6} wrap="nowrap"><Text fw={700} size="sm" truncate>{connection.apify_username}</Text><Box className={connection.status === "active" ? classes.statusDot : classes.statusWarning} title={connection.status === "active" ? "Đã kết nối" : "Cần kết nối lại"} /></Group>
+            <Text size="xs" c="dimmed" truncate>{accountMeta}</Text>
+          </Stack>
+        </Group>
+        <Box className={classes.metrics}>
+          <CompactMetric label="RAM" value={`${formatMemory(memoryCurrent)} / ${formatMemory(memoryMax)}`} percent={memoryPercent} color="blue" />
+          <CompactMetric label="Usage" value={`${money(usageCurrent)} / ${money(usageMax)}`} percent={usagePercent} color={usagePercent >= 90 ? "red" : usagePercent >= 70 ? "orange" : "teal"} />
+        </Box>
+      </Box>
+      <Group justify="space-between" gap="xs" mt={6} className={classes.metaRow}>
+        <Group gap={4} wrap="nowrap">
+          <Text size="xs" c="dimmed">{connection.last_synced_at ? `Đồng bộ ${new Date(connection.last_synced_at).toLocaleString("vi-VN")}` : "Chưa đồng bộ"}</Text>
+          {canManage && <ApifyRefreshButton />}
+        </Group>
+        {connection.usage_cycle_end && <Text size="xs" c="dimmed">Reset {new Date(connection.usage_cycle_end).toLocaleDateString("vi-VN")}</Text>}
+      </Group>
+    </Paper>;
+  }
+
   return <Paper withBorder radius="lg" p="md">
-    <Group justify="space-between" align="flex-start" wrap="wrap" gap="lg">
-      <Group wrap="nowrap" gap="sm">
-        <Avatar src={connection.apify_avatar_url || undefined} radius="xl" size={compact ? 38 : 46}>{connection.apify_username.slice(0, 1).toUpperCase()}</Avatar>
-        <Stack gap={1}>
-          <Group gap="xs"><Text fw={700}>{connection.apify_username}</Text><Badge size="sm" color={connection.status === "active" ? "teal" : "orange"} variant="light">{connection.status === "active" ? "Đã kết nối" : "Cần kết nối lại"}</Badge></Group>
-          <Text size="xs" c="dimmed">{[connection.apify_email, connection.apify_plan_id, connection.auth_method === "api_token" ? `API token ••••${connection.token_last_four || ""}` : "OAuth"].filter(Boolean).join(" · ")}</Text>
-          {!compact && <Text size="xs" c="dimmed">Usage và billing do tài khoản Apify này quản lý.</Text>}
+    <Box className={classes.settingsSummary}>
+      <Group wrap="nowrap" gap="sm" className={classes.account}>
+        <Avatar src={connection.apify_avatar_url || undefined} radius="xl" size={40}>{connection.apify_username.slice(0, 1).toUpperCase()}</Avatar>
+        <Stack gap={1} className={classes.accountText}>
+          <Group gap={6} wrap="nowrap"><Text fw={700} size="sm" truncate>{connection.apify_username}</Text><Box className={connection.status === "active" ? classes.statusDot : classes.statusWarning} title={connection.status === "active" ? "Đã kết nối" : "Cần kết nối lại"} /></Group>
+          <Text size="xs" c="dimmed" truncate>{[connection.apify_email, connection.apify_plan_id, connection.auth_method === "api_token" ? `Token ••••${connection.token_last_four || ""}` : "OAuth"].filter(Boolean).join(" · ")}</Text>
         </Stack>
       </Group>
-      <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="lg" style={{ flex: "1 1 420px", maxWidth: 620 }}>
-        <UsageMetric icon={<MemoryStick size={16} />} label="RAM" value={`${formatMemory(memoryCurrent)} / ${formatMemory(memoryMax)}`} percent={memoryPercent} color="blue" />
-        <UsageMetric icon={<Gauge size={16} />} label="Usage" value={`${money(usageCurrent)} / ${money(usageMax)}`} percent={usagePercent} color={usagePercent >= 90 ? "red" : usagePercent >= 70 ? "orange" : "teal"} note={connection.usage_cycle_end ? `Reset ${new Date(connection.usage_cycle_end).toLocaleDateString("vi-VN")}` : undefined} />
-      </SimpleGrid>
-      {canManage && <Group gap="xs">
-        <ActionForm action={refreshApifyConnectionAction} submitLabel="Cập nhật" variant="light" layout="inline"><input type="hidden" name="action" value="refresh" /></ActionForm>
-        {oauthReady && <LinkButton href="/api/integrations/apify/connect" variant="default">Kết nối lại</LinkButton>}
-        {!compact && <ActionForm action={unlinkApifyConnectionAction} submitLabel="Gỡ khỏi workspace" variant="light" layout="inline"><input type="hidden" name="action" value="unlink" /></ActionForm>}
-        <Anchor href="https://console.apify.com/account#/integrations" target="_blank" size="sm">Apify <ExternalLink size={12} style={{ verticalAlign: "middle" }} /></Anchor>
-      </Group>}
+      <Box className={classes.metrics}>
+        <CompactMetric label="RAM" value={`${formatMemory(memoryCurrent)} / ${formatMemory(memoryMax)}`} percent={memoryPercent} color="blue" />
+        <CompactMetric label="Usage" value={`${money(usageCurrent)} / ${money(usageMax)}`} percent={usagePercent} color={usagePercent >= 90 ? "red" : usagePercent >= 70 ? "orange" : "teal"} />
+      </Box>
+    </Box>
+    <Group justify="space-between" gap="xs" mt="xs" className={classes.settingsMeta}>
+      <Group gap={4} wrap="nowrap"><Text size="xs" c="dimmed">{connection.last_synced_at ? `Đồng bộ ${new Date(connection.last_synced_at).toLocaleString("vi-VN")}` : "Chưa đồng bộ"}</Text>{canManage && <ApifyRefreshButton />}</Group>
+      {connection.usage_cycle_end && <Text size="xs" c="dimmed">Reset {new Date(connection.usage_cycle_end).toLocaleDateString("vi-VN")}</Text>}
     </Group>
-    {showSetup && canManage && <Box component="details" mt="md"><Text component="summary" size="sm" fw={600} style={{ cursor: "pointer" }}>{connection.auth_method === "api_token" ? "Thay API token" : "Chuyển sang API token"}</Text><Box pt="sm" maw={520}><ActionForm action={saveApifyTokenAction} submitLabel="Kiểm tra và cập nhật"><TextInput name="token_label" label="Tên token" defaultValue={connection.token_label || "Leadely"} /><TextInput name="api_token" type="password" label="API token mới" placeholder="Dán token mới" autoComplete="new-password" required /></ActionForm></Box></Box>}
-    {connection.last_synced_at && <Text size="xs" c="dimmed" mt="xs">Cập nhật {new Date(connection.last_synced_at).toLocaleString("vi-VN")}</Text>}
+    {showSetup && canManage && <>
+      <Divider my="sm" />
+      <Group justify="space-between" align="flex-start" gap="sm" wrap="wrap">
+        <Box component="details" className={classes.tokenDetails}><Text component="summary" size="sm" fw={600} style={{ cursor: "pointer" }}>{connection.auth_method === "api_token" ? "Thay API token" : "Chuyển sang API token"}</Text><Box pt="sm" maw={520}><ActionForm action={saveApifyTokenAction} submitLabel="Kiểm tra và cập nhật"><TextInput name="token_label" label="Tên token" defaultValue={connection.token_label || "Leadely"} /><TextInput name="api_token" type="password" label="API token mới" placeholder="Dán token mới" autoComplete="new-password" required /></ActionForm></Box></Box>
+        <Group gap={4}>
+          {oauthReady && <LinkButton href="/api/integrations/apify/connect" variant="subtle" size="compact-sm">Kết nối lại</LinkButton>}
+          <ApifyUnlinkButton />
+        </Group>
+      </Group>
+    </>}
   </Paper>;
 }
-
-function UsageMetric({ icon, label, value, percent, color, note }: { icon: React.ReactNode; label: string; value: string; percent: number; color: string; note?: string }) {
-  return <Box><Group justify="space-between" gap="xs"><Group gap={6}>{icon}<Text size="xs" c="dimmed" fw={600}>{label}</Text></Group><Text size="sm" fw={700}>{value}</Text></Group><Progress value={percent} color={color} size="sm" mt={6} radius="xl" />{note && <Text size="xs" c="dimmed" mt={3}>{note}</Text>}</Box>;
+function CompactMetric({ label, value, percent, color }: { label: string; value: string; percent: number; color: string }) {
+  return <Box className={classes.metric}><Group justify="space-between" gap="sm" wrap="nowrap"><Text size="xs" c="dimmed">{label}</Text><Text size="xs" fw={700}>{value}</Text></Group><Progress value={percent} color={color} size={4} mt={4} radius="xl" /></Box>;
 }
 function money(value: number) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value); }
 function formatMemory(gb: number) { return gb > 0 && gb < 1 ? `${Math.round(gb * 1024)} MB` : `${Number(gb.toFixed(2))} GB`; }

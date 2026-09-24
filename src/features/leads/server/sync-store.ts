@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MAPS_APIFY_ID, MAPS_SLUG } from "@/features/leads/maps-source";
+import type { Json } from "@/lib/database.types";
+import type { ActorPricing } from "@/features/leads/source-pricing";
 
 const PAGE_SIZE = 100;
 const SAVE_CHUNK = 200;
@@ -19,7 +21,7 @@ type StoreItem = {
     actorReviewRating?: number;
     actorReviewCount?: number;
   };
-  currentPricingInfo?: { pricingModel?: string | null } | null;
+  currentPricingInfo?: ActorPricing | null;
 };
 
 type SourceRow = {
@@ -31,6 +33,7 @@ type SourceRow = {
   store_url: string | null;
   categories: string[];
   pricing_model: string | null;
+  pricing_info: Json | null;
   notice: string | null;
   review_rating: number | null;
   review_count: number;
@@ -59,6 +62,7 @@ function toRow(item: StoreItem, syncedAt: string): SourceRow | null {
     store_url: item.url || `https://apify.com/${username}/${name}`,
     categories: Array.isArray(item.categories) ? item.categories.filter((value) => typeof value === "string") : [],
     pricing_model: item.currentPricingInfo?.pricingModel || null,
+    pricing_info: item.currentPricingInfo ? item.currentPricingInfo as unknown as Json : null,
     notice: item.notice || null,
     review_rating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
     review_count: item.stats?.actorReviewCount || 0,
@@ -100,13 +104,20 @@ async function saveRows(rows: SourceRow[]) {
   for (let index = 0; index < rows.length; index += SAVE_CHUNK) {
     const chunk = rows.slice(index, index + SAVE_CHUNK);
     const slugs = chunk.map((row) => row.slug);
-    const { data: existing, error: lookupError } = await admin.from("scrape_sources").select("id, slug").in("slug", slugs);
-    if (lookupError) throw new Error(lookupError.message);
-    const idBySlug = new Map((existing || []).map((row) => [row.slug, row.id]));
-    const inserts = chunk.filter((row) => !idBySlug.has(row.slug));
+    const apifyIds = chunk.map((row) => row.apify_id);
+    const [{ data: bySlug, error: slugError }, { data: byApifyId, error: apifyIdError }] = await Promise.all([
+      admin.from("scrape_sources").select("id, slug, apify_id").in("slug", slugs),
+      admin.from("scrape_sources").select("id, slug, apify_id").in("apify_id", apifyIds),
+    ]);
+    if (slugError || apifyIdError) throw new Error(slugError?.message || apifyIdError?.message || "Không đối chiếu được catalog.");
+    const existing = [...(bySlug || []), ...(byApifyId || [])];
+    const idBySlug = new Map(existing.map((row) => [row.slug, row.id]));
+    const idByApifyId = new Map(existing.map((row) => [row.apify_id, row.id]));
+    const existingId = (row: SourceRow) => idBySlug.get(row.slug) || idByApifyId.get(row.apify_id);
+    const inserts = chunk.filter((row) => !existingId(row));
     const updates = chunk
-      .filter((row) => idBySlug.has(row.slug))
-      .map((row) => ({ ...row, id: idBySlug.get(row.slug) as string }));
+      .filter((row) => Boolean(existingId(row)))
+      .map((row) => ({ ...row, id: existingId(row) as string }));
     if (inserts.length) {
       const { error } = await admin.from("scrape_sources").insert(inserts);
       if (error) throw new Error(error.message);
