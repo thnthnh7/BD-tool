@@ -51,6 +51,7 @@ export function ListFooter({
   name = "q",
   extra,
   note,
+  ofLabel = "của",
 }: {
   path: string;
   q: string;
@@ -64,8 +65,9 @@ export function ListFooter({
   name?: string;
   extra?: Record<string, string>;
   note?: string;
+  ofLabel?: string;
 }) {
-  const range = pageCount > 1 ? `${from}–${to} của ${total}` : `${total} ${total === 1 ? singular : plural}`;
+  const range = pageCount > 1 ? `${from}–${to} ${ofLabel} ${total}` : `${total} ${total === 1 ? singular : plural}`;
   return (
     <Group justify="space-between" px="md" py="sm">
       <Text size="sm" c="dimmed">

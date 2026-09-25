@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Be_Vietnam_Pro, Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import { mantineHtmlProps } from "@mantine/core";
 import { LeadelyProvider } from "@/components/leadely-provider";
@@ -33,13 +34,15 @@ export const metadata: Metadata = {
   description: "AI BD assistant — quotes, slideshows and contracts.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = (await cookies()).get("leadely-locale")?.value || "en";
+  const direction = locale === "ar" ? "rtl" : "ltr";
   return (
-    <html lang="vi" {...mantineHtmlProps} className={`${geistSans.variable} ${geistMono.variable} ${deckSans.variable} ${deckSerif.variable}`}>
+    <html lang={locale} dir={direction} {...mantineHtmlProps} className={`${geistSans.variable} ${geistMono.variable} ${deckSans.variable} ${deckSerif.variable}`}>
       <body>
         <LeadelyProvider>{children}</LeadelyProvider>
       </body>

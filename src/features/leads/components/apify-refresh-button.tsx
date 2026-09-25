@@ -5,14 +5,16 @@ import { ActionIcon, Button, Tooltip } from "@mantine/core";
 import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { refreshApifyConnectionAction, unlinkApifyConnectionAction } from "@/features/leads/server/apify-connection";
+import { useTranslations } from "next-intl";
 
 export function ApifyRefreshButton() {
+  const t = useTranslations("Apify");
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
-  return <Tooltip label="Đồng bộ usage từ Apify" withArrow>
+  return <Tooltip label={t("sync")} withArrow>
     <ActionIcon
-      aria-label="Đồng bộ usage từ Apify"
+      aria-label={t("sync")}
       variant="subtle"
       color="gray"
       size={24}
@@ -32,6 +34,7 @@ export function ApifyRefreshButton() {
 }
 
 export function ApifyUnlinkButton() {
+  const t = useTranslations("Apify");
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
@@ -41,7 +44,7 @@ export function ApifyUnlinkButton() {
     size="compact-sm"
     loading={pending}
     onClick={async () => {
-      if (!window.confirm("Gỡ tài khoản Apify khỏi workspace này?")) return;
+      if (!window.confirm(t("unlinkConfirm"))) return;
       setPending(true);
       const formData = new FormData();
       formData.set("action", "unlink");
@@ -50,6 +53,6 @@ export function ApifyUnlinkButton() {
       router.refresh();
     }}
   >
-    Gỡ kết nối
+    {t("unlink")}
   </Button>;
 }

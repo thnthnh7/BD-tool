@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { applyPlanOverrides, parsePlan, type ParsedPlan, type PlanStatus } from "@/lib/entitlements";
+import { defaultLocale, isAppLocale, type AppLocale } from "@/i18n/config";
 
 export type MemberRole = "owner" | "admin" | "member";
 export type PlatformRole = "super_admin" | "support";
@@ -11,17 +12,20 @@ export type SessionContext =
       kind: "onboarding";
       userId: string;
       email: string;
+      locale: AppLocale;
     }
   | {
       kind: "platform";
       userId: string;
       email: string;
+      locale: AppLocale;
       platformRole: PlatformRole;
     }
   | {
       kind: "workspace";
       userId: string;
       email: string;
+      locale: AppLocale;
       workspaceId: string;
       workspaceName: string;
       workspaceType: "personal" | "company";
@@ -39,7 +43,8 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
   const userId = data.user.id;
   const email = data.user.email || "";
 
-  const { data: profile } = await supabase.from("profiles").select("status").eq("id", userId).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("status, preferred_locale").eq("id", userId).maybeSingle();
+  const preferredLocale = isAppLocale(profile?.preferred_locale) ? profile.preferred_locale : null;
   if (profile?.status === "suspended" || profile?.status === "deleted") {
     await supabase.auth.signOut();
     redirect("/login");
@@ -52,7 +57,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     .maybeSingle();
 
   if (platform?.role === "super_admin" || platform?.role === "support") {
-    return { kind: "platform", userId, email, platformRole: platform.role };
+    return { kind: "platform", userId, email, locale: preferredLocale || defaultLocale, platformRole: platform.role };
   }
 
   const { data: membership } = await supabase
@@ -62,7 +67,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     .maybeSingle();
 
   if (!membership) {
-    return { kind: "onboarding", userId, email };
+    return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
 
   const { data: workspace } = await supabase
@@ -72,12 +77,12 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     .single();
 
   if (!workspace) {
-    return { kind: "onboarding", userId, email };
+    return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
 
   const { data: planRow } = await supabase.from("plans").select("*").eq("id", workspace.plan_id).single();
   if (!planRow) {
-    return { kind: "onboarding", userId, email };
+    return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
 
   const { data: override } = await supabase
@@ -90,6 +95,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     kind: "workspace",
     userId,
     email,
+    locale: preferredLocale || defaultLocale,
     workspaceId: workspace.id,
     workspaceName: workspace.name,
     workspaceType: workspace.type as "personal" | "company",

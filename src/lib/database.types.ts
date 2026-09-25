@@ -573,6 +573,7 @@ export type Database = {
           display_name: string;
           email: string;
           id: string;
+          preferred_locale: string | null;
           status: string;
           suspend_source: string | null;
         };
@@ -582,6 +583,7 @@ export type Database = {
           display_name?: string;
           email: string;
           id: string;
+          preferred_locale?: string | null;
           status?: string;
           suspend_source?: string | null;
         };

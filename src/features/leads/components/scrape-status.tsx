@@ -1,11 +1,10 @@
 import { Badge } from "@mantine/core";
+import { useTranslations } from "next-intl";
 
-const statuses: Record<string, { label: string; color: string }> = {
-  queued: { label: "Đang chờ", color: "gray" }, running: { label: "Đang chạy", color: "blue" },
-  ingesting: { label: "Đang đồng bộ", color: "cyan" }, succeeded: { label: "Hoàn tất", color: "teal" },
-  failed: { label: "Thất bại", color: "red" }, canceled: { label: "Đã hủy", color: "gray" },
+const statuses: Record<string, string> = {
+  queued: "gray", running: "blue", ingesting: "cyan", succeeded: "teal", failed: "red", canceled: "gray",
 };
 export function ScrapeStatus({ status }: { status: string }) {
-  const value = statuses[status] || { label: status, color: "gray" };
-  return <Badge color={value.color} variant="light">{value.label}</Badge>;
+  const t = useTranslations("Scrape");
+  return <Badge color={statuses[status] || "gray"} variant="light">{status in statuses ? t(status) : status}</Badge>;
 }

@@ -12,6 +12,7 @@ import { TaskDayList, type TaskDayRow } from "@/features/tasks/components/task-d
 import { listTasks } from "@/features/tasks/server/actions";
 import { DEAL_PRIORITIES, TASK_TYPES } from "@/lib/crm";
 import { matchesQuery, slicePage } from "@/lib/list-page";
+import { getLocale, getTranslations } from "next-intl/server";
 
 type TaskView = "open" | "completed" | "canceled";
 type Params = { q?: string; page?: string; view?: string; type?: string; priority?: string };
@@ -26,6 +27,7 @@ function dayBounds() {
 
 export default async function TasksPage({ searchParams }: { searchParams: Promise<Params> }) {
   const params = await searchParams;
+  const [t, locale] = await Promise.all([getTranslations("Tasks"), getLocale()]);
   const q = (params.q || "").trim();
   const page = Math.max(1, Number.parseInt(params.page || "1", 10) || 1);
   const view: TaskView = params.view === "completed" || params.view === "canceled" ? params.view : "open";
@@ -54,11 +56,11 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   });
   const paged = slicePage(sorted, page, 50);
   const groups = view === "open" ? [
-    { title: "Quá hạn", empty: "Không có task quá hạn.", due: "datetime" as const, tone: "danger" as const, tasks: paged.rows.filter((task) => task.due_at && new Date(task.due_at) < start) },
-    { title: "Hôm nay", empty: "Không có task hôm nay.", due: "time" as const, tasks: paged.rows.filter((task) => task.due_at && new Date(task.due_at) >= start && new Date(task.due_at) < end) },
-    { title: "Sắp tới", empty: "Không có task sắp tới.", due: "datetime" as const, tasks: paged.rows.filter((task) => task.due_at && new Date(task.due_at) >= end) },
-    { title: "Chưa đặt hạn", empty: "Không có task chưa đặt hạn.", due: "datetime" as const, tasks: paged.rows.filter((task) => !task.due_at) },
-  ] : [{ title: view === "completed" ? "Đã hoàn thành" : "Đã hủy", empty: view === "completed" ? "Chưa có task hoàn thành." : "Chưa có task đã hủy.", due: "datetime" as const, tasks: paged.rows }];
+    { title: t("overdue"), empty: t("emptyOverdue"), due: "datetime" as const, tone: "danger" as const, tasks: paged.rows.filter((task) => task.due_at && new Date(task.due_at) < start) },
+    { title: t("today"), empty: t("emptyToday"), due: "time" as const, tasks: paged.rows.filter((task) => task.due_at && new Date(task.due_at) >= start && new Date(task.due_at) < end) },
+    { title: t("upcoming"), empty: t("emptyUpcoming"), due: "datetime" as const, tasks: paged.rows.filter((task) => task.due_at && new Date(task.due_at) >= end) },
+    { title: t("unscheduled"), empty: t("emptyUnscheduled"), due: "datetime" as const, tasks: paged.rows.filter((task) => !task.due_at) },
+  ] : [{ title: t(view), empty: t(view === "completed" ? "emptyCompleted" : "emptyCanceled"), due: "datetime" as const, tasks: paged.rows }];
   const toRow = (task: (typeof tasks)[number]): TaskDayRow => ({
     id: task.id, title: task.title, subtitle: task.deals?.title || task.companies?.name || "",
     context: [task.companies?.name, task.deals?.title, task.contacts?.display_name].filter((item): item is string => Boolean(item)),
@@ -68,36 +70,36 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   const extras = { view: view === "open" ? "" : view, type, priority };
 
   return <Stack gap="md">
-    <PageHeader title="Tasks" subtitle={`Quản lý công việc · ${new Date().toLocaleDateString("vi-VN")}`} action={
+    <PageHeader title={t("title")} subtitle={t("subtitle", { date: new Date().toLocaleDateString(locale) })} action={
       <TaskCreateDrawer companies={companies.map((item) => ({ value: item.id, label: item.name }))} contacts={contacts.map((item) => ({ value: item.id, label: item.display_name }))} deals={deals.map((item) => ({ value: item.id, label: item.title }))} />
     } />
     <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-      <SummaryCard label="Quá hạn" value={counts.overdue} color="red" icon={<AlertTriangle size={18} />} />
-      <SummaryCard label="Hôm nay" value={counts.today} color="blue" icon={<CalendarDays size={18} />} />
-      <SummaryCard label="Sắp tới" value={counts.upcoming} color="teal" icon={<Clock3 size={18} />} />
-      <SummaryCard label="Chưa đặt hạn" value={counts.unscheduled} color="gray" icon={<Clock3 size={18} />} />
+      <SummaryCard label={t("overdue")} value={counts.overdue} color="red" icon={<AlertTriangle size={18} />} />
+      <SummaryCard label={t("today")} value={counts.today} color="blue" icon={<CalendarDays size={18} />} />
+      <SummaryCard label={t("upcoming")} value={counts.upcoming} color="teal" icon={<Clock3 size={18} />} />
+      <SummaryCard label={t("unscheduled")} value={counts.unscheduled} color="gray" icon={<Clock3 size={18} />} />
     </SimpleGrid>
     <SectionPanel padded={false}>
       <Stack gap={0}>
         <Group px="md" pt="md" gap="xs" wrap="wrap">
-          <ViewLink active={view === "open"} href={taskHref({ view: "open", q, type, priority })} label="Cần làm" count={open.length} icon={<Clock3 size={15} />} />
-          <ViewLink active={view === "completed"} href={taskHref({ view: "completed", q, type, priority })} label="Đã hoàn thành" count={counts.completed} icon={<CheckCircle2 size={15} />} />
-          <ViewLink active={view === "canceled"} href={taskHref({ view: "canceled", q, type, priority })} label="Đã hủy" count={counts.canceled} icon={<XCircle size={15} />} />
+          <ViewLink active={view === "open"} href={taskHref({ view: "open", q, type, priority })} label={t("todo")} count={open.length} icon={<Clock3 size={15} />} />
+          <ViewLink active={view === "completed"} href={taskHref({ view: "completed", q, type, priority })} label={t("completed")} count={counts.completed} icon={<CheckCircle2 size={15} />} />
+          <ViewLink active={view === "canceled"} href={taskHref({ view: "canceled", q, type, priority })} label={t("canceled")} count={counts.canceled} icon={<XCircle size={15} />} />
         </Group>
         <form action="/app/tasks">
           <input type="hidden" name="view" value={view} />
           <Group px="md" py="md" gap="sm" align="flex-end" wrap="wrap" style={{ borderBottom: "1px solid var(--mantine-color-gray-2)" }}>
-            <TextInput name="q" defaultValue={q} label="Tìm kiếm" placeholder="Tiêu đề, công ty, deal hoặc liên hệ" leftSection={<Search size={15} />} style={{ flex: "1 1 280px" }} />
-            <NativeSelect name="type" defaultValue={type} label="Loại" data={[{ value: "", label: "Tất cả loại" }, ...TASK_TYPES.map((item) => ({ value: item, label: typeLabel(item) }))]} w={170} />
-            <NativeSelect name="priority" defaultValue={priority} label="Ưu tiên" data={[{ value: "", label: "Mọi ưu tiên" }, ...DEAL_PRIORITIES.map((item) => ({ value: item, label: priorityLabel(item) }))]} w={160} />
-            <Button type="submit" variant="light">Lọc</Button>
-            {q || type || priority ? <LinkButton href={taskHref({ view })} variant="subtle" color="gray">Xóa lọc</LinkButton> : null}
+            <TextInput name="q" defaultValue={q} label={t("search")} placeholder={t("searchPlaceholder")} leftSection={<Search size={15} />} style={{ flex: "1 1 280px" }} />
+            <NativeSelect name="type" defaultValue={type} label={t("type")} data={[{ value: "", label: t("allTypes") }, ...TASK_TYPES.map((item) => ({ value: item, label: t(item) }))]} w={170} />
+            <NativeSelect name="priority" defaultValue={priority} label={t("priority")} data={[{ value: "", label: t("allPriorities") }, ...DEAL_PRIORITIES.map((item) => ({ value: item, label: t(item) }))]} w={160} />
+            <Button type="submit" variant="light">{t("filter")}</Button>
+            {q || type || priority ? <LinkButton href={taskHref({ view })} variant="subtle" color="gray">{t("clearFilters")}</LinkButton> : null}
           </Group>
         </form>
         <Stack p="md" gap="sm">
-          {paged.total === 0 ? <Text size="sm" c="dimmed" py="xl" ta="center">Không có task phù hợp với bộ lọc.</Text> : <TaskDayList sections={sections} />}
+          {paged.total === 0 ? <Text size="sm" c="dimmed" py="xl" ta="center">{t("noMatches")}</Text> : <TaskDayList sections={sections} />}
         </Stack>
-        {paged.total ? <ListFooter path="/app/tasks" q={q} {...paged} singular="task" plural="tasks" extra={extras} /> : null}
+        {paged.total ? <ListFooter path="/app/tasks" q={q} {...paged} singular={t("item")} plural={t("items")} extra={extras} ofLabel={locale === "vi" ? "của" : "of"} /> : null}
       </Stack>
     </SectionPanel>
   </Stack>;
@@ -119,6 +121,3 @@ function taskHref(values: { view?: TaskView; q?: string; type?: string; priority
   if (values.priority) params.set("priority", values.priority);
   return params.size ? `/app/tasks?${params.toString()}` : "/app/tasks";
 }
-
-function typeLabel(value: string) { return ({ follow_up: "Theo dõi", call: "Cuộc gọi", email: "Email", meeting: "Cuộc họp", proposal: "Đề xuất", review: "Đánh giá", other: "Khác" } as Record<string, string>)[value] || value; }
-function priorityLabel(value: string) { return ({ high: "Cao", medium: "Trung bình", low: "Thấp" } as Record<string, string>)[value] || value; }

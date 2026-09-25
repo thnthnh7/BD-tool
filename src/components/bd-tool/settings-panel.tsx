@@ -9,16 +9,18 @@ import { WorkspaceLogoField } from "@/components/leadely/logo-field";
 import { convertToCompanyAction } from "@/lib/auth/actions";
 import { importLocalDataAction, saveSettingsAction } from "@/lib/db/actions";
 import type { CompanySettings } from "@/lib/types";
+import { useTranslations } from "next-intl";
 
 const sections = [
-  { id: "apify", label: "Apify" },
-  { id: "ai", label: "AI provider" },
-  { id: "workspace", label: "Workspace" },
-  { id: "branding", label: "Branding" },
-  { id: "quotes", label: "Quote defaults" },
-  { id: "legal", label: "Legal & contract" },
-  { id: "banking", label: "Banking" },
-  { id: "data", label: "Data" },
+  { id: "language", label: "language" },
+  { id: "apify", label: "apify" },
+  { id: "ai", label: "ai" },
+  { id: "workspace", label: "workspace" },
+  { id: "branding", label: "branding" },
+  { id: "quotes", label: "quotes" },
+  { id: "legal", label: "legal" },
+  { id: "banking", label: "banking" },
+  { id: "data", label: "data" },
 ] as const;
 
 export function SettingsPanel({
@@ -27,16 +29,20 @@ export function SettingsPanel({
   isOwner,
   apifyProvider,
   aiProvider,
+  languageProvider,
 }: {
   initial: CompanySettings;
   workspaceType: "personal" | "company";
   isOwner: boolean;
   apifyProvider: ReactNode;
   aiProvider: ReactNode;
+  languageProvider: ReactNode;
 }) {
   const [settings, setSettings] = useState(initial);
+  const t = useTranslations("Settings");
+  const common = useTranslations("Common");
   const [message, setMessage] = useState("");
-  const [section, setSection] = useState<(typeof sections)[number]["id"]>("apify");
+  const [section, setSection] = useState<(typeof sections)[number]["id"]>("language");
 
   function update(next: Partial<CompanySettings>) {
     setSettings({ ...settings, ...next });
@@ -44,15 +50,15 @@ export function SettingsPanel({
 
   async function save() {
     const result = await saveSettingsAction(settings);
-    setMessage(result.error || "Saved.");
+    setMessage(result.error || t("saved"));
   }
 
   return (
     <Stack gap="md">
       <PageHeader
-        title="Settings"
-        subtitle="Quản lý workspace, thương hiệu và AI dùng chung."
-        action={section !== "ai" && section !== "apify" ? <Button onClick={save}>Save</Button> : undefined}
+        title={t("title")}
+        subtitle={t("subtitle")}
+        action={section !== "ai" && section !== "apify" && section !== "language" ? <Button onClick={save}>{common("save")}</Button> : undefined}
       />
       {message ? (
         <Text size="sm" c="leadely">
@@ -60,46 +66,47 @@ export function SettingsPanel({
         </Text>
       ) : null}
       <Tabs value={section} onChange={(value) => { if (value) setSection(value as typeof section); }}>
-          <Tabs.List mb="md" aria-label="Cài đặt workspace">
+          <Tabs.List mb="md" aria-label={t("title")}>
             {sections.map((item) => (
-              <Tabs.Tab key={item.id} value={item.id}>{item.label}</Tabs.Tab>
+              <Tabs.Tab key={item.id} value={item.id}>{t(item.label)}</Tabs.Tab>
             ))}
           </Tabs.List>
         <Tabs.Panel value={section}>
         <Box maw={900}>
           {section === "apify" ? apifyProvider : null}
           {section === "ai" ? aiProvider : null}
+          {section === "language" ? languageProvider : null}
           {section === "workspace" ? (
-            <SectionPanel title="Workspace / company">
+            <SectionPanel title={t("workspaceCompany")}>
               <Stack gap="md">
                 <div>
-                  <FieldLabel>Name on quotes</FieldLabel>
+                  <FieldLabel>{t("nameOnQuotes")}</FieldLabel>
                   <TextInput value={settings.companyName} onChange={(event) => update({ companyName: event.currentTarget.value })} />
                 </div>
                 {workspaceType === "company" ? (
                   <Group grow>
                     <div>
-                      <FieldLabel>Tax code</FieldLabel>
+                      <FieldLabel>{t("taxCode")}</FieldLabel>
                       <TextInput value={settings.taxCode} onChange={(event) => update({ taxCode: event.currentTarget.value })} />
                     </div>
                     <div>
-                      <FieldLabel>Legal representative</FieldLabel>
+                      <FieldLabel>{t("legalRepresentative")}</FieldLabel>
                       <TextInput value={settings.legalRepresentative} onChange={(event) => update({ legalRepresentative: event.currentTarget.value })} />
                     </div>
                   </Group>
                 ) : null}
                 <div>
-                  <FieldLabel>Address</FieldLabel>
+                  <FieldLabel>{t("address")}</FieldLabel>
                   <TextInput value={settings.address} onChange={(event) => update({ address: event.currentTarget.value })} />
                 </div>
                 <Group grow>
-                  <TextInput placeholder="Email" value={settings.email} onChange={(event) => update({ email: event.currentTarget.value })} />
-                  <TextInput placeholder="Phone" value={settings.phone} onChange={(event) => update({ phone: event.currentTarget.value })} />
+                  <TextInput placeholder={t("email")} value={settings.email} onChange={(event) => update({ email: event.currentTarget.value })} />
+                  <TextInput placeholder={t("phone")} value={settings.phone} onChange={(event) => update({ phone: event.currentTarget.value })} />
                 </Group>
-                <TextInput placeholder="Website" value={settings.website} onChange={(event) => update({ website: event.currentTarget.value })} />
+                <TextInput placeholder={t("website")} value={settings.website} onChange={(event) => update({ website: event.currentTarget.value })} />
                 {isOwner && workspaceType === "personal" ? (
                   <Button variant="default" onClick={() => convertToCompanyAction()} w="fit-content">
-                    Convert to company
+                    {t("convertCompany")}
                   </Button>
                 ) : null}
               </Stack>
@@ -107,14 +114,14 @@ export function SettingsPanel({
           ) : null}
 
           {section === "branding" ? (
-            <SectionPanel title="Branding">
+            <SectionPanel title={t("branding")}>
               <Stack gap="md">
                 <div>
-                  <FieldLabel>Short name</FieldLabel>
+                  <FieldLabel>{t("shortName")}</FieldLabel>
                   <TextInput value={settings.shortName} onChange={(event) => update({ shortName: event.currentTarget.value })} />
                 </div>
                 <div>
-                  <FieldLabel>Accent color</FieldLabel>
+                  <FieldLabel>{t("accentColor")}</FieldLabel>
                   <TextInput value={settings.accentColor} onChange={(event) => update({ accentColor: event.currentTarget.value })} />
                 </div>
                 <WorkspaceLogoField
@@ -127,25 +134,25 @@ export function SettingsPanel({
           ) : null}
 
           {section === "quotes" ? (
-            <SectionPanel title="Quote defaults">
+            <SectionPanel title={t("quotes")}>
               <Stack gap="md">
                 <Group grow>
                   <div>
-                    <FieldLabel>VAT %</FieldLabel>
+                    <FieldLabel>{t("vat")}</FieldLabel>
                     <TextInput type="number" value={settings.vatRate} onChange={(event) => update({ vatRate: Number(event.currentTarget.value) })} />
                   </div>
                   <div>
-                    <FieldLabel>Validity days</FieldLabel>
+                    <FieldLabel>{t("validityDays")}</FieldLabel>
                     <TextInput type="number" value={settings.quoteValidityDays} onChange={(event) => update({ quoteValidityDays: Number(event.currentTarget.value) })} />
                   </div>
                 </Group>
                 <Group grow>
                   <div>
-                    <FieldLabel>Warranty months</FieldLabel>
+                    <FieldLabel>{t("warrantyMonths")}</FieldLabel>
                     <TextInput type="number" value={settings.defaultWarrantyMonths} onChange={(event) => update({ defaultWarrantyMonths: Number(event.currentTarget.value) })} />
                   </div>
                   <div>
-                    <FieldLabel>Maintenance fee</FieldLabel>
+                    <FieldLabel>{t("maintenanceFee")}</FieldLabel>
                     <TextInput type="number" value={settings.defaultMaintenanceFee} onChange={(event) => update({ defaultMaintenanceFee: Number(event.currentTarget.value) })} />
                   </div>
                 </Group>
@@ -154,22 +161,22 @@ export function SettingsPanel({
           ) : null}
 
           {section === "legal" ? (
-            <SectionPanel title="Legal & contract">
+            <SectionPanel title={t("legal")}>
               <Stack gap="md">
                 <div>
-                  <FieldLabel>Representative title</FieldLabel>
+                  <FieldLabel>{t("representativeTitle")}</FieldLabel>
                   <TextInput value={settings.legalRepresentativeTitle} onChange={(event) => update({ legalRepresentativeTitle: event.currentTarget.value })} />
                 </div>
                 <div>
-                  <FieldLabel>Contract prefix</FieldLabel>
+                  <FieldLabel>{t("contractPrefix")}</FieldLabel>
                   <TextInput value={settings.contractNumberPrefix} onChange={(event) => update({ contractNumberPrefix: event.currentTarget.value })} />
                 </div>
                 <div>
-                  <FieldLabel>About</FieldLabel>
+                  <FieldLabel>{t("about")}</FieldLabel>
                   <Textarea minRows={4} value={settings.about} onChange={(event) => update({ about: event.currentTarget.value })} />
                 </div>
                 <div>
-                  <FieldLabel>Terms</FieldLabel>
+                  <FieldLabel>{t("terms")}</FieldLabel>
                   <Textarea minRows={5} value={settings.terms.join("\n")} onChange={(event) => update({ terms: event.currentTarget.value.split("\n") })} />
                 </div>
               </Stack>
@@ -177,11 +184,11 @@ export function SettingsPanel({
           ) : null}
 
           {section === "banking" ? (
-            <SectionPanel title="Banking">
+            <SectionPanel title={t("banking")}>
               <Stack gap="md">
-                <TextInput placeholder="Bank name" value={settings.bankName} onChange={(event) => update({ bankName: event.currentTarget.value })} />
-                <TextInput placeholder="Account name" value={settings.bankAccountName} onChange={(event) => update({ bankAccountName: event.currentTarget.value })} />
-                <TextInput placeholder="Account number" value={settings.bankAccountNumber} onChange={(event) => update({ bankAccountNumber: event.currentTarget.value })} />
+                <TextInput placeholder={t("bankName")} value={settings.bankName} onChange={(event) => update({ bankName: event.currentTarget.value })} />
+                <TextInput placeholder={t("accountName")} value={settings.bankAccountName} onChange={(event) => update({ bankAccountName: event.currentTarget.value })} />
+                <TextInput placeholder={t("accountNumber")} value={settings.bankAccountNumber} onChange={(event) => update({ bankAccountNumber: event.currentTarget.value })} />
               </Stack>
             </SectionPanel>
           ) : null}
@@ -195,23 +202,24 @@ export function SettingsPanel({
 }
 
 function ImportBox() {
+  const t = useTranslations("Settings");
   const [raw, setRaw] = useState("");
   const [status, setStatus] = useState("");
   return (
-    <SectionPanel title="Import localStorage">
+    <SectionPanel title={t("importTitle")}>
       <Stack gap="sm">
         <Text size="sm" c="dimmed">
-          Paste JSON key `csj-bd-tool-data-v1` from the previous local app.
+          {t("importHelp")}
         </Text>
         <Textarea minRows={6} value={raw} onChange={(event) => setRaw(event.currentTarget.value)} />
         <Button
           w="fit-content"
           onClick={async () => {
             const result = await importLocalDataAction(raw);
-            setStatus(result.error || "Imported.");
+            setStatus(result.error || t("imported"));
           }}
         >
-          Import
+          {t("import")}
         </Button>
         {status ? <Text size="sm">{status}</Text> : null}
       </Stack>

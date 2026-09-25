@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Badge, Box, Checkbox, Group, Paper, Stack, Text, ThemeIcon } from "@mantine/core";
 import { CalendarClock, Mail, Phone, Presentation, RefreshCw, SearchCheck, Users } from "lucide-react";
 import { completeTaskAction } from "@/features/tasks/server/actions";
+import { useLocale, useTranslations } from "next-intl";
 
 export type TaskDayRow = {
   id: string;
@@ -25,6 +26,8 @@ export type TaskDaySection = {
 };
 
 export function TaskDayList({ sections }: { sections: TaskDaySection[] }) {
+  const t = useTranslations("Tasks");
+  const locale = useLocale();
   const [pendingId, setPendingId] = useState("");
   const [, startTransition] = useTransition();
   return <Stack gap="sm">
@@ -38,7 +41,7 @@ export function TaskDayList({ sections }: { sections: TaskDaySection[] }) {
           const done = task.status === "completed";
           const locked = task.status !== "open";
           return <Group key={task.id} wrap="nowrap" gap="sm" px="md" py="sm" style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}>
-            <Checkbox checked={done} disabled={Boolean(pendingId) || locked} aria-label={`Hoàn thành ${task.title}`} onChange={() => {
+            <Checkbox checked={done} disabled={Boolean(pendingId) || locked} aria-label={t("complete", { title: task.title })} onChange={() => {
               setPendingId(task.id);
               startTransition(async () => {
                 const form = new FormData();
@@ -52,13 +55,13 @@ export function TaskDayList({ sections }: { sections: TaskDaySection[] }) {
             <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
               <Group gap="xs" wrap="nowrap">
                 <Text size="sm" fw={600} lineClamp={1} c={locked ? "dimmed" : undefined} td={done ? "line-through" : undefined}>{task.title}</Text>
-                <Badge size="xs" variant="light" color={priorityColor(task.priority)} style={{ flexShrink: 0 }}>{priorityLabel(task.priority)}</Badge>
+                <Badge size="xs" variant="light" color={priorityColor(task.priority)} style={{ flexShrink: 0 }}>{t(task.priority)}</Badge>
               </Group>
               {task.context.length ? <Text size="xs" c="dimmed" lineClamp={1}>{task.context.join(" · ")}</Text> : null}
             </Stack>
             <Box ta="right" style={{ flexShrink: 0 }}>
-              <Text size="xs" fw={section.tone === "danger" ? 600 : 400} c={section.tone === "danger" ? "red" : "dimmed"}>{formatDue(task.dueAt, section.due)}</Text>
-              <Text size="xs" c="dimmed">{typeLabel(task.type)}</Text>
+              <Text size="xs" fw={section.tone === "danger" ? 600 : 400} c={section.tone === "danger" ? "red" : "dimmed"}>{formatDue(task.dueAt, section.due, locale, t("noDue"))}</Text>
+              <Text size="xs" c="dimmed">{t(task.type)}</Text>
             </Box>
           </Group>;
         })}
@@ -79,15 +82,12 @@ function taskIcon(type: string) {
 }
 function taskColor(type: string) { return ({ call: "blue", email: "violet", meeting: "orange", proposal: "teal" } as Record<string, string>)[type] || "gray"; }
 function priorityColor(priority: string) { return priority === "high" ? "red" : priority === "medium" ? "orange" : "gray"; }
-function priorityLabel(priority: string) { return ({ high: "Cao", medium: "Vừa", low: "Thấp" } as Record<string, string>)[priority] || priority; }
-function typeLabel(type: string) { return ({ follow_up: "Theo dõi", call: "Cuộc gọi", email: "Email", meeting: "Cuộc họp", proposal: "Đề xuất", review: "Đánh giá", other: "Khác" } as Record<string, string>)[type] || type; }
-
-function formatDue(value: string | null, mode: "time" | "datetime") {
-  if (!value) return "Chưa có hạn";
+function formatDue(value: string | null, mode: "time" | "datetime", locale: string, noDue: string) {
+  if (!value) return noDue;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  const time = date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  const time = date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   if (mode === "time") return time;
-  const day = date.toLocaleDateString("vi-VN", { day: "numeric", month: "numeric" });
+  const day = date.toLocaleDateString(locale, { day: "numeric", month: "numeric" });
   return `${day} · ${time}`;
 }

@@ -33,6 +33,7 @@ import { ContentContainer } from "@/components/layout/content-container";
 import { signOut } from "@/lib/auth/actions";
 import type { SessionContext } from "@/lib/auth/session";
 import classes from "@/styles/leadely-shell.module.css";
+import { useTranslations } from "next-intl";
 
 type NavRole = "owner" | "admin" | "member" | "super_admin" | "support";
 type NavItem = {
@@ -50,51 +51,51 @@ type NavGroup = {
 const workspaceGroups: NavGroup[] = [
   {
     id: "home",
-    items: [{ href: "/app", label: "Dashboard", icon: LayoutDashboard, roles: ["owner", "admin", "member"] }],
+    items: [{ href: "/app", label: "home", icon: LayoutDashboard, roles: ["owner", "admin", "member"] }],
   },
   {
     id: "find",
     label: "Find",
     items: [
-      { href: "/app/leads/sources", label: "Sources", icon: Library, roles: ["owner", "admin", "member"] },
-      { href: "/app/leads/scrape", label: "Scrape", icon: Radar, roles: ["owner", "admin", "member"] },
-      { href: "/app/leads", label: "Leads", icon: UserPlus, roles: ["owner", "admin", "member"] },
-      { href: "/app/lists", label: "Lists", icon: ListFilter, roles: ["owner", "admin", "member"] },
+      { href: "/app/leads/sources", label: "sources", icon: Library, roles: ["owner", "admin", "member"] },
+      { href: "/app/leads/scrape", label: "scrape", icon: Radar, roles: ["owner", "admin", "member"] },
+      { href: "/app/leads", label: "leads", icon: UserPlus, roles: ["owner", "admin", "member"] },
+      { href: "/app/lists", label: "lists", icon: ListFilter, roles: ["owner", "admin", "member"] },
     ],
   },
   {
     id: "crm",
     label: "CRM",
     items: [
-      { href: "/app/companies", label: "Companies", icon: Building2, roles: ["owner", "admin", "member"] },
-      { href: "/app/contacts", label: "Contacts", icon: Users, roles: ["owner", "admin", "member"] },
-      { href: "/app/deals", label: "Deals", icon: BriefcaseBusiness, roles: ["owner", "admin", "member"] },
-      { href: "/app/tasks", label: "Tasks", icon: CheckSquare, roles: ["owner", "admin", "member"] },
+      { href: "/app/companies", label: "companies", icon: Building2, roles: ["owner", "admin", "member"] },
+      { href: "/app/contacts", label: "contacts", icon: Users, roles: ["owner", "admin", "member"] },
+      { href: "/app/deals", label: "deals", icon: BriefcaseBusiness, roles: ["owner", "admin", "member"] },
+      { href: "/app/tasks", label: "tasks", icon: CheckSquare, roles: ["owner", "admin", "member"] },
     ],
   },
   {
     id: "sell",
     label: "Sell",
     items: [
-      { href: "/app/quotes", label: "Quotes", icon: FileText, roles: ["owner", "admin", "member"] },
-      { href: "/app/modules", label: "Modules", icon: PackagePlus, roles: ["owner", "admin", "member"] },
-      { href: "/app/contracts", label: "Contracts", icon: FileText, roles: ["owner", "admin"] },
+      { href: "/app/quotes", label: "quotes", icon: FileText, roles: ["owner", "admin", "member"] },
+      { href: "/app/modules", label: "modules", icon: PackagePlus, roles: ["owner", "admin", "member"] },
+      { href: "/app/contracts", label: "contracts", icon: FileText, roles: ["owner", "admin"] },
     ],
   },
   {
     id: "engage",
     label: "Engage",
     items: [
-      { href: "/app/inbox", label: "Inbox", icon: Inbox, roles: ["owner", "admin", "member"] },
-      { href: "/app/calendar", label: "Calendar", icon: CalendarDays, roles: ["owner", "admin", "member"] },
-      { href: "/app/sequences", label: "Sequences", icon: Mail, roles: ["owner", "admin", "member"] },
+      { href: "/app/inbox", label: "inbox", icon: Inbox, roles: ["owner", "admin", "member"] },
+      { href: "/app/calendar", label: "calendar", icon: CalendarDays, roles: ["owner", "admin", "member"] },
+      { href: "/app/sequences", label: "sequences", icon: Mail, roles: ["owner", "admin", "member"] },
     ],
   },
   {
     id: "workspace",
     label: "Workspace",
     items: [
-      { href: "/app/team", label: "Team", icon: Users, roles: ["owner", "admin"] },
+      { href: "/app/team", label: "team", icon: Users, roles: ["owner", "admin"] },
     ],
   },
 ];
@@ -103,13 +104,13 @@ const platformGroups: NavGroup[] = [
   {
     id: "platform",
     items: [
-      { href: "/app/platform", label: "Overview", icon: LayoutDashboard, roles: ["super_admin", "support"] },
-      { href: "/app/platform/accounts", label: "Accounts", icon: Users, roles: ["super_admin", "support"] },
-      { href: "/app/platform/workspaces", label: "Workspaces", icon: Building2, roles: ["super_admin", "support"] },
-      { href: "/app/platform/plans", label: "Plans", icon: PackagePlus, roles: ["super_admin", "support"] },
-      { href: "/app/platform/payments", label: "Payments", icon: CreditCard, roles: ["super_admin", "support"] },
-      { href: "/app/platform/health", label: "Health", icon: HeartPulse, roles: ["super_admin"] },
-      { href: "/app/platform/audit", label: "Audit", icon: ScrollText, roles: ["super_admin", "support"] },
+      { href: "/app/platform", label: "overview", icon: LayoutDashboard, roles: ["super_admin", "support"] },
+      { href: "/app/platform/accounts", label: "accounts", icon: Users, roles: ["super_admin", "support"] },
+      { href: "/app/platform/workspaces", label: "workspaces", icon: Building2, roles: ["super_admin", "support"] },
+      { href: "/app/platform/plans", label: "plans", icon: PackagePlus, roles: ["super_admin", "support"] },
+      { href: "/app/platform/payments", label: "payments", icon: CreditCard, roles: ["super_admin", "support"] },
+      { href: "/app/platform/health", label: "health", icon: HeartPulse, roles: ["super_admin"] },
+      { href: "/app/platform/audit", label: "audit", icon: ScrollText, roles: ["super_admin", "support"] },
     ],
   },
 ];
@@ -133,6 +134,9 @@ export function AppShellNav({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const tNav = useTranslations("Navigation");
+  const tCommon = useTranslations("Common");
+  const tShell = useTranslations("Shell");
   const [opened, { toggle, close }] = useDisclosure();
   const role = context.kind === "platform" ? context.platformRole : context.memberRole;
   const groups = (context.kind === "platform" ? platformGroups : workspaceGroups)
@@ -161,7 +165,7 @@ export function AppShellNav({
           </Group>
           {context.kind === "workspace" ? (
             <LinkButton href="/app/quotes/new" size="compact-md" leftSection={<Plus size={14} />}>
-              New
+              {tCommon("new")}
             </LinkButton>
           ) : null}
         </Group>
@@ -176,9 +180,9 @@ export function AppShellNav({
           <Stack gap={2}>
             {groups.map((group) => (
               <div key={group.id} className={classes.navGroup}>
-                {group.label ? <Text className={classes.navSection}>{group.label}</Text> : null}
+                {group.label ? <Text className={classes.navSection}>{tNav(group.id)}</Text> : null}
                 {group.items.map((item) => (
-                  <ShellLink key={item.href} item={item} pathname={pathname} onClick={close} />
+                  <ShellLink key={item.href} item={item} label={tNav(item.label)} pathname={pathname} onClick={close} />
                 ))}
               </div>
             ))}
@@ -211,11 +215,11 @@ export function AppShellNav({
               {context.kind === "workspace" ? (
                 <>
                   <Menu.Item component={Link} href="/app/settings" leftSection={<Settings size={16} />}>
-                    Settings
+                    {tCommon("settings")}
                   </Menu.Item>
                   {context.memberRole === "owner" ? (
                     <Menu.Item component={Link} href="/app/billing" leftSection={<CreditCard size={16} />}>
-                      Billing
+                      {tCommon("billing")}
                     </Menu.Item>
                   ) : null}
                 </>
@@ -228,7 +232,7 @@ export function AppShellNav({
                   if (form instanceof HTMLFormElement) form.requestSubmit();
                 }}
               >
-                Sign out
+                {tCommon("signOut")}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
@@ -239,13 +243,13 @@ export function AppShellNav({
         <div className={classes.content}>
           <ContentContainer>
             {locked ? (
-              <Alert color="red" title="Workspace bị khóa" mb="md">
-                Workspace đã hết hạn / bị khóa. Owner hãy vào Billing để gia hạn.
+              <Alert color="red" title={tShell("lockedTitle")} mb="md">
+                {tShell("lockedBody")}
               </Alert>
             ) : null}
             {pastDue ? (
-              <Alert color="yellow" title="Quá hạn thanh toán" mb="md">
-                Gói quá hạn thanh toán. Một số tính năng có thể bị giới hạn sau thời gian gia hạn.
+              <Alert color="yellow" title={tShell("pastDueTitle")} mb="md">
+                {tShell("pastDueBody")}
               </Alert>
             ) : null}
             {children}
@@ -258,10 +262,12 @@ export function AppShellNav({
 
 function ShellLink({
   item,
+  label,
   pathname,
   onClick,
 }: {
   item: NavItem;
+  label: string;
   pathname: string;
   onClick: () => void;
 }) {
@@ -271,7 +277,7 @@ function ShellLink({
       component={Link}
       href={item.href}
       prefetch={false}
-      label={item.label}
+      label={label}
       leftSection={<Icon size={18} />}
       active={navItemActive(pathname, item.href)}
       onClick={onClick}
