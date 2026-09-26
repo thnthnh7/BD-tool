@@ -11,14 +11,14 @@ import { createPublicId } from "@/lib/ids";
 import type { Client, CompanySettings, Quote, ServiceModule } from "@/lib/types";
 import { createShareId } from "@/lib/share-id";
 
-export async function loadWorkspaceAppData() {
+export async function loadWorkspaceAppData(parts: Array<"settings" | "clients" | "modules" | "quotes"> = ["settings", "clients", "modules", "quotes"]) {
   const context = await requireWorkspace();
   const supabase = await createClient();
   const [settingsRes, clientsRes, modulesRes, quotesRes] = await Promise.all([
-    supabase.from("workspace_settings").select("*").eq("workspace_id", context.workspaceId).single(),
-    supabase.from("clients").select("*").eq("workspace_id", context.workspaceId).order("created_at", { ascending: false }),
-    supabase.from("modules").select("*").eq("workspace_id", context.workspaceId).order("created_at", { ascending: true }),
-    supabase.from("quotes").select("*").eq("workspace_id", context.workspaceId).order("updated_at", { ascending: false }),
+    parts.includes("settings") ? supabase.from("workspace_settings").select("*").eq("workspace_id", context.workspaceId).single() : { data: null },
+    parts.includes("clients") ? supabase.from("clients").select("*").eq("workspace_id", context.workspaceId).order("created_at", { ascending: false }) : { data: [] },
+    parts.includes("modules") ? supabase.from("modules").select("*").eq("workspace_id", context.workspaceId).order("created_at", { ascending: true }) : { data: [] },
+    parts.includes("quotes") ? supabase.from("quotes").select("*").eq("workspace_id", context.workspaceId).order("updated_at", { ascending: false }) : { data: [] },
   ]);
 
   return {

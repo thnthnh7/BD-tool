@@ -44,7 +44,7 @@ function isOpenDeal(stageType: string | null | undefined) {
 
 export default async function AppHomePage() {
   const [{ context, quotes, clients }, deals, pipelinesData, leads, tasks, companies, meetings, notifications] = await Promise.all([
-    loadWorkspaceAppData(),
+    loadWorkspaceAppData(["quotes", "clients"]),
     listDeals(),
     listPipelines(),
     listLeads(),

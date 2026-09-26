@@ -71,6 +71,8 @@ export default async function ScrapeJobPage({ params, searchParams }: {
     max_people_per_place: payload.job.max_people_per_place, verify_emails: payload.job.verify_emails,
   };
   const timestamp = (value: string | null) => value ? new Date(value).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "—";
+  const creator = payload.job.creator?.display_name?.trim() || payload.job.creator?.email || "—";
+  const apifyCost = payload.job.apify_usage_usd == null ? "—" : `$${Number(payload.job.apify_usage_usd).toFixed(4)} USD`;
   const crm = generic ? undefined : (
       <SectionPanel title="Chọn địa điểm và liên hệ để import" padded={false}>
         <Box px="md" pt={4} pb="sm">
@@ -185,7 +187,7 @@ export default async function ScrapeJobPage({ params, searchParams }: {
       results={<SectionPanel padded={false}><DatasetExplorer rows={rows} filename={`scrape-${payload.job.id}`} emptyMessage={payload.job.status === "succeeded" ? "Actor đã hoàn tất nhưng không trả về bản ghi nào." : undefined} /></SectionPanel>}
       input={<SectionPanel title="Thông số đã dùng"><Text size="sm" c="dimmed" mb="sm">Chạy lại sẽ mở form để bạn kiểm tra trước khi bắt đầu lượt mới.</Text><Code block style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(input, null, 2)}</Code></SectionPanel>}
       processing={<SectionPanel title="Thông tin lần chạy"><SimpleGrid cols={{ base: 1, sm: 2 }}>
-        {[["Actor", actorTitle], ["Run ID", payload.job.apify_run_id || "—"], ["Dataset ID", payload.job.apify_dataset_id || "—"], ["Bắt đầu", timestamp(payload.job.started_at)], ["Kết thúc", timestamp(payload.job.finished_at)], ["Khả năng CRM", generic ? "Chưa hỗ trợ import. Có thể xem và xuất dữ liệu." : "Import địa điểm và người liên hệ vào CRM."]].map(([label, value]) => <Box key={label}><Text size="xs" c="dimmed">{label}</Text><Text size="sm" style={{ overflowWrap: "anywhere" }}>{value}</Text></Box>)}
+        {[["Actor", actorTitle], ["Người chạy", creator], ["Chi phí Apify", apifyCost], ["Run ID", payload.job.apify_run_id || "—"], ["Dataset ID", payload.job.apify_dataset_id || "—"], ["Bắt đầu", timestamp(payload.job.started_at)], ["Kết thúc", timestamp(payload.job.finished_at)], ["Khả năng CRM", generic ? "Chưa hỗ trợ import. Có thể xem và xuất dữ liệu." : "Import địa điểm và người liên hệ vào CRM."]].map(([label, value]) => <Box key={label}><Text size="xs" c="dimmed">{label}</Text><Text size="sm" style={{ overflowWrap: "anywhere" }}>{value}</Text></Box>)}
       </SimpleGrid></SectionPanel>} />
     {generic && <Text size="xs" c="dimmed">Dữ liệu từ actor được giữ riêng. Nguồn này chưa hỗ trợ import vào CRM.</Text>}
   </Stack>;

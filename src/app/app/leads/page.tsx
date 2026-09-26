@@ -13,8 +13,10 @@ import { listCompanies, listContacts } from "@/features/companies/server/actions
 import { createLeadAction, listLeads } from "@/features/leads/server/actions";
 import { LEAD_STATUSES } from "@/lib/crm";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
+import { getTranslations } from "next-intl/server";
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  const t = await getTranslations("CRM");
   const { q, page } = readListQuery(await searchParams);
   const [leads, companies, contacts] = await Promise.all([listLeads(), listCompanies(), listContacts()]);
   const matched = leads.filter((lead) =>
@@ -24,46 +26,46 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   return (
     <Stack gap="md">
       <PageHeader
-        title="Leads"
-        subtitle="Prospecting workflow — chưa phải Deal."
+        title={t("leadsTitle")}
+        subtitle={t("leadsSubtitle")}
         action={
           <LinkButton href="/app/leads/sources" variant="light">
-            Nguồn dữ liệu
+            {t("dataSources")}
           </LinkButton>
         }
       />
-      <SectionPanel title="Add lead">
-        <ActionForm action={createLeadAction} submitLabel="Create lead" redirectTo="/app/leads/{id}">
+      <SectionPanel title={t("addLead")}>
+        <ActionForm action={createLeadAction} submitLabel={t("createLead")} redirectTo="/app/leads/{id}">
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <NativeSelect
               name="company_id"
-              label="Company"
+              label={t("company")}
               data={[{ value: "", label: "—" }, ...companies.map((item) => ({ value: item.id, label: item.name }))]}
             />
             <NativeSelect
               name="contact_id"
-              label="Contact"
+              label={t("contact")}
               data={[{ value: "", label: "—" }, ...contacts.map((item) => ({ value: item.id, label: item.display_name }))]}
             />
-            <NativeSelect name="status" label="Status" data={LEAD_STATUSES.map((item) => ({ value: item, label: item }))} />
-            <TextInput name="source" label="Source" defaultValue="manual" />
+            <NativeSelect name="status" label={t("status")} data={LEAD_STATUSES.map((item) => ({ value: item, label: item }))} />
+            <TextInput name="source" label={t("source")} defaultValue="manual" />
           </SimpleGrid>
         </ActionForm>
       </SectionPanel>
       <SectionPanel
-        title="All leads"
+        title={t("allLeads")}
         padded={paged.total === 0}
-        action={<ListSearch path="/app/leads" q={q} placeholder="Tên contact, công ty, trạng thái hoặc nguồn" />}
+        action={<ListSearch path="/app/leads" q={q} placeholder={t("leadSearch")} />}
       >
         {paged.total ? (
-          <ListTable footer={<ListFooter path="/app/leads" q={q} {...paged} singular="lead" plural="leads" />}>
+          <ListTable footer={<ListFooter path="/app/leads" q={q} {...paged} singular={t("lead")} plural={t("lead")} />}>
           <Table>
             <TableThead>
               <TableTr>
-                <TableTh>Lead</TableTh>
-                <TableTh>Company</TableTh>
-                <TableTh>Status</TableTh>
-                <TableTh>Source</TableTh>
+                <TableTh>{t("lead")}</TableTh>
+                <TableTh>{t("company")}</TableTh>
+                <TableTh>{t("status")}</TableTh>
+                <TableTh>{t("source")}</TableTh>
                 <TableTh w={48} />
               </TableTr>
             </TableThead>
@@ -83,7 +85,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   </TableTd>
                   <TableTd>{lead.source}</TableTd>
                   <TableTd ta="right">
-                    <LinkIcon href={`/app/leads/${lead.id}`} label={`Open ${lead.contacts?.display_name || lead.companies?.name || "lead"}`} />
+                    <LinkIcon href={`/app/leads/${lead.id}`} label={t("openRecord", { name: lead.contacts?.display_name || lead.companies?.name || t("lead") })} />
                   </TableTd>
                 </TableTr>
               ))}
@@ -91,9 +93,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           </Table>
           </ListTable>
         ) : q ? (
-          <Text size="sm" c="dimmed">Không thấy lead khớp.</Text>
+          <Text size="sm" c="dimmed">{t("noLeadMatches")}</Text>
         ) : (
-          <EmptyState icon={<UserPlus size={18} />} title="No leads" description="Tạo lead thủ công hoặc scrape Google Maps." />
+          <EmptyState icon={<UserPlus size={18} />} title={t("noLeads")} description={t("noLeadsHelp")} />
         )}
       </SectionPanel>
     </Stack>

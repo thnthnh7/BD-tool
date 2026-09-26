@@ -7,6 +7,7 @@ import type { DealListItem } from "@/features/deals/server/actions";
 import type { Database } from "@/lib/database.types";
 import { formatVnd } from "@/lib/money";
 import classes from "@/styles/leadely-kanban.module.css";
+import { useTranslations } from "next-intl";
 
 type Stage = Database["public"]["Tables"]["pipeline_stages"]["Row"];
 
@@ -25,6 +26,7 @@ function stageAccent(stage: Stage, openStages: Stage[]) {
 }
 
 export function DealBoard({ stages, deals }: { stages: Stage[]; deals: DealListItem[] }) {
+  const t = useTranslations("Deals");
   const openStages = stages.filter((stage) => stage.stage_type !== "won" && stage.stage_type !== "lost");
   const stageOptions = stages.map((stage) => ({ id: stage.id, name: stage.name }));
 
@@ -70,7 +72,7 @@ export function DealBoard({ stages, deals }: { stages: Stage[]; deals: DealListI
                     <StageMover mode="select" dealId={deal.id} stageId={stage.id} stages={stageOptions} />
                   </article>
                 ))}
-                {column.length === 0 ? <div className={classes.empty}>No deals</div> : null}
+                {column.length === 0 ? <div className={classes.empty}>{t("emptyTitle")}</div> : null}
               </div>
             </section>
           );

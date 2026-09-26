@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { jsonrepair } from "jsonrepair";
 import type { AiBriefResult } from "@/lib/ai/types";
 import { completeChat } from "@/features/ai/server/complete";
+import { retrieveKnowledge, type KnowledgeEvidence } from "@/features/knowledge/server/retrieve";
+import { requireWorkspace } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 /** Vercel Hobby clamps to 60s; keep budget under that so retries still finish. */
@@ -111,7 +114,7 @@ function parseModelJson(content: string) {
 }
 
 function compactCatalog(catalog: unknown[]) {
-  return catalog.slice(0, 12).map((item) => {
+  return catalog.slice(0, 100).map((item) => {
     const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
     return {
       name: text(row.name),
@@ -243,11 +246,20 @@ async function callNineRouter(params: {
   }
 }
 
-function buildUserPrompt(requirements: string, catalog: Array<{ name: string; suggestedPrice: number }>) {
+function buildUserPrompt(
+  requirements: string,
+  catalog: Array<{ name: string; suggestedPrice: number }>,
+  evidence: KnowledgeEvidence[],
+) {
   const catalogBlock =
     catalog.length > 0
       ? `\nCatalog tham khảo (không bắt buộc):\n${JSON.stringify(catalog)}`
       : "";
+  const evidenceBlock = evidence.length
+    ? `\nNguồn kiến thức của workspace (dùng để hiểu scope; không tự suy diễn giá):\n${evidence
+        .map((item, index) => `[${index + 1}] ${item.fileName}\n${item.content}`)
+        .join("\n\n")}`
+    : "";
 
   return `Bạn là BA/solution consultant phần mềm Việt Nam.
 Nhiệm vụ: phân tích yêu cầu khách và TRẢ VỀ DUY NHẤT 1 JSON object hợp lệ.
@@ -263,12 +275,32 @@ Quy tắc:
 - modules tối đa 5 (bắt buộc có ít nhất 3).
 - deliverables tối đa 8, mỗi cái map moduleName.
 - priority chỉ: Cao | Trung | Thấp.
+- unitPrice chỉ được dùng đúng giá của module tương ứng trong Catalog tham khảo. Nếu không có giá đã duyệt, đặt unitPrice = 0 và pricingReason bắt đầu bằng "Cần xác nhận giá".
+- Không coi con số trong nguồn kiến thức là giá đã duyệt. Nguồn chỉ dùng để xác định scope và điều kiện.
 
 Schema:
 {"projectName":"","projectType":"Web App","executiveSummary":"","businessGoals":[],"targetUsers":[],"assumptions":[],"outOfScope":[],"modules":[{"name":"","description":"","quantity":1,"unitPrice":0,"pricingReason":""}],"deliverables":[{"name":"","description":"","moduleName":"","priority":"Cao","effortDays":1,"referencePrice":0,"acceptanceCriteria":[]}],"timeline":"","recommendedTechStack":[],"risks":[],"clarifyingQuestions":[]}
 
 YÊU CẦU KHÁCH HÀNG:
-${requirements}${catalogBlock}`;
+${requirements}${catalogBlock}${evidenceBlock}`;
+}
+
+function normalizedName(value: string) {
+  return value.toLocaleLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function groundBriefPrices(brief: AiBriefResult, catalog: Array<{ name: string; suggestedPrice: number }>) {
+  const approved = catalog.map((item) => ({ ...item, key: normalizedName(item.name) }));
+  return {
+    ...brief,
+    modules: brief.modules.map((module) => {
+      const key = normalizedName(module.name);
+      const match = approved.find((item) => item.key === key || item.key.includes(key) || key.includes(item.key));
+      return match
+        ? { ...module, unitPrice: match.suggestedPrice, pricingReason: `Giá catalog đã duyệt: ${match.name}. ${module.pricingReason}`.trim() }
+        : { ...module, unitPrice: 0, pricingReason: `Cần xác nhận giá. ${module.pricingReason}`.trim() };
+    }),
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -287,7 +319,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Yêu cầu tối đa ${MAX_REQUIREMENTS_LENGTH.toLocaleString("vi-VN")} ký tự.` }, { status: 400 });
   }
 
-  const catalog = compactCatalog(Array.isArray(body.catalog) ? body.catalog : []);
+  const context = await requireWorkspace();
+  const supabase = await createClient();
+  const { data: moduleRows } = await supabase
+    .from("modules")
+    .select("name, suggested_price")
+    .eq("workspace_id", context.workspaceId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  const catalog = compactCatalog(
+    moduleRows?.length
+      ? moduleRows.map((row) => ({ name: row.name, suggestedPrice: row.suggested_price }))
+      : Array.isArray(body.catalog) ? body.catalog : [],
+  );
+  const evidence = await retrieveKnowledge(requirements, 6);
   const deadline = Date.now() + 52_000;
   const attempts = [
     { useJsonObjectFormat: true, includeCatalog: false },
@@ -304,7 +349,7 @@ export async function POST(request: NextRequest) {
     }
 
     const attempt = attempts[index];
-    const userPrompt = buildUserPrompt(requirements, attempt.includeCatalog ? catalog : []);
+    const userPrompt = buildUserPrompt(requirements, attempt.includeCatalog ? catalog : [], evidence);
     const completion = await completeChat({
       messages: [{ role: "user", content: userPrompt }],
       temperature: 0.1,
@@ -332,7 +377,7 @@ export async function POST(request: NextRequest) {
 
       let brief: AiBriefResult;
       try {
-        brief = normalizeBrief(parseModelJson(content));
+        brief = groundBriefPrices(normalizeBrief(parseModelJson(content)), catalog);
       } catch {
         brief = normalizeBrief({});
       }
@@ -341,8 +386,8 @@ export async function POST(request: NextRequest) {
         const fallbackBrief = normalizeBrief(parsed);
         if (fallbackBrief.modules.length) {
           return NextResponse.json({
-            brief: fallbackBrief,
-            meta: { attempts: index + 1, source: completion.data.source },
+            brief: groundBriefPrices(fallbackBrief, catalog),
+            meta: { attempts: index + 1, source: completion.data.source, evidence: evidence.map(({ documentId, fileName, score }) => ({ documentId, fileName, score })) },
           });
         }
         attemptErrors.push(`attempt ${index + 1}: no modules — content=${content.replace(/\s+/g, " ").slice(0, 220)}`);
@@ -351,7 +396,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         brief,
-        meta: { attempts: index + 1, source: completion.data.source },
+        meta: { attempts: index + 1, source: completion.data.source, evidence: evidence.map(({ documentId, fileName, score }) => ({ documentId, fileName, score })) },
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown parse error";

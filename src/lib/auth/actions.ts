@@ -352,6 +352,7 @@ export async function createPlatformInviteAction(formData: FormData) {
     expires_at: addDays(new Date(), 7).toISOString(),
   });
   if (error) return { error: error.message };
+  revalidatePath("/app/platform/accounts");
   return { ok: true as const, url: `${siteUrl()}/invite/${token}?kind=platform` };
 }
 

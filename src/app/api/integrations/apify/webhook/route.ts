@@ -1,5 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { claimScrapeIngest, runScrapeIngest } from "@/features/leads/server/apify";
+import { claimScrapeIngest, fetchApifyRun, runScrapeIngest } from "@/features/leads/server/apify";
+import { getApifyConnectionToken } from "@/features/leads/server/apify-connection";
 import { recordHeartbeat } from "@/lib/platform/heartbeat";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -43,6 +44,15 @@ export async function POST(request: NextRequest) {
   const failed = event.includes("FAILED") || event.includes("ABORTED") || event.includes("TIMED_OUT");
 
   if (failed) {
+    let usageTotalUsd: number | null = null;
+    if (runId && job.apify_connection_id) {
+      try {
+        const token = await getApifyConnectionToken(job.apify_connection_id);
+        usageTotalUsd = (await fetchApifyRun(runId, token)).usageTotalUsd;
+      } catch {
+        // The run can briefly be unavailable while Apify is finalizing it.
+      }
+    }
     await supabase
       .from("lead_scrape_jobs")
       .update({
@@ -51,6 +61,7 @@ export async function POST(request: NextRequest) {
         finished_at: new Date().toISOString(),
         apify_run_id: runId,
         apify_dataset_id: datasetId,
+        apify_usage_usd: usageTotalUsd,
       })
       .eq("id", job.id)
       .in("status", ["queued", "running"]);

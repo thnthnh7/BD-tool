@@ -12,10 +12,12 @@ import { LinkButton, LinkIcon } from "@/components/mantine-link";
 import { loadWorkspaceAppData } from "@/lib/db/actions";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 import { calculateQuoteTotals, formatVnd } from "@/lib/money";
+import { getTranslations } from "next-intl/server";
 
 export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  const t = await getTranslations("Quotes");
   const { q, page } = readListQuery(await searchParams);
-  const { quotes, clients } = await loadWorkspaceAppData();
+  const { quotes, clients } = await loadWorkspaceAppData(["quotes", "clients"]);
   const matched = quotes.filter((quote) => {
     const client = clients.find((item) => item.id === quote.clientId);
     return matchesQuery(q, [quote.title, quote.publicId, client?.companyName, quote.quoteStatusV2, quote.status]);
@@ -24,32 +26,32 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   return (
     <Stack gap="md">
       <PageHeader
-        title="Quotes"
-        subtitle="Báo giá vẫn là V1 editor, giờ gắn Deal khi có."
+        title={t("title")}
+        subtitle={t("subtitle")}
         action={
           <Group gap="xs">
             <LinkButton href="/app/quotes/new?mode=upload" variant="default">
-              Upload PDF
+              {t("uploadPdf")}
             </LinkButton>
-            <LinkButton href="/app/quotes/new">New quote</LinkButton>
+            <LinkButton href="/app/quotes/new">{t("newQuote")}</LinkButton>
           </Group>
         }
       />
       <SectionPanel
-        title="All quotes"
+        title={t("allQuotes")}
         padded={paged.total === 0}
-        action={<ListSearch path="/app/quotes" q={q} placeholder="Tiêu đề, mã quote, khách hoặc trạng thái" />}
+        action={<ListSearch path="/app/quotes" q={q} placeholder={t("searchPlaceholder")} />}
       >
         {paged.total ? (
-          <ListTable footer={<ListFooter path="/app/quotes" q={q} {...paged} singular="quote" plural="quotes" />}>
+          <ListTable footer={<ListFooter path="/app/quotes" q={q} {...paged} singular={t("item")} plural={t("items")} />}>
           <Table>
             <TableThead>
               <TableTr>
-                <TableTh>Quote</TableTh>
-                <TableTh>Client</TableTh>
-                <TableTh>Status</TableTh>
-                <TableTh>Rev</TableTh>
-                <TableTh ta="right">Value</TableTh>
+                <TableTh>{t("quote")}</TableTh>
+                <TableTh>{t("client")}</TableTh>
+                <TableTh>{t("status")}</TableTh>
+                <TableTh>{t("revision")}</TableTh>
+                <TableTh ta="right">{t("value")}</TableTh>
                 <TableTh w={72} />
               </TableTr>
             </TableThead>
@@ -60,7 +62,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                   <TableTr key={quote.id}>
                     <TableTd>
                       <Text fw={600} size="sm">
-                        {quote.title || "Untitled"}
+                        {quote.title || t("untitled")}
                       </Text>
                       <Text size="xs" c="dimmed">
                         {quote.publicId}
@@ -77,7 +79,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                     <TableTd ta="right">
                       <Group gap={4} justify="flex-end" wrap="nowrap">
                         <DeleteQuoteButton quoteId={quote.id} label={quote.title || quote.publicId} appearance="icon" />
-                        <LinkIcon href={`/app/quotes/${quote.id}`} label={`Open ${quote.title || quote.publicId}`} />
+                        <LinkIcon href={`/app/quotes/${quote.id}`} label={t("openQuote", { name: quote.title || quote.publicId })} />
                       </Group>
                     </TableTd>
                   </TableTr>
@@ -87,9 +89,9 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           </Table>
           </ListTable>
         ) : q ? (
-          <Text size="sm" c="dimmed">Không thấy quote khớp.</Text>
+          <Text size="sm" c="dimmed">{t("noMatches")}</Text>
         ) : (
-          <EmptyState icon={<BriefcaseBusiness size={18} />} title="No quotes" description="Tạo quote mới hoặc từ một Deal." />
+          <EmptyState icon={<BriefcaseBusiness size={18} />} title={t("emptyTitle")} description={t("emptyDescription")} />
         )}
       </SectionPanel>
     </Stack>

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Check, Sparkles } from "lucide-react";
+import { AlertCircle, Check, FileSearch, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Alert, Button, Group, List, Paper, SimpleGrid, Stack, Text, Textarea, Title, UnstyledButton } from "@mantine/core";
 import { AiPanel } from "@/components/leadely/ai-panel";
@@ -20,6 +20,7 @@ export function AiBriefAssistant({ catalog, onApply }: AiBriefAssistantProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [applied, setApplied] = useState(false);
+  const [evidence, setEvidence] = useState<Array<{ documentId: string; fileName: string; score: number }>>([]);
 
   async function generateBrief() {
     if (!requirements.trim() || loading) return;
@@ -39,11 +40,17 @@ export function AiBriefAssistant({ catalog, onApply }: AiBriefAssistantProps) {
           })),
         }),
       });
-      const data = (await response.json()) as { brief?: AiBriefResult; error?: string; details?: string };
+      const data = (await response.json()) as {
+        brief?: AiBriefResult;
+        error?: string;
+        details?: string;
+        meta?: { evidence?: Array<{ documentId: string; fileName: string; score: number }> };
+      };
       if (!response.ok || !data.brief) {
         throw new Error([data.error, data.details].filter(Boolean).join(" "));
       }
       setBrief(data.brief);
+      setEvidence(data.meta?.evidence || []);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Không thể tạo brief.");
     } finally {
@@ -118,6 +125,18 @@ export function AiBriefAssistant({ catalog, onApply }: AiBriefAssistantProps) {
               </UnstyledButton>
             ))}
           </SimpleGrid>
+          {evidence.length ? (
+            <Paper withBorder p="md" radius="lg">
+              <Group gap="xs"><FileSearch size={16} /><Text fw={700} size="sm">Nguồn AI đã tham khảo</Text></Group>
+              <Group gap="xs" mt="sm">
+                {evidence.map((item) => (
+                  <Text key={item.documentId} size="xs" c="dimmed">{item.fileName} · {Math.round(item.score * 100)}%</Text>
+                ))}
+              </Group>
+            </Paper>
+          ) : (
+            <Alert color="yellow">Không tìm thấy tài liệu liên quan. Module ngoài catalog sẽ được đặt giá 0 để chờ xác nhận.</Alert>
+          )}
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
             <BriefList title={`Deliverables (${brief.deliverables.length})`} items={brief.deliverables.map((item) => item.name)} />
             <BriefList title="Assumptions" items={brief.assumptions} />

@@ -23,12 +23,29 @@ function siteUrl() {
 
 export async function listScrapeJobs() {
   const { context, supabase } = await withWorkspace();
-  return readAllPages((from, to) => supabase
+  const jobs = await readAllPages((from, to) => supabase
     .from("lead_scrape_jobs")
     .select("*")
     .eq("workspace_id", context.workspaceId)
     .order("created_at", { ascending: false }).order("id")
     .range(from, to));
+  const creatorIds = [...new Set(jobs.map((job) => job.created_by).filter((id): id is string => Boolean(id)))];
+  const { data: creators } = creatorIds.length
+    ? await supabase.from("profiles").select("id, display_name, email").in("id", creatorIds)
+    : { data: [] };
+  const creatorById = new Map((creators || []).map((creator) => [creator.id, creator]));
+  return jobs.map((job) => ({ ...job, creator: job.created_by ? creatorById.get(job.created_by) || null : null }));
+}
+
+export async function getScrapeJobSummary() {
+  const { context, supabase } = await withWorkspace();
+  const [all, active] = await Promise.all([
+    supabase.from("lead_scrape_jobs").select("id", { count: "exact", head: true }).eq("workspace_id", context.workspaceId),
+    supabase.from("lead_scrape_jobs").select("id", { count: "exact", head: true }).eq("workspace_id", context.workspaceId).in("status", ["queued", "running", "ingesting"]),
+  ]);
+  if (all.error) throw new Error(all.error.message);
+  if (active.error) throw new Error(active.error.message);
+  return { total: all.count || 0, active: active.count || 0 };
 }
 
 export async function getScrapeJob(id: string) {
@@ -41,6 +58,9 @@ export async function getScrapeJob(id: string) {
     .maybeSingle();
   if (jobError) throw new Error(jobError.message);
   if (!job) return null;
+  const { data: creator } = job.created_by
+    ? await supabase.from("profiles").select("id, display_name, email").eq("id", job.created_by).maybeSingle()
+    : { data: null };
   const results = await readAllPages((from, to) => supabase
     .from("lead_scrape_results")
     .select("*")
@@ -53,7 +73,7 @@ export async function getScrapeJob(id: string) {
     people.push(...await readAllPages((from, to) => supabase.from("lead_scrape_people").select("*")
       .eq("workspace_id", context.workspaceId).in("result_id", resultIds.slice(index, index + 100)).order("id").range(from, to)));
   }
-  return { job, results, people };
+  return { job: { ...job, creator }, results, people };
 }
 
 export async function startMapsScrapeAction(formData: FormData) {
@@ -263,13 +283,16 @@ export async function refreshScrapeJobAction(formData: FormData) {
   if (!job?.apify_dataset_id) return { error: "Job chưa có dataset." };
   if (job.status === "ingesting") return { error: "Job đang được xử lý." };
   const generic = Boolean(job.source_id) && !isMapsActor(job.apify_actor_id);
-  if (job.status === "succeeded" && !generic) return { ok: true as const };
+  if (job.status === "succeeded" && !generic && job.apify_usage_usd != null) return { ok: true as const };
   // A refresh must not mark an actor that is still running as successfully ingested.
   if (job.apify_run_id) {
     try {
       if (!job.apify_connection_id) return { error: "Job không có kết nối Apify." };
       const token = await getApifyConnectionToken(job.apify_connection_id);
       const run = await fetchApifyRun(job.apify_run_id, token);
+      if (run.usageTotalUsd != null) {
+        await supabase.from("lead_scrape_jobs").update({ apify_usage_usd: run.usageTotalUsd }).eq("id", job.id).eq("workspace_id", context.workspaceId);
+      }
       if (["FAILED", "ABORTED", "TIMED-OUT"].includes(run.status)) {
         const message = `Apify: ${run.status}`;
         await supabase.from("lead_scrape_jobs").update({ status: "failed", error_message: message, finished_at: new Date().toISOString() }).eq("id", job.id).eq("workspace_id", context.workspaceId).in("status", ["queued", "running", "failed"]);
@@ -277,6 +300,11 @@ export async function refreshScrapeJobAction(formData: FormData) {
         return { error: message };
       }
       if (run.status !== "SUCCEEDED") return { error: "Actor vẫn đang chạy. Hãy đồng bộ lại khi actor hoàn tất." };
+      if (job.status === "succeeded" && !generic) {
+        revalidatePath(`/app/leads/scrape/${id}`);
+        revalidatePath("/app/leads/scrape");
+        return { ok: true as const };
+      }
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Không đọc được trạng thái Apify." };
     }

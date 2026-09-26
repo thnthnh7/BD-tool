@@ -7,7 +7,7 @@ import { getDeal } from "@/features/deals/server/actions";
 
 export default async function NewQuotePage({ searchParams }: { searchParams: Promise<{ dealId?: string; mode?: string }> }) {
   const { dealId, mode } = await searchParams;
-  const { settings, clients, modules } = await loadWorkspaceAppData();
+  const { settings, clients, modules } = await loadWorkspaceAppData(["settings", "clients", "modules"]);
   let resolvedClients = clients;
   let seed: { dealId?: string; clientId?: string; title?: string } | undefined;
 

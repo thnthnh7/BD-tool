@@ -1,201 +1,116 @@
 "use client";
 
-import { useState } from "react";
-import { Alert, Badge, Button, Checkbox, Group, Image, NativeSelect, SimpleGrid, Stack, Table, Text, TextInput } from "@mantine/core";
-import { Receipt } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Alert, Button, Checkbox, Collapse, Group, Image, SegmentedControl, Select, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Building2, Check, ChevronRight, CreditCard, Receipt, ShieldCheck } from "lucide-react";
 import { EmptyState } from "@/components/leadely/empty-state";
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { StatusBadge } from "@/components/leadely/status-badge";
-import { createCheckoutInvoice, initGatewayCheckout } from "@/lib/billing/actions";
+import { createCheckoutInvoice, initGatewayCheckout, initiateSubscriptionCheckout } from "@/lib/billing/actions";
+import { billingMarketOptions, convertUsdCents, formatMinorAmount, marketForLocale } from "@/lib/billing/localization";
 import { formatVnd } from "@/lib/money";
+import type { AppLocale } from "@/i18n/config";
 import type { ParsedPlan } from "@/lib/entitlements";
-import classes from "@/styles/leadely-surfaces.module.css";
+import classes from "@/styles/billing.module.css";
 
-type Invoice = {
-  id: string;
-  payment_code: string;
-  amount: number;
-  status: string;
-  billing_interval: string;
-  created_at: string;
-};
+type Invoice = { id: string; payment_code: string; amount: number; currency?: string | null; provider?: string | null; provider_status?: string | null; hosted_invoice_url?: string | null; status: string; billing_interval: string; created_at: string };
+type ProviderPrice = { plan_id: string; provider: string; billing_interval: string; currency: string; amount: number };
+type PaymentMethod = "stripe" | "paypal" | "sepay";
 
-export function BillingPanel({
-  plans,
-  invoices,
-  currentPlanId,
-  canPay,
-  qrUrl,
-}: {
+function invoiceAmount(invoice: Pick<Invoice, "amount" | "currency">, locale: AppLocale) {
+  return formatMinorAmount(invoice.amount, invoice.currency || "VND", locale);
+}
+
+function Brand({ name }: { name: PaymentMethod }) {
+  if (name === "stripe") return <span className={`${classes.brand} ${classes.stripe}`}>stripe</span>;
+  if (name === "paypal") return <span className={`${classes.brand} ${classes.paypal}`}><i>P</i><span>Pay</span><strong>Pal</strong></span>;
+  return <span className={`${classes.brand} ${classes.sepay}`}><Building2 size={17} />SePay</span>;
+}
+
+export function BillingPanel({ plans, providerPrices, usdRates, locale, invoices, currentPlanId, canPay, qrUrl, subscription, providers }: {
   plans: ParsedPlan[];
+  providerPrices: ProviderPrice[];
+  usdRates: Record<string, number>;
+  locale: AppLocale;
   invoices: Invoice[];
   currentPlanId: string;
   canPay: boolean;
   qrUrl?: string;
+  subscription?: { provider?: string; status: string; current_period_end: string; cancel_at_period_end?: boolean; billing_interval?: string } | null;
+  providers: { stripe: boolean; paypal: boolean };
 }) {
-  const pending = invoices.find((item) => item.status === "pending");
+  const t = useTranslations("Billing");
+  const paidPlans = useMemo(() => plans.filter((plan) => !plan.isFree && plan.isPublic), [plans]);
+  const initialMarket = marketForLocale(locale);
+  const pricedPlanIds = useMemo(() => new Set(providerPrices.filter((price) => price.currency.toUpperCase() === "USD").map((price) => price.plan_id)), [providerPrices]);
+  const initialPlanId = pricedPlanIds.has(currentPlanId) ? currentPlanId : paidPlans.find((plan) => pricedPlanIds.has(plan.id))?.id || paidPlans[0]?.id || "";
+  const [editing, setEditing] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
+  const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
+  const [country, setCountry] = useState(initialMarket.country);
+  const [currency, setCurrency] = useState(initialMarket.currency);
+  const [method, setMethod] = useState<PaymentMethod>(providers.stripe ? "stripe" : providers.paypal ? "paypal" : "sepay");
   const [error, setError] = useState("");
   const current = plans.find((plan) => plan.id === currentPlanId);
+  const selectedPlan = paidPlans.find((plan) => plan.id === selectedPlanId);
+  const pending = invoices.find((item) => item.status === "pending");
+  const pendingProvider = pending?.provider || "sepay";
 
-  async function checkout(formData: FormData) {
-    setError("");
-    const result = await createCheckoutInvoice(formData);
-    if (result.error) setError(result.error);
+  function usdPrice(planId?: string, cycle: "monthly" | "yearly" = interval) {
+    if (!planId) return null;
+    return providerPrices.find((price) => price.plan_id === planId && price.billing_interval === cycle && price.currency.toUpperCase() === "USD") || null;
+  }
+  function displayPrice(planId?: string, cycle: "monthly" | "yearly" = interval) {
+    const price = usdPrice(planId, cycle);
+    if (!price) return null;
+    return formatMinorAmount(convertUsdCents(price.amount, currency, usdRates), currency, locale);
   }
 
-  async function gateway(invoiceId: string) {
-    const result = await initGatewayCheckout(invoiceId);
-    if (result.error) setError(result.error);
-    if (result.url) window.location.href = result.url;
+  async function checkout(formData: FormData) { setError(""); const result = await createCheckoutInvoice(formData); if (result.error) setError(result.error); }
+  async function gateway(invoiceId: string) { const result = await initGatewayCheckout(invoiceId); if (result.error) setError(result.error); if (result.url) window.location.href = result.url; }
+  async function subscriptionCheckout(formData: FormData) { setError(""); const result = await initiateSubscriptionCheckout(formData); if (result.error) setError(result.error); if (result.url) window.location.href = result.url; }
+
+  const methods: Array<{ id: PaymentMethod; label: string; description: string; enabled: boolean }> = [
+    { id: "stripe", label: t("card"), description: t("cardDescription"), enabled: providers.stripe },
+    { id: "paypal", label: "PayPal", description: t("paypalDescription"), enabled: providers.paypal },
+    { id: "sepay", label: t("bankTransfer"), description: t("bankTransferDescription"), enabled: country === "VN" },
+  ];
+
+  function changeCountry(nextCountry: string) {
+    const market = billingMarketOptions.find((item) => item.country === nextCountry) || initialMarket;
+    setCountry(market.country); setCurrency(market.currency);
+    if (market.country !== "VN" && method === "sepay") setMethod(providers.stripe ? "stripe" : "paypal");
   }
 
-  const paidPlans = plans.filter((plan) => !plan.isFree);
+  const selectedUsd = usdPrice(selectedPlanId);
+  const localTotal = displayPrice(selectedPlanId);
+  const currentCycle = subscription?.billing_interval === "yearly" ? "yearly" : "monthly";
 
-  return (
-    <Stack gap="md">
-      <PageHeader title="Billing" subtitle="Renew with VietQR or SePay. Recurring is managed in-app." />
-      <SectionPanel title="Current plan">
-        <Text fw={700}>{current?.name || "—"}</Text>
-        <Text size="sm" c="dimmed" mt={4}>
-          {current?.isFree ? "Free" : `${formatVnd(current?.priceMonthly || 0)} / month`}
-        </Text>
-      </SectionPanel>
+  return <Stack gap="md" className={classes.page}>
+    <PageHeader title={t("title")} subtitle={t("subtitle")} />
+    <SectionPanel><div className={classes.summaryRow}>
+      <div><Group gap={7}><Text size="xs" c="dimmed">{t("currentPlan")}</Text>{subscription ? <span className={classes.planStatus} data-status={subscription.status}><i />{subscription.status.replace(/_/g, " ")}</span> : null}</Group><Text fw={750} fz="lg" mt={2}>{current?.name || "—"}</Text></div>
+      <div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("price")}</Text><Text size="sm" fw={650}>{current?.isFree ? t("free") : displayPrice(current?.id, currentCycle) || formatVnd(current?.priceMonthly || 0)}</Text></div>
+      {subscription ? <><div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("method")}</Text><Text size="sm" fw={650}>{subscription.provider?.toUpperCase() || "SEPAY"}</Text></div><div className={classes.summaryItem}><Text size="xs" c="dimmed">{subscription.cancel_at_period_end ? t("ends") : t("renews")}</Text><Text size="sm" fw={650}>{new Date(subscription.current_period_end).toLocaleDateString(locale)}</Text></div></> : null}
+      {canPay ? <Button size="xs" variant={editing ? "light" : "filled"} onClick={() => setEditing((value) => !value)}>{editing ? t("close") : t("changePlan")}</Button> : null}
+    </div></SectionPanel>
 
-      <SimpleGrid cols={{ base: 1, md: 2, xl: 4 }} spacing="md">
-        {plans.map((plan) => (
-          <SectionPanel key={plan.id} className={plan.id === currentPlanId ? classes.currentPlan : undefined}>
-            <Group justify="space-between" wrap="nowrap" gap="xs" mih={22}>
-              <Text size="xs" fw={600} c={plan.id === currentPlanId ? "leadely" : "dimmed"}>
-                {plan.id === currentPlanId ? "Current plan" : `Plan ${plan.slot}`}
-              </Text>
-              {plan.badge ? (
-                <Badge color="leadely" variant="light">
-                  {plan.badge}
-                </Badge>
-              ) : null}
-            </Group>
-            <Text fw={700} mt="xs">
-              {plan.name}
-            </Text>
-            <Text fw={700} mt={4} style={{ fontVariantNumeric: "tabular-nums" }}>
-              {plan.isFree ? `0 ${"\u20AB"}/mo` : `${formatVnd(plan.priceMonthly)}/mo`}
-            </Text>
-            <Text size="sm" c="dimmed" mt="auto" pt="xs">
-              {plan.quotas.seats < 0 ? "Unlimited seats" : `${plan.quotas.seats} seats`}
-            </Text>
-          </SectionPanel>
-        ))}
-      </SimpleGrid>
+    {canPay ? <Collapse expanded={editing}><SectionPanel title={t("choosePlan")}>
+      <div className={classes.checkoutToolbar}><SegmentedControl value={interval} onChange={(value) => setInterval(value === "yearly" ? "yearly" : "monthly")} data={[{ value: "monthly", label: t("monthly") }, { value: "yearly", label: t("yearly") }]} /><Select label={t("billingCountry")} value={country} onChange={(value) => value && changeCountry(value)} searchable placeholder={t("searchCountryCurrency")} nothingFoundMessage={t("countryNotFound")} data={billingMarketOptions.map((item) => ({ value: item.country, label: `${item.countryName} · ${item.currency}` }))} /></div>
+      <div className={classes.planList}>{paidPlans.map((plan) => { const chosen = plan.id === selectedPlanId; const available = Boolean(usdPrice(plan.id)); return <button type="button" key={plan.id} disabled={!available} className={`${classes.planRow} ${chosen ? classes.planSelected : ""}`} onClick={() => setSelectedPlanId(plan.id)}><span><b>{plan.name}</b><small>{plan.quotas.seats < 0 ? t("unlimitedSeats") : t("seatCount", { count: plan.quotas.seats })}</small></span><strong>{displayPrice(plan.id) || t("notConfigured")}{available ? <small>/{interval === "yearly" ? t("year") : t("month")}</small> : null}</strong>{chosen ? <Check size={16} /> : <ChevronRight size={16} />}</button>; })}</div>
+      <div className={classes.checkoutGrid}>
+        <div><Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={6}>{t("paymentMethod")}</Text><div className={classes.methodList}>{methods.map((item) => <button key={item.id} type="button" disabled={!item.enabled} className={`${classes.methodRow} ${method === item.id ? classes.methodSelected : ""}`} onClick={() => setMethod(item.id)}><Brand name={item.id} /><span className={classes.methodCopy}><b>{item.label}</b><small>{item.description}</small></span>{!item.enabled ? <span className={classes.notReady}>{t("unavailable")}</span> : method === item.id ? <Check size={16} /> : <ChevronRight size={16} />}</button>)}</div></div>
+        <div className={classes.orderSummary}><Text fw={700}>{t("orderSummary")}</Text><div><span>{selectedPlan?.name || t("plan")} · {interval === "yearly" ? t("yearly") : t("monthly")}</span><strong>{localTotal || "—"}</strong></div><div><span>{t("estimatedTax")}</span><span>{t("calculatedAtCheckout")}</span></div><div className={classes.orderTotal}><span>{t("estimatedTotal")}</span><strong>{localTotal || "—"}</strong></div>
+          {currency !== "USD" && selectedUsd ? <Text size="xs" c="dimmed">{t("exchangeEstimate", { amount: formatMinorAmount(selectedUsd.amount, "USD", locale) })}</Text> : null}
+          <Group gap={6} mt="sm"><ShieldCheck size={14} /><Text size="xs" c="dimmed">{t("secureCheckout")}</Text></Group>
+          {method === "sepay" ? <form action={checkout} className={classes.summaryForm}><input type="hidden" name="planId" value={selectedPlanId} /><input type="hidden" name="interval" value={interval} /><input type="hidden" name="billingCountry" value={country} /><details className={classes.vat}><summary>{t("businessVatInvoice")}</summary><div className={classes.vatFields}><Checkbox name="vat" label={t("requestVatInvoice")} /><TextInput name="vatTaxCode" placeholder={t("taxCode")} size="xs" /></div></details><Button type="submit" fullWidth>{t("continuePayment")}</Button></form> : <form action={subscriptionCheckout} className={classes.summaryForm}><input type="hidden" name="planId" value={selectedPlanId} /><input type="hidden" name="interval" value={interval} /><input type="hidden" name="provider" value={method} /><input type="hidden" name="billingCountry" value={country} /><input type="hidden" name="displayCurrency" value={currency} /><Button type="submit" fullWidth leftSection={<CreditCard size={15} />}>{currentPlanId === selectedPlanId ? t("renewPlan") : t("upgradeTo", { plan: selectedPlan?.name || t("plan") })}</Button></form>}
+        </div>
+      </div>{error ? <Alert color="red" mt="md">{error}</Alert> : null}
+    </SectionPanel></Collapse> : <Text size="sm">{t("ownerOnly")}</Text>}
 
-      {canPay ? (
-        <SectionPanel title="Checkout">
-          <form action={checkout}>
-            <Stack gap="md">
-              <Group grow>
-                <NativeSelect
-                  name="planId"
-                  defaultValue={currentPlanId}
-                  data={paidPlans.map((plan) => ({
-                    value: plan.id,
-                    label: `${plan.name} · ${formatVnd(plan.priceMonthly)}/month`,
-                  }))}
-                />
-                <NativeSelect
-                  name="interval"
-                  data={[
-                    { value: "monthly", label: "Monthly" },
-                    { value: "yearly", label: "Yearly" },
-                  ]}
-                />
-              </Group>
-              <Checkbox name="vat" label="VAT invoice" />
-              <TextInput name="vatTaxCode" placeholder="Tax code if requesting VAT" maw={360} />
-              <Button type="submit" w="fit-content">
-                Create invoice
-              </Button>
-            </Stack>
-          </form>
-          {error ? (
-            <Alert color="red" mt="md">
-              {error}
-            </Alert>
-          ) : null}
-        </SectionPanel>
-      ) : (
-        <Text size="sm">Only the owner can pay.</Text>
-      )}
-
-      {pending ? (
-        <SectionPanel title={`Pay ${pending.payment_code}`}>
-          <Text fw={700} style={{ fontVariantNumeric: "tabular-nums" }}>
-            {formatVnd(pending.amount)}
-          </Text>
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="md">
-            <Stack gap="xs">
-              <Text size="sm" fw={600}>
-                VietQR
-              </Text>
-              {qrUrl ? (
-                <Image src={qrUrl} alt="VietQR" w={224} h={224} radius="md" />
-              ) : (
-                <Text size="sm" c="dimmed">
-                  SePay bank account is not configured.
-                </Text>
-              )}
-              <Text size="sm">
-                Transfer note: <strong>{pending.payment_code}</strong>
-              </Text>
-            </Stack>
-            <Stack gap="xs" align="flex-start">
-              <Text size="sm" fw={600}>
-                Card / NAPAS
-              </Text>
-              <Text size="sm" c="dimmed">
-                Pay by card or NAPAS through the SePay gateway.
-              </Text>
-              <Button variant="default" onClick={() => gateway(pending.id)}>
-                Pay via SePay Gateway
-              </Button>
-            </Stack>
-          </SimpleGrid>
-        </SectionPanel>
-      ) : null}
-
-      <SectionPanel title="History" padded={invoices.length === 0}>
-        {invoices.length === 0 ? (
-          <EmptyState compact icon={<Receipt size={14} />} title="No invoices yet" description="Create an invoice above to start a billing period." />
-        ) : (
-          <div className={classes.tableWrap}>
-            <Table>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Code</Table.Th>
-                  <Table.Th ta="right">Amount</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {invoices.map((invoice) => (
-                  <Table.Tr key={invoice.id}>
-                    <Table.Td>
-                      <Text size="sm" truncate maw={220}>
-                        {invoice.payment_code}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
-                      {formatVnd(invoice.amount)}
-                    </Table.Td>
-                    <Table.Td>
-                      <StatusBadge status={invoice.status === "paid" ? "won" : invoice.status === "pending" ? "sent" : "draft"} />
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </div>
-        )}
-      </SectionPanel>
-    </Stack>
-  );
+    {pending ? <details className={classes.disclosure} open><summary><span>{t("pendingPayment", { method: pendingProvider === "sepay" ? t("bankTransfer").toLowerCase() : pendingProvider })} · {pending.payment_code}</span><strong>{invoiceAmount(pending, locale)}</strong></summary><div className={classes.pendingBody}><div>{pendingProvider === "sepay" ? <><Text size="sm">{t("transferNote")}: <b>{pending.payment_code}</b></Text><Button variant="default" size="xs" mt="sm" onClick={() => gateway(pending.id)}>{t("cardNapas")}</Button></> : <><Text size="sm">{t("completeCheckout")}</Text>{pending.hosted_invoice_url ? <Button component="a" href={pending.hosted_invoice_url} size="xs" mt="sm">{t("resumeCheckout")}</Button> : null}</>}</div>{pendingProvider === "sepay" && qrUrl ? <Image src={qrUrl} alt="VietQR" w={112} h={112} radius="md" /> : null}</div></details> : null}
+    <details className={classes.disclosure}><summary><span>{t("paymentHistory")}</span><span className={classes.count}>{invoices.length}</span></summary><div className={classes.tableWrap}>{invoices.length === 0 ? <EmptyState compact icon={<Receipt size={14} />} title={t("noPayments")} description={t("noPaymentsHelp")} /> : <Table><Table.Thead><Table.Tr><Table.Th>{t("reference")}</Table.Th><Table.Th>{t("method")}</Table.Th><Table.Th ta="right">{t("amount")}</Table.Th><Table.Th>{t("status")}</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{invoices.map((invoice) => <Table.Tr key={invoice.id}><Table.Td>{invoice.payment_code}</Table.Td><Table.Td tt="capitalize">{invoice.provider || "sepay"}</Table.Td><Table.Td ta="right">{invoiceAmount(invoice, locale)}</Table.Td><Table.Td><StatusBadge status={invoice.status} /></Table.Td></Table.Tr>)}</Table.Tbody></Table>}</div></details>
+  </Stack>;
 }

@@ -1,0 +1,86 @@
+.layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--mantine-spacing-md);
+  align-items: start;
+}
+
+.collections {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 130px);
+  overflow: auto;
+}
+
+.collectionButton {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--mantine-radius-md);
+  text-align: left;
+}
+
+.collectionButton:hover {
+  background: var(--mantine-color-gray-0);
+}
+
+.collectionActive {
+  background: var(--mantine-color-teal-0);
+  color: var(--mantine-color-teal-9);
+}
+
+.tableCard {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.row {
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--mantine-color-gray-0);
+}
+
+.primaryCell {
+  min-width: 250px;
+  max-width: 390px;
+}
+
+.detailCell {
+  min-width: 260px;
+  max-width: 440px;
+}
+
+.mobileCollection {
+  display: none;
+}
+
+.desktopCollection {
+  display: block;
+}
+
+@media (max-width: 62em) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .collections,
+  .desktopCollection {
+    display: none;
+  }
+
+  .mobileCollection {
+    display: block;
+    flex: 1 1 180px;
+  }
+}
+
+@media (max-width: 48em) {
+  .hideMobile {
+    display: none;
+  }
+
+  .primaryCell {
+    min-width: 210px;
+  }
+}

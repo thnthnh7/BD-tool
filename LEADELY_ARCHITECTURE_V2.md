@@ -2448,3 +2448,33 @@ After implementation:
 ```
 
 The architecture should make the quotation engine a **powerful part of a broader BD workflow**, not remove or dilute it.
+
+---
+
+## 27. Data Library for heterogeneous actor output
+
+Apify actors do not share one result schema. Leadely therefore keeps actor output in a workspace-scoped **Data Library** before users decide whether a record belongs in CRM. Companies and Contacts remain curated CRM entities rather than becoming a catch-all store for every scraped row.
+
+### Storage model
+
+- `data_collections`: one logical output collection per scrape job/actor run, including actor identity, source dataset and record count.
+- `data_records`: one normalized, searchable row plus the complete raw JSON payload. Supported classifications are person profile, organization, place, social content, job listing, product listing, review, web page, search result, media asset, document and generic record.
+- `data_assets`: metadata for file or binary outputs such as images, PDFs, spreadsheets, audio and video. External source URLs and future managed-storage references live here.
+- `data_record_links`: typed relationships between records, for example a job listing posted by an organization or social content authored by a profile.
+
+All four tables are isolated by `workspace_id` with RLS. Raw actor data is preserved losslessly; normalized fields provide title, canonical URL, contact hints, identity keys and content hashes for filtering and deduplication.
+
+### Ingestion and lifecycle
+
+1. A scrape run completes and the default Apify dataset is fetched.
+2. Existing actor-specific staging remains active for the current Maps/CRM flow.
+3. The same items are upserted into the Data Library using the scrape job as the collection boundary.
+4. Known adapters may force a record type; unknown actors use conservative field-based classification and fall back to `generic_record`.
+5. A rerun is idempotent through `(collection_id, source_item_id)` and retains the full source payload.
+6. Only compatible records expose CRM promotion actions: organizations/places can become Companies and person profiles can become Contacts. Generic records allow either route after user review.
+
+### Product surface
+
+`/app/data` provides collection and type filters, search, pagination, localized labels, raw-payload inspection and explicit CRM promotion. Unsafe external URL schemes are never rendered as links. Sources remains the actor catalog; Scrape remains run orchestration; Data Library is the durable workspace for all retrieved output.
+
+The first production slice synchronizes the default dataset returned by each run. The asset and relationship tables establish the contract for later ingestion of Apify key-value-store files, named datasets and record-to-record relationship extraction without another storage redesign.

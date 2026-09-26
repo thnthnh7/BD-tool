@@ -10,10 +10,12 @@ import { ActionForm } from "@/features/crm/components/action-form";
 import { createContactAction, listCompanies, listContactsPage } from "@/features/companies/server/actions";
 import { RELATIONSHIP_STRENGTHS } from "@/lib/crm";
 import classes from "@/styles/leadely-dashboard.module.css";
+import { getTranslations } from "next-intl/server";
 
 const PAGE_SIZE = 20;
 
 export default async function ContactsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  const t = await getTranslations("CRM");
   const params = await searchParams;
   const q = (params.q || "").trim();
   const requestedPage = Math.max(1, Number.parseInt(params.page || "1", 10) || 1);
@@ -26,42 +28,42 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
   const to = Math.min(page * PAGE_SIZE, total);
   return (
     <Stack gap="md">
-      <PageHeader title="Contacts" subtitle="Người trong các công ty đang làm việc." />
-      <SectionPanel title="Add contact">
-        <ActionForm action={createContactAction} submitLabel="Create contact" redirectTo="/app/contacts/{id}">
+      <PageHeader title={t("contactsTitle")} subtitle={t("contactsSubtitle")} />
+      <SectionPanel title={t("addContact")}>
+        <ActionForm action={createContactAction} submitLabel={t("createContact")} redirectTo="/app/contacts/{id}">
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <TextInput name="first_name" label="First name" />
-            <TextInput name="last_name" label="Last name" />
-            <TextInput name="display_name" label="Display name" style={{ gridColumn: "1 / -1" }} />
-            <TextInput name="email" label="Email" />
-            <TextInput name="phone" label="Phone" />
-            <TextInput name="job_title" label="Job title" />
-            <TextInput name="linkedin_url" label="LinkedIn" />
+            <TextInput name="first_name" label={t("firstName")} />
+            <TextInput name="last_name" label={t("lastName")} />
+            <TextInput name="display_name" label={t("displayName")} style={{ gridColumn: "1 / -1" }} />
+            <TextInput name="email" label={t("email")} />
+            <TextInput name="phone" label={t("phone")} />
+            <TextInput name="job_title" label={t("jobTitle")} />
+            <TextInput name="linkedin_url" label={t("linkedin")} />
             <NativeSelect
               name="company_id"
-              label="Company"
+              label={t("company")}
               data={[{ value: "", label: "—" }, ...companies.map((item) => ({ value: item.id, label: item.name }))]}
             />
             <NativeSelect
               name="relationship_strength"
-              label="Relationship"
+              label={t("relationship")}
               data={RELATIONSHIP_STRENGTHS.map((item) => ({ value: item, label: item }))}
             />
           </SimpleGrid>
-          <Textarea name="notes" label="Notes" />
+          <Textarea name="notes" label={t("notes")} />
         </ActionForm>
       </SectionPanel>
-      <SectionPanel title="All contacts" padded={rows.length === 0} action={<ContactSearch q={q} />}>
+      <SectionPanel title={t("allContacts")} padded={rows.length === 0} action={<ContactSearch q={q} />}>
         {rows.length ? (
           <>
             <Box className={classes.scrollTable}>
               <Table>
                 <TableThead>
                   <TableTr>
-                    <TableTh>Person</TableTh>
-                    <TableTh>Company</TableTh>
-                    <TableTh>Title</TableTh>
-                    <TableTh>Phone</TableTh>
+                    <TableTh>{t("person")}</TableTh>
+                    <TableTh>{t("company")}</TableTh>
+                    <TableTh>{t("jobTitle")}</TableTh>
+                    <TableTh>{t("phone")}</TableTh>
                     <TableTh w={48} />
                   </TableTr>
                 </TableThead>
@@ -90,7 +92,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
                         </Text>
                       </TableTd>
                       <TableTd ta="right">
-                        <LinkIcon href={`/app/contacts/${contact.id}`} label={`Open ${contact.display_name}`} />
+                        <LinkIcon href={`/app/contacts/${contact.id}`} label={t("openRecord", { name: contact.display_name })} />
                       </TableTd>
                     </TableTr>
                   ))}
@@ -99,34 +101,35 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
             </Box>
             <Group justify="space-between" px="md" py="sm">
               <Text size="sm" c="dimmed">
-                {pageCount > 1 ? `${from}–${to} của ${total}` : `${total} contact${total === 1 ? "" : "s"}`}
+                {pageCount > 1 ? t("results", { from, to, total }) : t("count", { count: total })}
               </Text>
               {pageCount > 1 ? <ContactPager q={q} page={page} pageCount={pageCount} /> : null}
             </Group>
           </>
         ) : q ? (
           <Text size="sm" c="dimmed">
-            Không thấy contact khớp.
+            {t("noContactMatches")}
           </Text>
         ) : (
-          <EmptyState icon={<Users size={18} />} title="No contacts" description="Thêm người liên hệ từ company." />
+          <EmptyState icon={<Users size={18} />} title={t("noContacts")} description={t("noContactsHelp")} />
         )}
       </SectionPanel>
     </Stack>
   );
 }
 
-function ContactSearch({ q }: { q: string }) {
+async function ContactSearch({ q }: { q: string }) {
+  const t = await getTranslations("CRM");
   return (
     <form action="/app/contacts">
       <Group gap="xs" wrap="nowrap">
-        <TextInput name="q" defaultValue={q} placeholder="Tên, công ty, email hoặc SĐT" aria-label="Tìm contact" w={300} />
+        <TextInput name="q" defaultValue={q} placeholder={t("contactSearch")} aria-label={t("contactSearch")} w={300} />
         <Button type="submit" variant="light">
-          Search
+          {t("search")}
         </Button>
         {q ? (
           <LinkAnchor href="/app/contacts" size="sm">
-            Xóa
+            {t("clear")}
           </LinkAnchor>
         ) : null}
       </Group>

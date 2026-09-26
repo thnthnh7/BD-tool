@@ -5,6 +5,7 @@ import { MAPS_SLUG } from "@/features/leads/maps-source";
 import { ensureSourceContract } from "@/features/leads/server/actor-schema";
 import { withWorkspace } from "@/lib/events";
 import type { Json } from "@/lib/database.types";
+import { CATALOG_CARD_COLUMNS, getCatalogPage } from "./catalog-page";
 const SOURCES_PAGE_SIZE = 200;
 
 export type SourceListFilters = {
@@ -21,17 +22,29 @@ function searchNeedle(query: string) {
 
 export async function listScrapeSources(filters: SourceListFilters) {
   const { context, supabase } = await withWorkspace();
-  const { data: installs } = await supabase
+  const installsQuery = supabase
     .from("workspace_scrape_sources")
     .select("source_id")
     .eq("workspace_id", context.workspaceId);
-  const installedIds = (installs || []).map((row) => row.source_id);
-
-  const { count: catalogTotal } = await supabase
+  const needle = searchNeedle(filters.q);
+  const hasAdapter = filters.adapter === "ready" || filters.adapter === "preview";
+  const filtersByInstallation = filters.installed === "yes" || filters.installed === "no";
+  const isFiltered = Boolean(needle || filters.category || hasAdapter || filtersByInstallation);
+  // The page count is also the catalog count when there are no filters.
+  const catalogQuery = isFiltered ? supabase
     .from("scrape_sources")
     .select("id", { count: "exact", head: true })
     .eq("pricing_model", "PAY_PER_EVENT")
-    .is("archived_at", null);
+    .is("archived_at", null) : Promise.resolve(null);
+
+  // Only installation filters depend on the workspace's installed IDs.
+  // Await both reads together so failures cannot leave a rejected promise behind.
+  const [earlyInstalls, earlyCatalog] = filtersByInstallation
+    ? await Promise.all([installsQuery, catalogQuery])
+    : [null, null];
+  if (earlyInstalls?.error) throw new Error(earlyInstalls.error.message);
+  if (earlyCatalog?.error) throw new Error(earlyCatalog.error.message);
+  const filterIds = (earlyInstalls?.data || []).map((row) => row.source_id);
 
   const empty = {
     rows: [] as Array<{
@@ -50,34 +63,40 @@ export async function listScrapeSources(filters: SourceListFilters) {
       installed: boolean;
     }>,
     total: 0,
-    catalogTotal: catalogTotal || 0,
+    catalogTotal: earlyCatalog?.count || 0,
     page: 1,
     pageCount: 1,
     from: 0,
     to: 0,
-    installedIds,
+    installedIds: filterIds,
   };
 
-  if (filters.installed === "yes" && installedIds.length === 0) return empty;
+  if (filters.installed === "yes" && filterIds.length === 0) return empty;
 
-  let query = supabase.from("scrape_sources").select("*", { count: "exact" }).is("archived_at", null).eq("pricing_model", "PAY_PER_EVENT");
+  let query = supabase.from("scrape_sources").select(CATALOG_CARD_COLUMNS, { count: "exact" }).is("archived_at", null).eq("pricing_model", "PAY_PER_EVENT");
   if (filters.adapter === "ready" || filters.adapter === "preview") query = query.eq("adapter_status", filters.adapter);
   if (filters.category) query = query.contains("categories", [filters.category]);
-  const needle = searchNeedle(filters.q);
   if (needle) {
     const pattern = `"%${needle}%"`;
     query = query.or(`title.ilike.${pattern},description.ilike.${pattern},slug.ilike.${pattern}`);
   }
-  if (filters.installed === "yes") query = query.in("id", installedIds);
-  if (filters.installed === "no" && installedIds.length) {
-    query = query.not("id", "in", `(${installedIds.join(",")})`);
+  if (filters.installed === "yes") query = query.in("id", filterIds);
+  if (filters.installed === "no" && filterIds.length) {
+    query = query.not("id", "in", `(${filterIds.join(",")})`);
   }
 
   const page = Math.max(1, filters.page);
   let from = (page - 1) * SOURCES_PAGE_SIZE;
   const ordered = query.order("total_users", { ascending: false }).order("id");
-  const { data, count, error } = await ordered.range(from, from + SOURCES_PAGE_SIZE - 1);
+  const [{ data, count, error }, installs, catalog] = await Promise.all([
+    isFiltered ? ordered.range(from, from + SOURCES_PAGE_SIZE - 1) : getCatalogPage(from, SOURCES_PAGE_SIZE),
+    earlyInstalls || installsQuery,
+    filtersByInstallation ? earlyCatalog : catalogQuery,
+  ]);
   if (error) throw new Error(error.message);
+  if (installs.error) throw new Error(installs.error.message);
+  if (catalog?.error) throw new Error(catalog.error.message);
+  const installedIds = (installs.data || []).map((row) => row.source_id);
 
   const total = count || 0;
   const pageCount = Math.max(1, Math.ceil(total / SOURCES_PAGE_SIZE));
@@ -85,7 +104,7 @@ export async function listScrapeSources(filters: SourceListFilters) {
   let pageData = data;
   if (current !== page && total > 0) {
     from = (current - 1) * SOURCES_PAGE_SIZE;
-    const lastPage = await ordered.range(from, from + SOURCES_PAGE_SIZE - 1);
+    const lastPage = isFiltered ? await ordered.range(from, from + SOURCES_PAGE_SIZE - 1) : await getCatalogPage(from, SOURCES_PAGE_SIZE);
     if (lastPage.error) throw new Error(lastPage.error.message);
     pageData = lastPage.data;
   }
@@ -109,7 +128,7 @@ export async function listScrapeSources(filters: SourceListFilters) {
   return {
     rows,
     total,
-    catalogTotal: catalogTotal || 0,
+    catalogTotal: catalog?.count ?? total,
     page: current,
     pageCount,
     from: total === 0 ? 0 : from + 1,

@@ -1,0 +1,79 @@
+.tabList {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tab {
+  flex: 0 0 auto;
+}
+
+.planPanel,
+.newPlanPanel {
+  max-width: 1040px;
+  padding: 16px;
+  border: 1px solid var(--ld-border);
+  border-radius: 12px;
+  background: var(--ld-surface);
+}
+
+.newPlanPanel {
+  max-width: 620px;
+}
+
+.configSection {
+  padding: 14px;
+  border: 1px solid var(--ld-border);
+  border-radius: 10px;
+  background: var(--ld-surface);
+}
+
+.configSection + .configSection {
+  margin-top: 12px;
+}
+
+.sectionHeading {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ld-border);
+}
+
+.currencyGroup {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: end;
+  gap: 14px;
+  padding: 12px 0;
+}
+
+.currencyGroup + .currencyGroup {
+  border-top: 1px solid var(--ld-border);
+}
+
+.currencyFields {
+  min-width: 0;
+}
+
+.currencyLabel {
+  padding-bottom: 7px;
+}
+
+@media (max-width: 600px) {
+  .planPanel,
+  .newPlanPanel {
+    padding: 12px;
+  }
+
+  .configSection {
+    padding: 12px;
+  }
+
+  .currencyGroup {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .currencyLabel {
+    padding-bottom: 0;
+  }
+}

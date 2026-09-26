@@ -1,36 +1,69 @@
-import { Button, Checkbox, Group, NativeSelect, SimpleGrid, Stack, Switch, Text, TextInput } from "@mantine/core";
+import { Badge, Button, Checkbox, Group, SimpleGrid, Stack, Switch, Text, TextInput } from "@mantine/core";
 import { PageHeader } from "@/components/leadely/page-header";
-import { SectionPanel } from "@/components/leadely/section-panel";
-import { loadPlatformPlans, updatePlanAction } from "@/lib/platform/actions";
-import { createPlatformInviteAction } from "@/lib/auth/actions";
+import { PlanSettingsTabs } from "@/components/platform/plan-settings-tabs";
+import { createPlanAction, deletePlanAction, loadPlatformPlans, updatePlanConfigurationAction } from "@/lib/platform/actions";
 import { requirePlatform } from "@/lib/auth/session";
-import { VoidForm } from "@/components/platform/void-form";
-import { loadPlatformStaff, removePlatformAdminAction, revokeInviteAction, setPlatformRoleAction } from "@/lib/platform/ops";
-import { formatVnd } from "@/lib/money";
+import classes from "@/styles/platform-plans.module.css";
 
-export default async function PlatformPlansPage() {
+export default async function PlatformPlansPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
   const context = await requirePlatform();
   const plans = await loadPlatformPlans();
-  const staff = context.platformRole === "super_admin" ? await loadPlatformStaff() : null;
+  const requestedPlan = (await searchParams).plan;
+  const activePlan = plans.some(({ plan }) => plan.id === requestedPlan) ? requestedPlan! : plans[0]?.plan.id || "new";
+  const stripeConnected = Boolean(process.env.STRIPE_SECRET_KEY);
+  const paypalConnected = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
   return (
     <Stack gap="md">
-      <PageHeader title="Plans" subtitle="Configure the four public packages." />
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-        {plans.map(({ plan, workspaceCount }) => (
-          <SectionPanel key={plan.id} title={`Slot ${plan.slot} · ${plan.name}`}>
+      <PageHeader title="Plan settings" subtitle="Create plans and manage their features, limits and pricing." />
+      <PlanSettingsTabs
+        activePlan={activePlan}
+        plans={plans.map(({ plan }) => ({ id: plan.id, name: plan.name }))}
+        newPlanPanel={context.platformRole === "super_admin" ? (
+          <div className={classes.newPlanPanel}>
+            <Text fw={700}>Create a new plan</Text>
+            <Text size="sm" c="dimmed" mb="md">Start with safe defaults, then configure limits and pricing in its plan tab.</Text>
+            <form action={async (formData) => {
+              "use server";
+              await createPlanAction(formData);
+            }}>
+              <Stack gap="sm">
+                <TextInput name="name" label="Plan name" placeholder="Enterprise" required />
+                <Checkbox name="is_free" label="This is a free plan" />
+                <Group justify="flex-end">
+                  <Button type="submit">Create plan</Button>
+                </Group>
+              </Stack>
+            </form>
+          </div>
+        ) : undefined}
+      >
+        {plans.map(({ plan, workspaceCount, providerPrices }) => (
+          <div className={classes.planPanel} key={plan.id}>
+              <Group justify="space-between" align="flex-start" mb="md">
+                <div>
+                  <Text fw={700}>{plan.name}</Text>
+                  <Text size="xs" c="dimmed">Slot {plan.slot} · {workspaceCount} workspaces</Text>
+                </div>
+                <Badge variant="light" color={plan.isPublic ? "leadely" : "gray"}>{plan.isPublic ? "Public" : "Hidden"}</Badge>
+              </Group>
             <form
               action={async (formData) => {
                 "use server";
-                await updatePlanAction(formData);
+                await updatePlanConfigurationAction(formData);
               }}
             >
+            <input type="hidden" name="id" value={plan.id} />
+            <input type="hidden" name="planId" value={plan.id} />
+            <input type="hidden" name="isFree" value={String(plan.isFree)} />
+            <div className={classes.configSection}>
+              <div className={classes.sectionHeading}>
+                <Text size="sm" fw={700}>Plan details</Text>
+                <Text size="xs" c="dimmed">Features, limits and availability.</Text>
+              </div>
               <Stack gap="sm">
-                <input type="hidden" name="id" value={plan.id} />
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                   <TextInput name="name" label="Name" defaultValue={plan.name} />
                   <TextInput name="badge" label="Badge" defaultValue={plan.badge} placeholder="Badge" />
-                  <TextInput name="price_monthly" label="Monthly price" type="number" defaultValue={String(plan.priceMonthly)} />
-                  <TextInput name="price_yearly" label="Yearly price" type="number" defaultValue={String(plan.priceYearly)} />
                   <TextInput name="trial_days" label="Trial days" type="number" defaultValue={String(plan.trialDays)} />
                   <TextInput name="seats" label="Seats" type="number" defaultValue={String(plan.quotas.seats)} />
                   <TextInput name="quotes_per_month" label="Quotes / month" type="number" defaultValue={String(plan.quotas.quotes_per_month)} />
@@ -46,86 +79,89 @@ export default async function PlatformPlansPage() {
                   <Checkbox name="custom_branding" label="Custom branding" defaultChecked={plan.features.custom_branding} />
                   <Checkbox name="contracts" label="Contracts" defaultChecked={plan.features.contracts} />
                 </Group>
-                <Group justify="space-between" align="flex-end" mt={4}>
-                  <Stack gap={6}>
-                    <Text size="sm" c="dimmed">
-                      {plan.isFree ? "Free" : `${formatVnd(plan.priceMonthly)}/month`} · {workspaceCount} workspaces
-                    </Text>
-                    <Switch name="is_public" label="Listed on pricing" defaultChecked={plan.isPublic} />
-                  </Stack>
-                  <Button type="submit">Save plan</Button>
-                </Group>
+                <Switch name="is_public" label="Listed on pricing" defaultChecked={plan.isPublic} mt={4} />
               </Stack>
-            </form>
-          </SectionPanel>
-        ))}
-      </SimpleGrid>
-      {context.platformRole === "super_admin" ? (
-      <SectionPanel title="Invite platform admin">
-        <form
-          action={async (formData) => {
-            "use server";
-            await createPlatformInviteAction(formData);
-          }}
-        >
-          <Stack gap="sm">
-            <TextInput name="email" type="email" required placeholder="Email" />
-            <NativeSelect
-              name="role"
-              data={[
-                { value: "support", label: "support" },
-                { value: "super_admin", label: "super_admin" },
-              ]}
-            />
-            <Button type="submit" w="fit-content">
-              Create invite
-            </Button>
-          </Stack>
-        </form>
-      </SectionPanel>
-      ) : null}
-      {staff ? (
-        <SectionPanel title="Platform staff">
-          <Stack gap="sm">
-            {staff.admins.map((admin) => (
-              <Group key={admin.user_id} justify="space-between">
-                <Text size="sm">
-                  {admin.email} · {admin.role}
-                </Text>
-                <Group gap="xs">
-                  <VoidForm action={setPlatformRoleAction}>
-                    <input type="hidden" name="userId" value={admin.user_id} />
-                    <input type="hidden" name="role" value={admin.role === "super_admin" ? "support" : "super_admin"} />
-                    <Button type="submit" variant="subtle" size="compact-sm">
-                      Make {admin.role === "super_admin" ? "support" : "super admin"}
-                    </Button>
-                  </VoidForm>
-                  <VoidForm action={removePlatformAdminAction}>
-                    <input type="hidden" name="userId" value={admin.user_id} />
-                    <Button type="submit" variant="subtle" color="red" size="compact-sm">
-                      Remove
-                    </Button>
-                  </VoidForm>
-                </Group>
-              </Group>
-            ))}
-            {staff.invites.map((invite) => (
-              <Group key={invite.id} justify="space-between">
-                <Text size="sm">
-                  {invite.email} · {invite.role} · pending
-                </Text>
-                <VoidForm action={revokeInviteAction}>
-                  <input type="hidden" name="id" value={invite.id} />
-                  <input type="hidden" name="kind" value="platform" />
-                  <Button type="submit" variant="subtle" color="red" size="compact-sm">
-                    Revoke
+            </div>
+            {!plan.isFree && context.platformRole === "super_admin" ? (
+              <div className={classes.configSection}>
+                <Stack gap="sm">
+                  <Group justify="space-between" align="flex-start">
+                    <div>
+                      <Text size="sm" fw={700}>Pricing</Text>
+                      <Text size="xs" c="dimmed">VND is used by SePay; USD is synchronized to connected providers.</Text>
+                    </div>
+                    <Group gap={6}>
+                      <Badge size="sm" color={stripeConnected ? "leadely" : "gray"} variant="light">Stripe · {stripeConnected ? "Connected" : "Not connected"}</Badge>
+                      <Badge size="sm" color={paypalConnected ? "leadely" : "gray"} variant="light">PayPal · {paypalConnected ? "Connected" : "Not connected"}</Badge>
+                    </Group>
+                  </Group>
+                  <div className={classes.currencyGroup}>
+                    <div className={classes.currencyLabel}>
+                      <Text fw={700} size="sm">VND</Text>
+                      <Text size="xs" c="dimmed">SePay and local bank transfer</Text>
+                    </div>
+                    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs" className={classes.currencyFields}>
+                      <TextInput name="vnd_monthly" label="Monthly" type="number" min={1} step={1000} defaultValue={String(plan.priceMonthly)} rightSection="₫" />
+                      <TextInput name="vnd_yearly" label="Yearly" type="number" min={1} step={1000} defaultValue={String(plan.priceYearly)} rightSection="₫" />
+                    </SimpleGrid>
+                  </div>
+                  <div className={classes.currencyGroup}>
+                    <div className={classes.currencyLabel}>
+                      <Text fw={700} size="sm">USD</Text>
+                      <Text size="xs" c="dimmed">Stripe and PayPal subscriptions</Text>
+                    </div>
+                    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs" className={classes.currencyFields}>
+                    <TextInput
+                      name="usd_monthly"
+                      label="Monthly"
+                      type="number"
+                      min={0.01}
+                      step={0.01}
+                      defaultValue={String((providerPrices.find((item) => item.billing_interval === "monthly")?.amount || 0) / 100)}
+                      leftSection="$"
+                    />
+                    <TextInput
+                      name="usd_yearly"
+                      label="Yearly"
+                      type="number"
+                      min={0.01}
+                      step={0.01}
+                      defaultValue={String((providerPrices.find((item) => item.billing_interval === "yearly")?.amount || 0) / 100)}
+                      leftSection="$"
+                    />
+                    </SimpleGrid>
+                  </div>
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">
+                      {[stripeConnected ? "Stripe" : "", paypalConnected ? "PayPal" : ""].filter(Boolean).join(" and ") || "No provider"} will be synchronized when you save.
+                    </Text>
+                  </Group>
+                </Stack>
+              </div>
+            ) : null}
+            <Group justify="space-between" mt="md">
+              <div>
+                {context.platformRole === "super_admin" && !plan.isFree ? (
+                  <Button
+                    type="submit"
+                    variant="light"
+                    color="red"
+                    disabled={workspaceCount > 0}
+                    formAction={async (formData) => {
+                      "use server";
+                      await deletePlanAction(formData);
+                    }}
+                  >
+                    Delete plan
                   </Button>
-                </VoidForm>
-              </Group>
-            ))}
-          </Stack>
-        </SectionPanel>
-      ) : null}
+                ) : null}
+              </div>
+              <Button type="submit">Save plan</Button>
+            </Group>
+            </form>
+          </div>
+        ))}
+      </PlanSettingsTabs>
     </Stack>
   );
 }

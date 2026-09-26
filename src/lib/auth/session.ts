@@ -80,16 +80,14 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
 
-  const { data: planRow } = await supabase.from("plans").select("*").eq("id", workspace.plan_id).single();
+  // Both reads depend on the verified workspace, but not on each other.
+  const [{ data: planRow }, { data: override }] = await Promise.all([
+    supabase.from("plans").select("*").eq("id", workspace.plan_id).single(),
+    supabase.from("workspace_overrides").select("quotas, features").eq("workspace_id", workspace.id).maybeSingle(),
+  ]);
   if (!planRow) {
     return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
-
-  const { data: override } = await supabase
-    .from("workspace_overrides")
-    .select("quotas, features")
-    .eq("workspace_id", workspace.id)
-    .maybeSingle();
 
   return {
     kind: "workspace",

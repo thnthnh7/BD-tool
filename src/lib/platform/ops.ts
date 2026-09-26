@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, hasServiceRole } from "@/lib/supabase/admin";
 import { requirePlatform } from "@/lib/auth/session";
 import { applySepayPayment, runBillingCron } from "@/lib/billing/actions";
+import { restoredPlanStatus } from "@/lib/billing/plan-access";
 import { currentPeriod } from "@/lib/crypto-utils";
 import { applyPlanOverrides, parsePlan, type PlanQuotas } from "@/lib/entitlements";
 import { setLoginBan } from "@/lib/platform/access";
@@ -114,11 +115,12 @@ export async function loadPlatformAccounts(query: string) {
   const supabase = await createClient();
   let profilesQuery = supabase.from("profiles").select("id, email, display_name, status, deleted_at, created_at").order("created_at", { ascending: false }).limit(200);
   if (query) profilesQuery = profilesQuery.ilike("email", `%${query}%`);
-  const [{ data: profiles }, { data: members }, { data: admins }, { data: workspaces }, { data: invites }, { data: platformInvites }] = await Promise.all([
+  const [{ data: profiles }, { data: members }, { data: admins }, { data: workspaces }, { data: plans }, { data: invites }, { data: platformInvites }] = await Promise.all([
     profilesQuery,
     supabase.from("workspace_members").select("user_id, workspace_id, role"),
     supabase.from("platform_admins").select("user_id, role"),
-    supabase.from("workspaces").select("id, name"),
+    supabase.from("workspaces").select("id, name, plan_id, plan_status, plan_deactivated_at, plan_deactivation_reason"),
+    supabase.from("plans").select("id, name"),
     supabase.from("invites").select("id, email, role, workspace_id, expires_at, accepted_at").is("accepted_at", null).gt("expires_at", new Date().toISOString()),
     supabase.from("platform_invites").select("id, email, role, expires_at, accepted_at").is("accepted_at", null).gt("expires_at", new Date().toISOString()),
   ]);
@@ -131,15 +133,22 @@ export async function loadPlatformAccounts(query: string) {
   }
 
   const workspaceNames = new Map((workspaces || []).map((row) => [row.id, row.name]));
+  const workspaceById = new Map((workspaces || []).map((row) => [row.id, row]));
+  const planNames = new Map((plans || []).map((row) => [row.id, row.name]));
   const accounts = (profiles || []).map((profile) => {
     const member = (members || []).find((row) => row.user_id === profile.id);
     const platform = (admins || []).find((row) => row.user_id === profile.id);
     const role = platform?.role || member?.role || "onboarding";
+    const workspace = member ? workspaceById.get(member.workspace_id) : undefined;
     return {
       ...profile,
       role,
       workspaceId: member?.workspace_id || null,
       workspaceName: member ? workspaceNames.get(member.workspace_id) || "" : "",
+      planName: workspace ? planNames.get(workspace.plan_id) || "" : "",
+      planStatus: workspace?.plan_status || null,
+      planDeactivatedAt: workspace?.plan_deactivated_at || null,
+      planDeactivationReason: workspace?.plan_deactivation_reason || null,
       lastSignIn: lastSignIn.get(profile.id) || null,
     };
   });
@@ -286,6 +295,7 @@ export async function setPlatformRoleAction(formData: FormData) {
   const { error } = await supabase.from("platform_admins").update({ role }).eq("user_id", userId);
   if (error) return { error: error.message };
   await recordPlatformAudit({ action: "platform_admin.role", entityType: "user", entityId: userId, after: { role } });
+  revalidatePath("/app/platform/accounts");
   revalidatePath("/app/platform/plans");
   return { ok: true as const };
 }
@@ -297,6 +307,7 @@ export async function removePlatformAdminAction(formData: FormData) {
   const { error } = await supabase.from("platform_admins").delete().eq("user_id", userId);
   if (error) return { error: error.message };
   await recordPlatformAudit({ action: "platform_admin.remove", entityType: "user", entityId: userId });
+  revalidatePath("/app/platform/accounts");
   revalidatePath("/app/platform/plans");
   return { ok: true as const };
 }
@@ -387,6 +398,13 @@ export async function updateWorkspaceBillingAction(formData: FormData) {
   const interval = String(formData.get("interval") || "") === "yearly" ? "yearly" : "monthly";
   const allowed = ["trialing", "active", "past_due", "expired", "canceled"];
   if (!allowed.includes(planStatus)) return { error: "Invalid plan status." };
+  const { data: accessLock } = await supabase.from("workspaces")
+    .select("plan_deactivated_at")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  if (accessLock?.plan_deactivated_at && planStatus !== "canceled") {
+    return { error: "Reactivate plan access before changing its billing status." };
+  }
   const { error: workspaceError } = await supabase.from("workspaces").update({ plan_id: planId, plan_status: planStatus }).eq("id", workspaceId);
   if (workspaceError) return { error: workspaceError.message };
   const subscriptionPatch: { plan_id: string; status: string; billing_interval: string; current_period_end?: string } = {
@@ -404,6 +422,68 @@ export async function updateWorkspaceBillingAction(formData: FormData) {
     after: { planId, planStatus, periodEnd, interval },
   });
   revalidatePath(`/app/platform/workspaces/${workspaceId}`);
+  return { ok: true as const };
+}
+
+export async function setWorkspacePlanActivationAction(formData: FormData) {
+  const context = await requirePlatform("super_admin");
+  if (!hasServiceRole()) return { error: "Missing service role" };
+  const workspaceId = String(formData.get("workspaceId") || "");
+  const mode = String(formData.get("mode") || "");
+  const reason = String(formData.get("reason") || "").trim();
+  if (!workspaceId) return { error: "Workspace is required." };
+  if (mode !== "deactivate" && mode !== "reactivate") return { error: "Unknown plan action." };
+  if (mode === "deactivate" && !reason) return { error: "A deactivation reason is required." };
+
+  const admin = createAdminClient();
+  const { data: workspace, error: workspaceReadError } = await admin.from("workspaces")
+    .select("id, plan_id, plan_status, plan_deactivated_at, plan_deactivation_reason, plan_status_before_deactivation")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  if (workspaceReadError) return { error: workspaceReadError.message };
+  if (!workspace) return { error: "Workspace not found." };
+
+  let nextStatus = "canceled";
+  if (mode === "reactivate") {
+    const { data: subscription } = await admin.from("subscriptions")
+      .select("status")
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+    nextStatus = restoredPlanStatus(subscription?.status, workspace.plan_status_before_deactivation);
+  }
+
+  const patch = mode === "deactivate"
+    ? {
+        plan_status: "canceled",
+        plan_deactivated_at: new Date().toISOString(),
+        plan_deactivated_by: context.userId,
+        plan_deactivation_reason: reason,
+        plan_status_before_deactivation: workspace.plan_status,
+      }
+    : {
+        plan_status: nextStatus,
+        plan_deactivated_at: null,
+        plan_deactivated_by: null,
+        plan_deactivation_reason: null,
+        plan_status_before_deactivation: null,
+      };
+  const { error } = await admin.from("workspaces").update(patch).eq("id", workspaceId);
+  if (error) return { error: error.message };
+
+  await recordPlatformAudit({
+    action: mode === "deactivate" ? "workspace.plan_deactivate" : "workspace.plan_reactivate",
+    entityType: "workspace",
+    entityId: workspaceId,
+    before: {
+      planStatus: workspace.plan_status,
+      deactivatedAt: workspace.plan_deactivated_at,
+      reason: workspace.plan_deactivation_reason,
+    },
+    after: { planStatus: patch.plan_status, reason: mode === "deactivate" ? reason : null },
+  });
+  revalidatePath("/app/platform/accounts");
+  revalidatePath(`/app/platform/workspaces/${workspaceId}`);
+  revalidatePath("/app/billing");
   return { ok: true as const };
 }
 

@@ -15,6 +15,7 @@ import {
   saveWorkspaceNoteAction,
   saveWorkspaceOverrideAction,
   updateWorkspaceBillingAction,
+  setWorkspacePlanActivationAction,
 } from "@/lib/platform/ops";
 
 export default async function PlatformWorkspaceDetailPage({
@@ -49,6 +50,7 @@ export default async function PlatformWorkspaceDetailPage({
       </SimpleGrid>
       <SectionPanel title="Plan and usage">
         <Text size="sm">Effective plan: {plan?.name || "Unknown"}</Text>
+        <Text size="sm">Admin access: {workspace.plan_deactivated_at ? `Deactivated · ${workspace.plan_deactivation_reason || "No reason"}` : "Enabled"}</Text>
         <Text size="sm">Period ends: {subscription?.current_period_end || "—"} · {subscription?.billing_interval}</Text>
         <Text size="sm">
           Quotes {usage?.quotes_created || 0}/{plan?.quotas.quotes_per_month ?? "—"} · AI {usage?.ai_briefs || 0}/{plan?.quotas.ai_briefs_per_month ?? "—"} · Scrapes {usage?.maps_scrapes || 0}/{plan?.quotas.maps_scrapes_per_month ?? "—"}
@@ -74,6 +76,13 @@ export default async function PlatformWorkspaceDetailPage({
               Save billing
             </Button>
           </VoidForm>
+          {workspace.plan_deactivated_at ? (
+            <VoidForm action={setWorkspacePlanActivationAction}>
+              <input type="hidden" name="workspaceId" value={workspace.id} />
+              <input type="hidden" name="mode" value="reactivate" />
+              <Button type="submit" variant="light" color="teal" mt="sm">Reactivate plan access</Button>
+            </VoidForm>
+          ) : null}
         </SectionPanel>
       ) : null}
       {superAdmin ? (

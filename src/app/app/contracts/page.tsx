@@ -17,7 +17,7 @@ import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 
 export default async function ContractsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   const { q, page } = readListQuery(await searchParams);
-  const [contracts, deals, app] = await Promise.all([listContracts(), listDeals(), loadWorkspaceAppData()]);
+  const [contracts, deals, app] = await Promise.all([listContracts(), listDeals(), loadWorkspaceAppData(["settings", "quotes"])]);
   const settings = app.settings || defaultSettings;
   const matched = contracts.filter((contract) =>
     matchesQuery(q, [contract.title, contract.status, contract.notes, (contract.deals as { title?: string } | null)?.title]),

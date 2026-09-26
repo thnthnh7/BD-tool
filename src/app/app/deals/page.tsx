@@ -15,8 +15,10 @@ import { createDealAction, listDeals, listPipelines } from "@/features/deals/ser
 import { DEAL_PRIORITIES, DEAL_TYPES } from "@/lib/crm";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 import { formatVnd } from "@/lib/money";
+import { getTranslations } from "next-intl/server";
 
 export default async function DealsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  const t = await getTranslations("Deals");
   const { q, page } = readListQuery(await searchParams);
   const [deals, companies, contacts, pipelineData] = await Promise.all([
     listDeals(),
@@ -36,51 +38,51 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   return (
     <Stack gap="md">
       <PageHeader
-        title="Deals"
-        subtitle="Cơ hội thương mại — Kanban và bảng."
-        action={<ListSearch path="/app/deals" q={q} placeholder="Tên deal, công ty hoặc stage" />}
+        title={t("title")}
+        subtitle={t("subtitle")}
+        action={<ListSearch path="/app/deals" q={q} placeholder={t("searchPlaceholder")} />}
       />
-      <SectionPanel title="New deal">
-        <ActionForm action={createDealAction} submitLabel="Create deal" redirectTo="/app/deals/{id}">
+      <SectionPanel title={t("newDeal")}>
+        <ActionForm action={createDealAction} submitLabel={t("createDeal")} redirectTo="/app/deals/{id}">
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <TextInput name="title" label="Title" required style={{ gridColumn: "1 / -1" }} />
+            <TextInput name="title" label={t("dealTitle")} required style={{ gridColumn: "1 / -1" }} />
             <NativeSelect
               name="company_id"
-              label="Company"
+              label={t("company")}
               data={companies.map((item) => ({ value: item.id, label: item.name }))}
             />
             <NativeSelect
               name="primary_contact_id"
-              label="Primary contact"
+              label={t("primaryContact")}
               data={[{ value: "", label: "—" }, ...contacts.map((item) => ({ value: item.id, label: item.display_name }))]}
             />
-            <NativeSelect name="deal_type" label="Type" data={DEAL_TYPES.map((item) => ({ value: item, label: item }))} />
-            <TextInput name="amount" type="number" label="Amount" defaultValue="0" />
-            <NativeSelect name="priority" label="Priority" data={DEAL_PRIORITIES.map((item) => ({ value: item, label: item }))} />
-            <TextInput name="expected_close_date" type="date" label="Expected close" />
+            <NativeSelect name="deal_type" label={t("type")} data={DEAL_TYPES.map((item) => ({ value: item, label: item }))} />
+            <TextInput name="amount" type="number" label={t("amount")} defaultValue="0" />
+            <NativeSelect name="priority" label={t("priority")} data={DEAL_PRIORITIES.map((item) => ({ value: item, label: item }))} />
+            <TextInput name="expected_close_date" type="date" label={t("expectedClose")} />
           </SimpleGrid>
-          <Textarea name="description" label="Description" />
+          <Textarea name="description" label={t("description")} />
         </ActionForm>
       </SectionPanel>
 
-      <SectionPanel title="Kanban" padded={false}>
+      <SectionPanel title={t("kanban")} padded={false}>
         <DealBoard stages={stages} deals={matched} />
       </SectionPanel>
 
-      <SectionPanel title="Table" padded={paged.total === 0}>
+      <SectionPanel title={t("table")} padded={paged.total === 0}>
         {paged.total ? (
           <ListTable
             footer={
-              <ListFooter path="/app/deals" q={q} {...paged} singular="deal" plural="deals" />
+              <ListFooter path="/app/deals" q={q} {...paged} singular={t("item")} plural={t("items")} />
             }
           >
           <Table>
             <TableThead>
               <TableTr>
-                <TableTh>Deal</TableTh>
-                <TableTh>Company</TableTh>
-                <TableTh>Stage</TableTh>
-                <TableTh ta="right">Amount</TableTh>
+                <TableTh>{t("deal")}</TableTh>
+                <TableTh>{t("company")}</TableTh>
+                <TableTh>{t("stage")}</TableTh>
+                <TableTh ta="right">{t("amount")}</TableTh>
                 <TableTh w={48} />
               </TableTr>
             </TableThead>
@@ -100,7 +102,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
                   </TableTd>
                   <TableTd ta="right">{formatVnd(deal.amount)}</TableTd>
                   <TableTd ta="right">
-                    <LinkIcon href={`/app/deals/${deal.id}`} label={`Open ${deal.title}`} />
+                    <LinkIcon href={`/app/deals/${deal.id}`} label={t("openDeal", { name: deal.title })} />
                   </TableTd>
                 </TableTr>
               ))}
@@ -108,9 +110,9 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
           </Table>
           </ListTable>
         ) : q ? (
-          <Text size="sm" c="dimmed">Không thấy deal khớp.</Text>
+          <Text size="sm" c="dimmed">{t("noMatches")}</Text>
         ) : (
-          <EmptyState icon={<BriefcaseBusiness size={18} />} title="No deals" description="Qualify a lead hoặc tạo deal mới." />
+          <EmptyState icon={<BriefcaseBusiness size={18} />} title={t("emptyTitle")} description={t("emptyDescription")} />
         )}
       </SectionPanel>
     </Stack>

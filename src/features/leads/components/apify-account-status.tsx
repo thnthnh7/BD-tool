@@ -23,7 +23,7 @@ type Connection = {
   token_label: string | null;
 };
 
-export function ApifyAccountStatus({ connection, canManage, oauthReady, compact = false, showSetup = false }: { connection: Connection | null; canManage: boolean; oauthReady: boolean; compact?: boolean; showSetup?: boolean }) {
+export function ApifyAccountStatus({ connection, canManage, oauthReady, compact = false, showSetup = false, activitySummary = [] }: { connection: Connection | null; canManage: boolean; oauthReady: boolean; compact?: boolean; showSetup?: boolean; activitySummary?: string[] }) {
   const t = useTranslations("Apify");
   const locale = useLocale();
   if (!connection) {
@@ -79,9 +79,13 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
         </Box>
       </Box>
       <Group justify="space-between" gap="xs" mt={6} className={classes.metaRow}>
-        <Group gap={4} wrap="nowrap">
-          <Text size="xs" c="dimmed">{connection.last_synced_at ? t("synced", { date: new Date(connection.last_synced_at).toLocaleString(locale) }) : t("neverSynced")}</Text>
-          {canManage && <ApifyRefreshButton />}
+        <Group gap={6} wrap="wrap">
+          <Group gap={4} wrap="nowrap">
+            <Text size="xs" c="dimmed">{connection.last_synced_at ? t("synced", { date: new Date(connection.last_synced_at).toLocaleString(locale) }) : t("neverSynced")}</Text>
+            {canManage && <ApifyRefreshButton />}
+          </Group>
+          {activitySummary.length > 0 && <Text size="xs" c="dimmed">·</Text>}
+          {activitySummary.map((item, index) => <Text key={`${item}-${index}`} size="xs" fw={600}>{item}</Text>)}
         </Group>
         {connection.usage_cycle_end && <Text size="xs" c="dimmed">{t("reset", { date: new Date(connection.usage_cycle_end).toLocaleDateString(locale) })}</Text>}
       </Group>

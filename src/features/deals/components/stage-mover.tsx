@@ -6,6 +6,7 @@ import { ActionIcon, Menu, NativeSelect } from "@mantine/core";
 import { ArrowRightLeft } from "lucide-react";
 import { moveDealStageAction } from "@/features/deals/server/actions";
 import classes from "@/styles/leadely-kanban.module.css";
+import { useTranslations } from "next-intl";
 
 export function StageMover({
   dealId,
@@ -19,6 +20,7 @@ export function StageMover({
   mode: "menu" | "select";
 }) {
   const router = useRouter();
+  const t = useTranslations("Deals");
   const [pending, setPending] = useState(false);
 
   async function move(nextStageId: string) {
@@ -36,7 +38,7 @@ export function StageMover({
     return (
       <div className={classes.mobileMove}>
         <NativeSelect
-          aria-label="Move to stage"
+          aria-label={t("moveToStage")}
           value={stageId}
           disabled={pending}
           data={stages.map((stage) => ({ value: stage.id, label: stage.name }))}
@@ -50,12 +52,12 @@ export function StageMover({
     <div className={classes.desktopMove}>
       <Menu position="bottom-end" withinPortal shadow="md">
         <Menu.Target>
-          <ActionIcon variant="subtle" color="gray" size={28} loading={pending} aria-label="Move to stage">
+          <ActionIcon variant="subtle" color="gray" size={28} loading={pending} aria-label={t("moveToStage")}>
             <ArrowRightLeft size={14} />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Label>Move to</Menu.Label>
+          <Menu.Label>{t("moveTo")}</Menu.Label>
           {stages.map((stage) => (
             <Menu.Item key={stage.id} disabled={stage.id === stageId} onClick={() => move(stage.id)}>
               {stage.name}

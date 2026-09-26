@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useRef } from "react";
 import { Alert, AppShell, Avatar, Burger, Group, Menu, NavLink, ScrollArea, Stack, Text, UnstyledButton } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -11,11 +12,13 @@ import {
   CheckSquare,
   ChevronUp,
   CreditCard,
+  Database,
   FileText,
   HeartPulse,
   Inbox,
   LayoutDashboard,
   ScrollText,
+  Share2,
   ListFilter,
   LogOut,
   Library,
@@ -59,6 +62,7 @@ const workspaceGroups: NavGroup[] = [
     items: [
       { href: "/app/leads/sources", label: "sources", icon: Library, roles: ["owner", "admin", "member"] },
       { href: "/app/leads/scrape", label: "scrape", icon: Radar, roles: ["owner", "admin", "member"] },
+      { href: "/app/data", label: "dataLibrary", icon: Database, roles: ["owner", "admin", "member"] },
       { href: "/app/leads", label: "leads", icon: UserPlus, roles: ["owner", "admin", "member"] },
       { href: "/app/lists", label: "lists", icon: ListFilter, roles: ["owner", "admin", "member"] },
     ],
@@ -96,6 +100,7 @@ const workspaceGroups: NavGroup[] = [
     label: "Workspace",
     items: [
       { href: "/app/team", label: "team", icon: Users, roles: ["owner", "admin"] },
+      { href: "/app/crm-integrations", label: "crmIntegration", icon: Share2, roles: ["owner", "admin", "member"] },
     ],
   },
 ];
@@ -109,6 +114,7 @@ const platformGroups: NavGroup[] = [
       { href: "/app/platform/workspaces", label: "workspaces", icon: Building2, roles: ["super_admin", "support"] },
       { href: "/app/platform/plans", label: "plans", icon: PackagePlus, roles: ["super_admin", "support"] },
       { href: "/app/platform/payments", label: "payments", icon: CreditCard, roles: ["super_admin", "support"] },
+      { href: "/app/platform/crm-integrations", label: "crmIntegration", icon: Share2, roles: ["super_admin", "support"] },
       { href: "/app/platform/health", label: "health", icon: HeartPulse, roles: ["super_admin"] },
       { href: "/app/platform/audit", label: "audit", icon: ScrollText, roles: ["super_admin", "support"] },
     ],
@@ -272,11 +278,20 @@ function ShellLink({
   onClick: () => void;
 }) {
   const Icon = item.icon;
+  const router = useRouter();
+  const lastPrefetch = useRef(0);
+  const prefetch = () => {
+    if (pathname === item.href || Date.now() - lastPrefetch.current < 30_000) return;
+    lastPrefetch.current = Date.now();
+    router.prefetch(item.href);
+  };
   return (
     <NavLink
       component={Link}
       href={item.href}
       prefetch={false}
+      onMouseEnter={prefetch}
+      onFocus={prefetch}
       label={label}
       leftSection={<Icon size={18} />}
       active={navItemActive(pathname, item.href)}

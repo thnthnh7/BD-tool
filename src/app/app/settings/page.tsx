@@ -12,7 +12,7 @@ import { getTranslations } from "next-intl/server";
 
 export default async function SettingsPage() {
   const t = await getTranslations("Settings");
-  const { context, settings } = await loadWorkspaceAppData();
+  const { context, settings } = await loadWorkspaceAppData(["settings"]);
   const [ai, apify] = await Promise.all([getDefaultAiProvider(), getCurrentWorkspaceApifyStatus()]);
   const canManage = context.memberRole === "owner" || context.memberRole === "admin";
 

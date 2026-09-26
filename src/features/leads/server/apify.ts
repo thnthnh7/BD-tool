@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { incrementUsage } from "@/lib/usage";
 import { readAllPages } from "@/features/leads/server/read-pages";
 import { getApifyConnectionToken, syncApifyConnection } from "@/features/leads/server/apify-connection";
+import { normalizeDataRecord, type DataRecordType } from "@/features/data-library/normalize";
 
 type Db = SupabaseClient<Database>;
 type Job = Database["public"]["Tables"]["lead_scrape_jobs"]["Row"];
@@ -92,6 +93,48 @@ function ingestKeyFromRaw(raw: Json) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const value = (raw as { ingest_key?: unknown }).ingest_key;
   return typeof value === "number" ? value : null;
+}
+
+async function syncDataLibrary(supabase: Db, job: Job, items: unknown[], forcedType?: DataRecordType) {
+  const { data: collection, error: collectionError } = await supabase
+    .from("data_collections")
+    .upsert({
+      workspace_id: job.workspace_id,
+      scrape_job_id: job.id,
+      name: job.query || job.apify_actor_id,
+      description: job.location || "",
+      source_type: "apify_dataset",
+      source_actor_id: job.apify_actor_id,
+      external_dataset_id: job.apify_dataset_id,
+      record_count: items.length,
+      status: "active",
+      created_by: job.created_by,
+    }, { onConflict: "scrape_job_id" })
+    .select("id")
+    .single();
+  if (collectionError || !collection) throw new Error(collectionError?.message || "Không tạo được Data Library collection.");
+
+  for (let start = 0; start < items.length; start += 200) {
+    const rows = items.slice(start, start + 200).map((item, offset) => {
+      const index = start + offset;
+      const normalized = normalizeDataRecord(item, index, forcedType);
+      return {
+        workspace_id: job.workspace_id,
+        collection_id: collection.id,
+        source_item_key: String(index),
+        record_type: normalized.recordType,
+        title: normalized.title,
+        canonical_url: normalized.canonicalUrl,
+        normalized_data: normalized.normalizedData,
+        raw_data: normalized.rawData,
+        identity_keys: normalized.identityKeys,
+        content_hash: normalized.contentHash,
+        captured_at: job.finished_at || new Date().toISOString(),
+      };
+    });
+    const { error } = await supabase.from("data_records").upsert(rows, { onConflict: "collection_id,source_item_key" });
+    if (error) throw new Error(error.message);
+  }
 }
 
 export async function claimScrapeIngest(
@@ -186,6 +229,7 @@ async function ingestRawItems(supabase: Db, job: Job, items: unknown[]) {
   const placesFound = existing.length + rows.length;
   const { error: countError } = await supabase.from("lead_scrape_jobs").update({ places_found: placesFound, people_found: 0 }).eq("id", job.id);
   if (countError) throw new Error(countError.message);
+  await syncDataLibrary(supabase, job, items);
   return { placesFound, peopleFound: 0, billPlaces: false as const };
 }
 
@@ -306,6 +350,8 @@ export async function ingestDatasetItems(supabase: Db, job: Job, items: unknown[
     .update({ places_found: placesFound, people_found: peopleFound })
     .eq("id", job.id);
 
+  await syncDataLibrary(supabase, job, items, "place");
+
   return { placesFound, peopleFound, billPlaces: true as const };
 }
 
@@ -315,6 +361,10 @@ export async function runScrapeIngest(job: Job) {
     if (!job.apify_dataset_id) throw new Error("Job chưa có dataset.");
     if (!job.apify_connection_id) throw new Error("Job không có kết nối Apify.");
     const token = await getApifyConnectionToken(job.apify_connection_id);
+    const run = job.apify_run_id ? await fetchApifyRun(job.apify_run_id, token).catch(() => null) : null;
+    if (run?.usageTotalUsd != null) {
+      await supabase.from("lead_scrape_jobs").update({ apify_usage_usd: run.usageTotalUsd }).eq("id", job.id);
+    }
     const items = await fetchApifyDatasetItems(job.apify_dataset_id, token);
     const ingested = await ingestDatasetItems(supabase, job, items);
     const { data: workspace } = await supabase.from("workspaces").select("plan_id").eq("id", job.workspace_id).single();
@@ -385,9 +435,10 @@ export async function fetchApifyRun(runId: string, token: string) {
     headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(15000),
   });
   if (!response.ok) throw new Error(`Không đọc được lần chạy Apify (${response.status}).`);
-  const payload = await response.json() as { data?: { status?: string } };
+  const payload = await response.json() as { data?: { status?: string; usageTotalUsd?: number } };
   if (!payload.data?.status) throw new Error("Apify không trả về trạng thái lần chạy.");
-  return { status: payload.data.status };
+  const usageTotalUsd = payload.data.usageTotalUsd;
+  return { status: payload.data.status, usageTotalUsd: typeof usageTotalUsd === "number" && Number.isFinite(usageTotalUsd) ? usageTotalUsd : null };
 }
 
 export async function startApifyActorRun(input: { actorSlug: string; body: Record<string, unknown>; webhookUrl: string; token: string }) {

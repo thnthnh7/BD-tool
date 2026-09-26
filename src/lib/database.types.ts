@@ -421,6 +421,17 @@ export type Database = {
           vat_requested: boolean;
           vat_tax_code: string;
           workspace_id: string;
+          provider: string;
+          external_invoice_id: string | null;
+          provider_status: string | null;
+          hosted_invoice_url: string | null;
+          billing_country: string | null;
+          display_currency: string | null;
+          subtotal_amount: number | null;
+          tax_amount: number;
+          total_amount: number | null;
+          tax_behavior: "inclusive" | "exclusive" | null;
+          tax_calculation_id: string | null;
         };
         Insert: {
           amount: number;
@@ -437,6 +448,17 @@ export type Database = {
           vat_requested?: boolean;
           vat_tax_code?: string;
           workspace_id: string;
+          provider?: string;
+          external_invoice_id?: string | null;
+          provider_status?: string | null;
+          hosted_invoice_url?: string | null;
+          billing_country?: string | null;
+          display_currency?: string | null;
+          subtotal_amount?: number | null;
+          tax_amount?: number;
+          total_amount?: number | null;
+          tax_behavior?: "inclusive" | "exclusive" | null;
+          tax_calculation_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["invoices"]["Insert"]>;
         Relationships: [];
@@ -454,6 +476,91 @@ export type Database = {
         };
         Insert: Database["public"]["Tables"]["module_templates"]["Row"];
         Update: Partial<Database["public"]["Tables"]["module_templates"]["Row"]>;
+        Relationships: [];
+      };
+      knowledge_documents: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          file_name: string;
+          storage_path: string;
+          mime_type: string;
+          byte_size: number;
+          status: "processing" | "ready" | "error" | "archived";
+          extracted_chars: number;
+          chunk_count: number;
+          error_message: string;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          file_name: string;
+          storage_path: string;
+          mime_type?: string;
+          byte_size?: number;
+          status?: "processing" | "ready" | "error" | "archived";
+          extracted_chars?: number;
+          chunk_count?: number;
+          error_message?: string;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["knowledge_documents"]["Insert"]>;
+        Relationships: [];
+      };
+      knowledge_chunks: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          document_id: string;
+          chunk_index: number;
+          content: string;
+          metadata: Json;
+          embedding: string;
+          search_vector: unknown;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          document_id: string;
+          chunk_index: number;
+          content: string;
+          metadata?: Json;
+          embedding: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["knowledge_chunks"]["Insert"]>;
+        Relationships: [];
+      };
+      knowledge_module_drafts: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          document_id: string;
+          name: string;
+          description: string;
+          suggested_price: number;
+          source_excerpt: string;
+          status: "pending" | "approved" | "rejected";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          document_id: string;
+          name: string;
+          description?: string;
+          suggested_price?: number;
+          source_excerpt?: string;
+          status?: "pending" | "approved" | "rejected";
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["knowledge_module_drafts"]["Insert"]>;
         Relationships: [];
       };
       modules: {
@@ -490,7 +597,13 @@ export type Database = {
           id: string;
           invoice_id: string;
           raw: Json;
-          sepay_id: string;
+          sepay_id: string | null;
+          provider: string;
+          external_payment_id: string | null;
+          currency: string;
+          provider_fee: number | null;
+          net_amount: number | null;
+          refund_status: string | null;
         };
         Insert: {
           amount: number;
@@ -499,7 +612,13 @@ export type Database = {
           id?: string;
           invoice_id: string;
           raw?: Json;
-          sepay_id: string;
+          sepay_id?: string | null;
+          provider?: string;
+          external_payment_id?: string | null;
+          currency?: string;
+          provider_fee?: number | null;
+          net_amount?: number | null;
+          refund_status?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["payments"]["Insert"]>;
         Relationships: [];
@@ -524,6 +643,52 @@ export type Database = {
         };
         Insert: Database["public"]["Tables"]["plans"]["Row"];
         Update: Partial<Database["public"]["Tables"]["plans"]["Row"]>;
+        Relationships: [];
+      };
+      billing_provider_prices: {
+        Row: {
+          id: string;
+          plan_id: string;
+          provider: "stripe" | "paypal" | "sepay";
+          billing_interval: "monthly" | "yearly";
+          currency: string;
+          amount: number;
+          external_product_id: string | null;
+          external_price_id: string;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["billing_provider_prices"]["Row"], "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["billing_provider_prices"]["Insert"]>;
+        Relationships: [];
+      };
+      billing_webhook_events: {
+        Row: {
+          id: string;
+          provider: "stripe" | "paypal" | "sepay";
+          external_event_id: string;
+          event_type: string;
+          payload: Json;
+          received_at: string;
+          processed_at: string | null;
+          processing_error: string | null;
+        };
+        Insert: {
+          id?: string;
+          provider: "stripe" | "paypal" | "sepay";
+          external_event_id: string;
+          event_type: string;
+          payload?: Json;
+          received_at?: string;
+          processed_at?: string | null;
+          processing_error?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["billing_webhook_events"]["Insert"]>;
         Relationships: [];
       };
       platform_admins: {
@@ -700,6 +865,13 @@ export type Database = {
           status: string;
           updated_at: string;
           workspace_id: string;
+          provider: string;
+          external_customer_id: string | null;
+          external_subscription_id: string | null;
+          external_plan_id: string | null;
+          provider_status: string | null;
+          cancel_at_period_end: boolean;
+          trial_end: string | null;
         };
         Insert: {
           billing_interval?: string;
@@ -712,6 +884,13 @@ export type Database = {
           status?: string;
           updated_at?: string;
           workspace_id: string;
+          provider?: string;
+          external_customer_id?: string | null;
+          external_subscription_id?: string | null;
+          external_plan_id?: string | null;
+          provider_status?: string | null;
+          cancel_at_period_end?: boolean;
+          trial_end?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["subscriptions"]["Insert"]>;
         Relationships: [];
@@ -819,6 +998,10 @@ export type Database = {
           name: string;
           plan_id: string;
           plan_status: string;
+          plan_deactivated_at: string | null;
+          plan_deactivated_by: string | null;
+          plan_deactivation_reason: string | null;
+          plan_status_before_deactivation: string | null;
           slug: string;
           type: string;
           updated_at: string;
@@ -831,6 +1014,10 @@ export type Database = {
           name: string;
           plan_id: string;
           plan_status?: string;
+          plan_deactivated_at?: string | null;
+          plan_deactivated_by?: string | null;
+          plan_deactivation_reason?: string | null;
+          plan_status_before_deactivation?: string | null;
           slug: string;
           type: string;
           updated_at?: string;
@@ -876,6 +1063,7 @@ export type Database = {
           apify_connection_id: string | null;
           apify_account_id: string | null;
           apify_account_username: string | null;
+          apify_usage_usd: number | null;
           webhook_secret: string;
           places_found: number;
           places_imported: number;
@@ -950,6 +1138,51 @@ export type Database = {
         };
         Insert: Partial<Database["public"]["Tables"]["lead_scrape_people"]["Row"]> & { workspace_id: string; result_id: string };
         Update: Partial<Database["public"]["Tables"]["lead_scrape_people"]["Row"]>;
+        Relationships: Rel;
+      };
+      data_collections: {
+        Row: {
+          id: string; workspace_id: string; scrape_job_id: string | null; name: string; description: string;
+          source_type: string; source_actor_id: string; external_dataset_id: string | null; schema_version: number;
+          record_count: number; status: string; created_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["data_collections"]["Row"]> & { workspace_id: string; name: string };
+        Update: Partial<Database["public"]["Tables"]["data_collections"]["Row"]>;
+        Relationships: Rel;
+      };
+      data_records: {
+        Row: {
+          id: string; workspace_id: string; collection_id: string; scrape_result_id: string | null;
+          source_item_key: string; record_type: string; title: string; canonical_url: string;
+          normalized_data: Json; raw_data: Json; identity_keys: Json; content_hash: string;
+          promoted_company_id: string | null; promoted_contact_id: string | null;
+          captured_at: string; created_at: string; updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["data_records"]["Row"]> & {
+          workspace_id: string; collection_id: string; source_item_key: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["data_records"]["Row"]>;
+        Relationships: Rel;
+      };
+      data_assets: {
+        Row: {
+          id: string; workspace_id: string; collection_id: string; record_id: string | null; asset_type: string;
+          file_name: string; mime_type: string; source_url: string; storage_path: string; byte_size: number;
+          checksum: string; metadata: Json; created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["data_assets"]["Row"]> & { workspace_id: string; collection_id: string };
+        Update: Partial<Database["public"]["Tables"]["data_assets"]["Row"]>;
+        Relationships: Rel;
+      };
+      data_record_links: {
+        Row: {
+          id: string; workspace_id: string; from_record_id: string; to_record_id: string;
+          relation_type: string; metadata: Json; created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["data_record_links"]["Row"]> & {
+          workspace_id: string; from_record_id: string; to_record_id: string; relation_type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["data_record_links"]["Row"]>;
         Relationships: Rel;
       };
       lead_lists: {
@@ -1091,6 +1324,152 @@ export type Database = {
           provider: string;
         };
         Update: Partial<Database["public"]["Tables"]["integration_connections"]["Row"]>;
+        Relationships: Rel;
+      };
+      crm_connections: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          provider: string;
+          status: string;
+          sync_direction: string;
+          conflict_policy: string;
+          sync_objects: string[];
+          account_label: string;
+          last_synced_at: string | null;
+          last_error: string | null;
+          metadata: Json;
+          setup_step: string;
+          sync_interval_minutes: number;
+          webhook_status: string;
+          last_full_sync_at: string | null;
+          next_sync_at: string | null;
+          access_token_secret_id: string | null;
+          refresh_token_secret_id: string | null;
+          token_expires_at: string | null;
+          granted_scopes: string[];
+          authorized_by: string | null;
+          authorized_at: string | null;
+          revoked_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["crm_connections"]["Row"]> & {
+          workspace_id: string;
+          provider: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_connections"]["Row"]>;
+        Relationships: Rel;
+      };
+      crm_provider_configs: {
+        Row: {
+          provider: string;
+          enabled: boolean;
+          rollout_status: string;
+          notes: string;
+          client_id_secret_id: string | null;
+          client_secret_secret_id: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["crm_provider_configs"]["Row"]> & {
+          provider: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_provider_configs"]["Row"]>;
+        Relationships: Rel;
+      };
+      crm_field_mappings: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          connection_id: string;
+          object_type: string;
+          leadely_field: string;
+          external_field: string;
+          sync_direction: string;
+          transformation: string;
+          required: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["crm_field_mappings"]["Row"]> & {
+          workspace_id: string;
+          connection_id: string;
+          object_type: string;
+          leadely_field: string;
+          external_field: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_field_mappings"]["Row"]>;
+        Relationships: Rel;
+      };
+      crm_connection_audit: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          connection_id: string | null;
+          actor_user_id: string | null;
+          action: string;
+          detail: Json;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["crm_connection_audit"]["Row"]> & {
+          workspace_id: string;
+          action: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_connection_audit"]["Row"]>;
+        Relationships: Rel;
+      };
+      crm_record_links: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          connection_id: string;
+          object_type: string;
+          leadely_record_id: string;
+          external_record_id: string;
+          leadely_updated_at: string | null;
+          external_updated_at: string | null;
+          last_synced_at: string | null;
+          sync_status: string;
+          content_hash: string | null;
+          last_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["crm_record_links"]["Row"]> & {
+          workspace_id: string;
+          connection_id: string;
+          object_type: string;
+          leadely_record_id: string;
+          external_record_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_record_links"]["Row"]>;
+        Relationships: Rel;
+      };
+      crm_sync_runs: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          connection_id: string;
+          direction: string;
+          status: string;
+          records_read: number;
+          records_created: number;
+          records_updated: number;
+          records_skipped: number;
+          records_failed: number;
+          error_summary: string | null;
+          started_at: string;
+          completed_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["crm_sync_runs"]["Row"]> & {
+          workspace_id: string;
+          connection_id: string;
+          direction: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_sync_runs"]["Row"]>;
         Relationships: Rel;
       };
       communications: {
@@ -1421,6 +1800,38 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      crm_provider_availability: {
+        Args: Record<string, never>;
+        Returns: { provider: string; enabled: boolean; rollout_status: string; credentials_configured: boolean }[];
+      };
+      set_crm_provider_credentials: {
+        Args: { p_provider: string; p_client_id?: string | null; p_client_secret?: string | null };
+        Returns: undefined;
+      };
+      get_crm_provider_credentials: {
+        Args: { p_provider: string };
+        Returns: { client_id: string | null; client_secret: string | null }[];
+      };
+      store_crm_connection_tokens: {
+        Args: {
+          p_connection_id: string;
+          p_access_token: string;
+          p_refresh_token?: string | null;
+          p_expires_at?: string | null;
+          p_scopes?: string[];
+          p_actor_user_id?: string | null;
+          p_detail?: Json;
+        };
+        Returns: undefined;
+      };
+      get_crm_connection_tokens: {
+        Args: { p_connection_id: string };
+        Returns: { access_token: string | null; refresh_token: string | null; token_expires_at: string | null }[];
+      };
+      revoke_crm_connection: {
+        Args: { p_connection_id: string; p_actor_user_id: string };
+        Returns: undefined;
+      };
       acquire_hold: { Args: { p_subject: string; p_bucket: string; p_ttl_seconds: number }; Returns: boolean };
       admit: {
         Args: { p_subject: string; p_bucket: string; p_max_hits: number; p_window_seconds: number };
@@ -1432,6 +1843,10 @@ export type Database = {
       };
       current_member_role: { Args: Record<string, never>; Returns: string };
       current_workspace_id: { Args: Record<string, never>; Returns: string };
+      data_library_type_counts: {
+        Args: Record<string, never>;
+        Returns: { record_type: string; record_count: number }[];
+      };
       is_platform_admin: { Args: Record<string, never>; Returns: boolean };
       lookup_companies_for_ingest: {
         Args: { p_workspace_id: string; p_place_ids: string[]; p_domains: string[] };
@@ -1447,6 +1862,18 @@ export type Database = {
       lookup_contacts_for_ingest: {
         Args: { p_workspace_id: string; p_emails: string[] };
         Returns: { id: string; email: string; company_id: string | null; display_name: string }[];
+      };
+      match_knowledge_chunks: {
+        Args: { query_embedding: string; query_text: string; match_count?: number };
+        Returns: {
+          id: string;
+          document_id: string;
+          file_name: string;
+          content: string;
+          metadata: Json;
+          similarity: number;
+          text_rank: number;
+        }[];
       };
       platform_role: { Args: Record<string, never>; Returns: string };
       platform_workspace_counts: { Args: { p_workspace_id: string }; Returns: Json };
