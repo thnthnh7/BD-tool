@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isIP } from "node:net";
+import { lookup } from "node:dns/promises";
 import { requireWorkspace } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -18,6 +20,31 @@ async function editableWorkspace() {
   const context = await requireWorkspace();
   if (context.memberRole === "member") return { error: "Only workspace owners and admins can manage CRM integrations." } as const;
   return { context, supabase: await createClient() } as const;
+}
+
+function isPrivateAddress(address: string) {
+  if (isIP(address) === 4) {
+    const [a, b] = address.split(".").map(Number);
+    return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+  const normalized = address.toLowerCase();
+  return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80:");
+}
+
+async function safeActiveCampaignOrigin(rawUrl: string) {
+  const url = new URL(rawUrl);
+  if (url.protocol !== "https:" || url.username || url.password || url.port) {
+    throw new Error("ActiveCampaign URL must use HTTPS without credentials or a custom port.");
+  }
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
+    throw new Error("Private network URLs are not allowed.");
+  }
+  const addresses = await lookup(hostname, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some(({ address }) => isPrivateAddress(address))) {
+    throw new Error("The CRM hostname must resolve only to public IP addresses.");
+  }
+  return url.origin;
 }
 
 export async function loadCrmIntegrations() {
@@ -128,12 +155,15 @@ export async function saveActiveCampaignCredentialsAction(formData: FormData) {
   const connectionId = text(formData, "connection_id");
   const apiUrl = text(formData, "api_url");
   const apiKey = text(formData, "api_key");
-  try { new URL(apiUrl); } catch { return { error: "Enter a valid ActiveCampaign account URL." }; }
+  let apiOrigin: string;
+  try { apiOrigin = await safeActiveCampaignOrigin(apiUrl); } catch (error) {
+    return { error: error instanceof Error ? error.message : "Enter a valid ActiveCampaign account URL." };
+  }
   if (apiKey.length < 10) return { error: "Enter a valid ActiveCampaign API key." };
   const { data: connection } = await workspace.supabase.from("crm_connections").select("id, provider").eq("id", connectionId).eq("workspace_id", workspace.context.workspaceId).maybeSingle();
   if (!connection || connection.provider !== "activecampaign") return { error: "ActiveCampaign connection not found." };
-  await storeCrmTokens({ connectionId, userId: workspace.context.userId, accessToken: apiKey, metadata: { auth_method: "api_key", api_url: new URL(apiUrl).origin } });
-  await createAdminClient().from("crm_connections").update({ account_label: new URL(apiUrl).origin }).eq("id", connectionId);
+  await storeCrmTokens({ connectionId, userId: workspace.context.userId, accessToken: apiKey, metadata: { auth_method: "api_key", api_url: apiOrigin } });
+  await createAdminClient().from("crm_connections").update({ account_label: apiOrigin }).eq("id", connectionId);
   revalidatePath("/app/crm-integrations");
   return { ok: true as const };
 }

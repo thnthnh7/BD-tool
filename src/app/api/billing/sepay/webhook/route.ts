@@ -6,8 +6,13 @@ import { recordHeartbeat } from "@/lib/platform/heartbeat";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  const webhookSecret = process.env.SEPAY_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    await recordHeartbeat("sepay_webhook", false, "missing webhook secret");
+    return NextResponse.json({ success: false, error: "Webhook is not configured" }, { status: 503 });
+  }
   const auth = request.headers.get("authorization") || request.headers.get("x-sepay-signature") || "";
-  if (process.env.SEPAY_WEBHOOK_SECRET && !verifySepaySecret(auth)) {
+  if (!verifySepaySecret(auth)) {
     await recordHeartbeat("sepay_webhook", false, "unauthorized");
     return NextResponse.json({ success: false }, { status: 401 });
   }

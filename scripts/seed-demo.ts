@@ -4,7 +4,7 @@
  * Usage from repo root:
  *   npx tsx scripts/seed-demo.ts
  *
- * Login: demo@leadely.app / LeadelyDemo1!
+ * Set DEMO_PASSWORD in .env.local before running this script.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -12,7 +12,7 @@ import { randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const DEMO_EMAIL = "demo@leadely.app";
-const DEMO_PASSWORD = "LeadelyDemo1!";
+let demoPassword = "";
 const DEMO_WORKSPACE = "Leadely Demo";
 
 type Stage = { id: string; name: string; stage_type: string; probability: number; pipeline_id: string };
@@ -84,7 +84,7 @@ function publicId() {
 async function findOrCreateUser(admin: SupabaseClient) {
   const created = await admin.auth.admin.createUser({
     email: DEMO_EMAIL,
-    password: DEMO_PASSWORD,
+    password: demoPassword,
     email_confirm: true,
     user_metadata: { display_name: "Leadely Demo" },
   });
@@ -95,7 +95,7 @@ async function findOrCreateUser(admin: SupabaseClient) {
     throw new Error(created.error?.message || "Could not create or find demo user.");
   }
   const updated = await admin.auth.admin.updateUserById(profile.id, {
-    password: DEMO_PASSWORD,
+    password: demoPassword,
     email_confirm: true,
   });
   if (updated.error) throw new Error(`Reset demo password: ${updated.error.message}`);
@@ -551,6 +551,8 @@ async function main() {
   loadEnv();
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const key = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+  demoPassword = requireEnv("DEMO_PASSWORD");
+  if (demoPassword.length < 12) throw new Error("DEMO_PASSWORD must contain at least 12 characters.");
   const admin = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 
   const userId = await findOrCreateUser(admin);
@@ -560,7 +562,7 @@ async function main() {
 
   console.log("Demo account ready.");
   console.log(`  Email:    ${DEMO_EMAIL}`);
-  console.log(`  Password: ${DEMO_PASSWORD}`);
+  console.log("  Password: read from DEMO_PASSWORD (not printed)");
   console.log(`  Workspace: ${DEMO_WORKSPACE} (${workspaceId})`);
   console.log("Log in at /login then open Dashboard.");
 }

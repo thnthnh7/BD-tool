@@ -2,6 +2,7 @@ import { Alert, Badge, Button, Checkbox, Group, NativeSelect, Paper, PasswordInp
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { loadPlatformCrmIntegrations, updateCrmProviderConfigAction } from "@/features/crm-integrations/server/platform-actions";
+import { CrmProviderLogo } from "@/features/crm-integrations/components/crm-provider-logo";
 
 export default async function PlatformCrmIntegrationsPage() {
   const data = await loadPlatformCrmIntegrations();
@@ -27,11 +28,14 @@ export default async function PlatformCrmIntegrationsPage() {
               <form action={updateCrmProviderConfigAction}>
                 <input type="hidden" name="provider" value={provider.id} />
                 <Group justify="space-between" align="flex-start" mb="sm">
+                  <Group gap="sm" wrap="nowrap" align="flex-start">
+                    <CrmProviderLogo {...provider} />
                   <div>
                     <Group gap="xs"><Text fw={700}>{provider.name}</Text><Badge variant="light" color={provider.credentialsReady ? "teal" : "yellow"}>{provider.credentialsReady ? `Credentials ready · ${provider.credentialSource === "vault" ? "Vault" : provider.credentialSource === "environment" ? "Environment" : "Workspace"}` : "Credentials missing"}</Badge></Group>
                     <Text size="xs" c="dimmed">{provider.auth} · {provider.usage.connected} active / {provider.usage.total} configured workspaces</Text>
                     {provider.credentials.length ? <Text size="xs" c="dimmed">Redirect URL: {appUrl}/api/integrations/crm/{provider.id}/callback</Text> : null}
                   </div>
+                  </Group>
                   <Checkbox name="enabled" label="Available to users" defaultChecked={provider.config?.enabled || false} disabled={!data.canMutate || !provider.credentialsReady} />
                 </Group>
                 {provider.credentials.length === 0 ? <Text size="xs" c="dimmed" mb="sm">Credentials are supplied securely by each workspace.</Text> : (

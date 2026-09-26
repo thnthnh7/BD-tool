@@ -42,7 +42,10 @@ export function addMonths(date: Date, months: number) {
 }
 
 function secretsKey() {
-  const raw = process.env.WORKSPACE_SECRETS_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "leadely-dev-secret";
+  const raw = process.env.WORKSPACE_SECRETS_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!raw) {
+    throw new Error("WORKSPACE_SECRETS_KEY or SUPABASE_SERVICE_ROLE_KEY must be configured.");
+  }
   return scryptSync(raw, "leadely-byok", 32);
 }
 

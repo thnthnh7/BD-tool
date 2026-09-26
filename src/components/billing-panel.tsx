@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/leadely/empty-state";
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { StatusBadge } from "@/components/leadely/status-badge";
-import { createCheckoutInvoice, initGatewayCheckout, initiateSubscriptionCheckout } from "@/lib/billing/actions";
+import { createCheckoutInvoice, initGatewayCheckout, initiateSubscriptionCheckout } from "@/lib/billing/client-actions";
 import { billingMarketOptions, convertUsdCents, formatMinorAmount, marketForLocale } from "@/lib/billing/localization";
 import { formatVnd } from "@/lib/money";
 import type { AppLocale } from "@/i18n/config";

@@ -3,11 +3,15 @@ import { requireOwnerOrAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { ACCEPTED_EXTENSIONS, chunkText, extractDocumentText, fileExtension, findPricingDrafts } from "@/features/knowledge/server/extract";
 import { embedTexts, vectorLiteral } from "@/features/knowledge/server/embedding";
+import { admit } from "@/lib/admission";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MAX_BYTES = 15 * 1024 * 1024;
+const MAX_ARCHIVE_BYTES = 5 * 1024 * 1024;
+const MAX_EXTRACTED_CHARS = 2_000_000;
+const MAX_CHUNKS = 1_200;
 
 function safeName(name: string) {
   return name.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").slice(-140);
@@ -15,6 +19,9 @@ function safeName(name: string) {
 
 export async function POST(request: NextRequest) {
   const context = await requireOwnerOrAdmin();
+  const supabase = await createClient();
+  const gate = await admit(supabase, context.workspaceId, "knowledge_upload", 6, 3600);
+  if ("error" in gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "Hãy chọn một file." }, { status: 400 });
@@ -23,8 +30,10 @@ export async function POST(request: NextRequest) {
   if (!ACCEPTED_EXTENSIONS.includes(extension as (typeof ACCEPTED_EXTENSIONS)[number])) {
     return NextResponse.json({ error: "Chỉ hỗ trợ PDF, DOCX, XLSX, CSV và TXT." }, { status: 400 });
   }
+  if ((extension === "docx" || extension === "xlsx") && file.size > MAX_ARCHIVE_BYTES) {
+    return NextResponse.json({ error: "File DOCX/XLSX phải nhỏ hơn 5 MB." }, { status: 400 });
+  }
 
-  const supabase = await createClient();
   const documentId = crypto.randomUUID();
   const storagePath = `${context.workspaceId}/${documentId}-${safeName(file.name)}`;
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -54,7 +63,9 @@ export async function POST(request: NextRequest) {
     const processingFile = new File([bytes], file.name, { type: file.type });
     const text = await extractDocumentText(processingFile);
     if (text.trim().length < 20) throw new Error("Không trích xuất được đủ nội dung từ file.");
+    if (text.length > MAX_EXTRACTED_CHARS) throw new Error("Tài liệu vượt quá giới hạn 2 triệu ký tự.");
     const chunks = chunkText(text);
+    if (chunks.length > MAX_CHUNKS) throw new Error("Tài liệu tạo quá nhiều đoạn dữ liệu để xử lý an toàn.");
     const vectors = await embedTexts(chunks);
     for (let start = 0; start < chunks.length; start += 50) {
       const rows = chunks.slice(start, start + 50).map((content, offset) => ({

@@ -1,5 +1,3 @@
-"use server";
-
 import { revalidatePath } from "next/cache";
 import { decryptSecret, encryptSecret } from "@/lib/crypto-utils";
 import { requireOwnerOrAdmin, requireWorkspace } from "@/lib/auth/session";

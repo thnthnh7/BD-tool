@@ -1,4 +1,4 @@
-import { Alert, Avatar, Badge, Button, Checkbox, CheckboxGroup, Group, NativeSelect, Paper, SimpleGrid, Stack, Text, TextInput, ThemeIcon } from "@mantine/core";
+import { Alert, Badge, Button, Checkbox, CheckboxGroup, Group, NativeSelect, Paper, SimpleGrid, Stack, Text, TextInput, ThemeIcon } from "@mantine/core";
 import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, Check, CheckCircle2, KeyRound, Map, Play, RefreshCw } from "lucide-react";
 import { LinkButton } from "@/components/mantine-link";
 import { PageHeader } from "@/components/leadely/page-header";
@@ -6,6 +6,7 @@ import { SectionPanel } from "@/components/leadely/section-panel";
 import { Table, TableTbody, TableTd, TableTh, TableThead, TableTr } from "@/components/leadely/table";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { crmProvider, crmProviders, crmSyncObjects, leadelyMappingFields } from "@/features/crm-integrations/catalog";
+import { CrmProviderLogo } from "@/features/crm-integrations/components/crm-provider-logo";
 import { disconnectCrmConnectionAction, loadCrmIntegrations, saveActiveCampaignCredentialsAction, saveCrmConnectionAction, saveCrmFieldMappingAction, setCrmConnectionStateAction } from "@/features/crm-integrations/server/actions";
 
 function directionLabel(direction: string) {
@@ -68,7 +69,7 @@ export default async function CrmIntegrationsPage({
                 const provider = crmProvider(connection.provider);
                 return (
                   <TableTr key={connection.id}>
-                    <TableTd><Group gap="sm" wrap="nowrap"><Avatar radius="md" color="leadely">{provider?.initials || "CRM"}</Avatar><div><Text size="sm" fw={600}>{provider?.name || connection.provider}</Text>{connection.account_label ? <Text size="xs" c="dimmed">{connection.account_label}</Text> : null}</div></Group></TableTd>
+                    <TableTd><Group gap="sm" wrap="nowrap">{provider ? <CrmProviderLogo {...provider} /> : null}<div><Text size="sm" fw={600}>{provider?.name || connection.provider}</Text>{connection.account_label ? <Text size="xs" c="dimmed">{connection.account_label}</Text> : null}</div></Group></TableTd>
                     <TableTd><Text size="sm">{directionLabel(connection.sync_direction)}</Text></TableTd>
                     <TableTd><Text size="sm" lineClamp={1}>{connection.sync_objects.join(", ")}</Text></TableTd>
                     <TableTd><Badge variant="light" color={statusColor(connection.status)}>{connection.status.replaceAll("_", " ")}</Badge></TableTd>
@@ -95,7 +96,7 @@ export default async function CrmIntegrationsPage({
       <SectionPanel title={`Configure ${selectedProvider.name}`}>
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
           <Stack gap="sm">
-            <Group wrap="nowrap"><Avatar size={48} radius="md" color="leadely">{selectedProvider.initials}</Avatar><div><Text fw={700}>{selectedProvider.name}</Text><Text size="sm" c="dimmed">{selectedProvider.description}</Text></div></Group>
+            <Group wrap="nowrap"><CrmProviderLogo {...selectedProvider} size={48} /><div><Text fw={700}>{selectedProvider.name}</Text><Text size="sm" c="dimmed">{selectedProvider.description}</Text></div></Group>
             <Group gap="xs"><Badge variant="light">{selectedProvider.auth}</Badge>{selectedProvider.capabilities.map((capability) => <Badge key={capability} variant="outline" color="gray">{capability}</Badge>)}</Group>
             <Alert color={selectedConnection?.status === "connected" ? "teal" : "blue"} icon={selectedConnection?.status === "connected" ? <CheckCircle2 size={18} /> : <RefreshCw size={18} />}>
               {selectedConnection?.status === "connected"
@@ -225,7 +226,7 @@ export default async function CrmIntegrationsPage({
             const selected = provider.id === selectedProvider.id;
             return (
               <Paper key={provider.id} withBorder radius="md" p="md" bg={selected ? "var(--mantine-color-teal-0)" : undefined}>
-                <Group justify="space-between" wrap="nowrap"><Group gap="sm" wrap="nowrap"><Avatar radius="md" color="leadely">{provider.initials}</Avatar><div><Text size="sm" fw={700}>{provider.name}</Text><Text size="xs" c="dimmed">{provider.priority}</Text></div></Group>{connection ? <Badge size="sm" variant="light" color={statusColor(connection.status)}>{connection.status === "connected" ? "Connected" : "Configured"}</Badge> : <Badge size="sm" variant="light" color={available ? "teal" : "gray"}>{available ? "Available" : "Coming soon"}</Badge>}</Group>
+                <Group justify="space-between" wrap="nowrap"><Group gap="sm" wrap="nowrap"><CrmProviderLogo {...provider} /><div><Text size="sm" fw={700}>{provider.name}</Text><Text size="xs" c="dimmed">{provider.priority}</Text></div></Group>{connection ? <Badge size="sm" variant="light" color={statusColor(connection.status)}>{connection.status === "connected" ? "Connected" : "Configured"}</Badge> : <Badge size="sm" variant="light" color={available ? "teal" : "gray"}>{available ? "Available" : "Coming soon"}</Badge>}</Group>
                 <Text size="xs" c="dimmed" mt="sm" mih={38}>{provider.description}</Text>
                 <LinkButton href={`/app/crm-integrations?provider=${provider.id}`} variant={selected ? "light" : "subtle"} size="compact-sm" mt="sm">{connection ? "Edit setup" : "Configure"}</LinkButton>
               </Paper>

@@ -1,4 +1,6 @@
 import { acquireHold, admit, releaseHold } from "@/lib/admission";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { isPlatformFlagEnabled } from "@/lib/platform/flags";
 import { decryptSecret } from "@/lib/crypto-utils";
 import { canUsePaidFeatures } from "@/lib/entitlements";
@@ -15,6 +17,31 @@ export type CompleteResult = {
   raw: string;
   usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
 };
+
+function isPrivateAddress(address: string) {
+  if (isIP(address) === 4) {
+    const [a, b] = address.split(".").map(Number);
+    return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+  const normalized = address.toLowerCase();
+  return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80:");
+}
+
+async function validateAiBaseUrl(rawUrl: string) {
+  const url = new URL(rawUrl);
+  if (url.protocol !== "https:" || url.username || url.password || url.port) {
+    throw new Error("AI provider URL must use HTTPS without credentials or a custom port.");
+  }
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
+    throw new Error("Private network AI provider URLs are not allowed.");
+  }
+  const addresses = await lookup(hostname, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some(({ address }) => isPrivateAddress(address))) {
+    throw new Error("AI provider hostname must resolve only to public IP addresses.");
+  }
+  return url.origin + url.pathname.replace(/\/$/, "");
+}
 
 function collectTextParts(value: unknown): string {
   if (typeof value === "string") return value;
@@ -59,8 +86,8 @@ export async function callOpenAiCompatible(params: {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), params.timeoutMs ?? 45_000);
   const started = Date.now();
-  const baseUrl = params.baseUrl.replace(/\/$/, "");
   try {
+    const baseUrl = await validateAiBaseUrl(params.baseUrl);
     const body: Record<string, unknown> = {
       model: params.model,
       messages: params.messages,
@@ -80,6 +107,7 @@ export async function callOpenAiCompatible(params: {
       },
       body: JSON.stringify(body),
       cache: "no-store",
+      redirect: "manual",
       signal: controller.signal,
     });
     const raw = await upstream.text();

@@ -1,7 +1,7 @@
 import { Avatar, Badge, Box, Divider, Group, Paper, Progress, Stack, Text, TextInput } from "@mantine/core";
 import { LinkButton } from "@/components/mantine-link";
 import { ActionForm } from "@/features/crm/components/action-form";
-import { saveApifyTokenAction } from "@/features/leads/server/apify-connection";
+import { saveApifyTokenAction } from "@/features/leads/server/apify-actions";
 import { ApifyRefreshButton, ApifyUnlinkButton } from "./apify-refresh-button";
 import classes from "./apify-account-status.module.css";
 import { useLocale, useTranslations } from "next-intl";

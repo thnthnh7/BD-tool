@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ActionIcon, Button, Tooltip } from "@mantine/core";
 import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { refreshApifyConnectionAction, unlinkApifyConnectionAction } from "@/features/leads/server/apify-connection";
+import { refreshApifyConnectionAction, unlinkApifyConnectionAction } from "@/features/leads/server/apify-actions";
 import { useTranslations } from "next-intl";
 
 export function ApifyRefreshButton() {
