@@ -1852,6 +1852,10 @@ export type Database = {
         Args: { p_workspace_id: string; p_connection_id: string; p_actor_user_id: string | null; p_idempotency_key: string; p_company: Json };
         Returns: Json;
       };
+      mcp_create_crm_record: {
+        Args: { p_workspace_id: string; p_connection_id: string; p_actor_user_id: string | null; p_tool_name: string; p_idempotency_key: string; p_payload: Json };
+        Returns: Json;
+      };
       expire_mcp_action_requests: { Args: { p_workspace_id?: string | null }; Returns: number };
       crm_provider_availability: {
         Args: Record<string, never>;

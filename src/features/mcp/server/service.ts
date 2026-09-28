@@ -21,13 +21,14 @@ export function normalizeMcpScopes(values: string[]): McpScope[] {
 function auditSummary(value: Record<string, unknown> | undefined) {
   if (!value) return {};
   const summary: Record<string, Json> = {};
+  const safeValues = new Set(["status", "type", "priority", "language", "limit", "cursor", "maxResults", "maxPeoplePerPlace", "enrichPeople", "verifyEmails"]);
   for (const [key, item] of Object.entries(value)) {
-    if (["query", "name", "notes", "email", "phone", "website", "location"].includes(key)) {
-      summary[key] = typeof item === "string" ? { present: Boolean(item), length: item.length } : { present: item != null };
-    } else if (key.toLowerCase().includes("token") || key.toLowerCase().includes("secret") || key === "idempotencyKey") {
+    if (key.toLowerCase().includes("token") || key.toLowerCase().includes("secret") || key === "idempotencyKey") {
       summary[key] = "[redacted]";
-    } else if (["string", "number", "boolean"].includes(typeof item)) {
+    } else if (safeValues.has(key) && ["string", "number", "boolean"].includes(typeof item)) {
       summary[key] = item as string | number | boolean;
+    } else {
+      summary[key] = typeof item === "string" ? { present: Boolean(item), length: item.length } : { present: item != null };
     }
   }
   return summary;

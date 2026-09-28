@@ -37,11 +37,15 @@ try {
   const initialized = await rpc({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "leadely-smoke", version: "1.0.0" } } });
   const tools = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
   const workspaceResult = await rpc({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_workspace", arguments: {} } });
+  const companiesResult = await rpc({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "search_companies", arguments: { limit: 1 } } });
+  const companiesPage = JSON.parse(companiesResult.result?.content?.[0]?.text || "{}");
   console.log(JSON.stringify({
     initialize: initialized.result?.serverInfo?.name || null,
     protocolVersion: initialized.result?.protocolVersion || null,
     tools: tools.result?.tools?.map((tool) => tool.name) || [],
     getWorkspaceOk: Array.isArray(workspaceResult.result?.content) && workspaceResult.result.content.length > 0,
+    paginatedCompanies: Array.isArray(companiesPage.items) && "hasMore" in companiesPage && "nextCursor" in companiesPage,
+    structuredContent: Boolean(companiesResult.result?.structuredContent),
   }, null, 2));
 } finally {
   await admin.from("mcp_tool_calls").delete().eq("connection_id", connection.id);

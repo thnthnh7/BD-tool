@@ -15,7 +15,7 @@ export async function loadMcpWorkspace() {
     admin.from("mcp_connections").select("id, name, token_prefix, scopes, status, last_used_at, expires_at, created_at").eq("workspace_id", context.workspaceId).order("created_at", { ascending: false }),
     admin.from("mcp_tool_calls").select("id, tool_name, status, duration_ms, result_count, created_at, connection_id").eq("workspace_id", context.workspaceId).order("created_at", { ascending: false }).limit(30),
     admin.from("mcp_settings").select("enabled, read_tools_enabled, write_tools_enabled").eq("id", 1).single(),
-    admin.from("mcp_action_requests").select("id, action_type, payload, status, error_message, result, created_at, reviewed_at, completed_at, expires_at").eq("workspace_id", context.workspaceId).order("created_at", { ascending: false }).limit(30),
+    admin.from("mcp_action_requests").select("id, connection_id, action_type, payload, status, error_message, result, created_at, reviewed_at, completed_at, expires_at").eq("workspace_id", context.workspaceId).order("created_at", { ascending: false }).limit(30),
   ]);
   return {
     context,

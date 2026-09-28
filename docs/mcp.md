@@ -37,6 +37,9 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `get_quotes` | `quotes:read` | Read recent quotes or one quote |
 | `list_scrape_runs` | `scrape:read` | Read scrape status, counts, cost and runner |
 | `create_company` | `crm:write` | Create a company after confirmation in the MCP client; retries use an idempotency key |
+| `create_contact` | `crm:write` | Create a contact and optionally link it to a workspace company |
+| `create_lead` | `crm:write` | Create a lead linked to workspace CRM records |
+| `create_task` | `crm:write` | Create and assign a CRM task to the connected user |
 | `request_start_maps_scrape` | `scrape:write` | Queue a Google Maps scrape request for human approval |
 | `get_action_request` | `workspace:read` | Poll approval and execution status |
 
