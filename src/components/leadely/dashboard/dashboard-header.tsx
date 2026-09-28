@@ -119,10 +119,12 @@ export function DashboardHeader({
                     key={item.id}
                     closeMenuOnClick={false}
                     onClick={() => {
-                      if (item.readAt) return;
-                      const form = new FormData();
-                      form.set("id", item.id);
-                      void markNotificationReadAction(form);
+                      if (!item.readAt) {
+                        const form = new FormData();
+                        form.set("id", item.id);
+                        void markNotificationReadAction(form);
+                      }
+                      if (item.href) router.push(item.href);
                     }}
                   >
                     <Stack gap={2}>

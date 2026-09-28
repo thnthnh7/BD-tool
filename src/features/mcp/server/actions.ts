@@ -102,6 +102,7 @@ export async function reviewMcpActionRequestAction(formData: FormData) {
       if (payload.verifyEmails) input.set("verify_emails", "on");
       const scrape = await startMapsScrapeAction(input);
       if (scrape.error) throw new Error(scrape.error);
+      if (!("id" in scrape)) throw new Error("Scrape job was not created.");
       result = { jobId: scrape.id };
     } else throw new Error("Unsupported MCP action.");
     await admin.from("mcp_action_requests").update({ status: "completed", result, completed_at: new Date().toISOString() }).eq("id", id);
@@ -130,14 +131,27 @@ export async function rotateMcpConnectionAction(id: string) {
 export async function loadPlatformMcp() {
   const context = await requirePlatform();
   const admin = createAdminClient();
-  const [{ data: settings }, { data: connections }, { data: calls }, { data: workspaces }, { data: oauthClients }] = await Promise.all([
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [{ data: settings }, { data: connections }, { data: calls }, { data: workspaces }, { data: oauthClients }, { data: metricCalls }, { data: actionRequests }] = await Promise.all([
     admin.from("mcp_settings").select("*").eq("id", 1).single(),
     admin.from("mcp_connections").select("id, workspace_id, name, token_prefix, scopes, status, last_used_at, created_at").order("created_at", { ascending: false }).limit(100),
     admin.from("mcp_tool_calls").select("id, workspace_id, tool_name, status, duration_ms, result_count, created_at").order("created_at", { ascending: false }).limit(50),
     admin.from("workspaces").select("id, name"),
     admin.from("mcp_oauth_clients").select("client_id, client_name, redirect_uris, status, created_at, last_used_at").order("created_at", { ascending: false }).limit(100),
+    admin.from("mcp_tool_calls").select("tool_name, status, duration_ms").gte("created_at", since).limit(5000),
+    admin.from("mcp_action_requests").select("status").gte("created_at", since).limit(5000),
   ]);
-  return { canMutate: context.platformRole === "super_admin", settings, connections: connections || [], calls: calls || [], oauthClients: oauthClients || [], workspaceNames: Object.fromEntries((workspaces || []).map((workspace) => [workspace.id, workspace.name])) };
+  const sortedDurations = (metricCalls || []).map((call) => call.duration_ms).sort((a, b) => a - b);
+  const percentile = (value: number) => sortedDurations.length ? sortedDurations[Math.min(sortedDurations.length - 1, Math.ceil(sortedDurations.length * value) - 1)] : 0;
+  const metrics = {
+    calls: metricCalls?.length || 0,
+    errors: metricCalls?.filter((call) => call.status === "error").length || 0,
+    p50: percentile(0.5),
+    p95: percentile(0.95),
+    pendingApprovals: actionRequests?.filter((request) => request.status === "pending").length || 0,
+    failedApprovals: actionRequests?.filter((request) => request.status === "failed").length || 0,
+  };
+  return { canMutate: context.platformRole === "super_admin", settings, connections: connections || [], calls: calls || [], oauthClients: oauthClients || [], metrics, workspaceNames: Object.fromEntries((workspaces || []).map((workspace) => [workspace.id, workspace.name])) };
 }
 
 export async function updateMcpSettingsAction(formData: FormData) {

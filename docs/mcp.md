@@ -51,6 +51,10 @@ Remote MCP clients can discover Leadely OAuth from `/.well-known/oauth-protected
 
 Personal access tokens remain available for clients that support static Bearer headers. OAuth is preferred for end-user clients because users approve scopes in Leadely and can revoke the resulting connection without copying a secret.
 
+## Operations
+
+Call `GET /api/mcp/cron` on a daily schedule with `Authorization: Bearer <CRON_SECRET>`. It expires pending approvals and removes expired OAuth codes, old revoked tokens, unused registered clients, audit rows older than 90 days, and idempotency records older than 30 days. Super Admin can inspect 24-hour call volume, error count, P50/P95 latency, and approval failures from **Platform → MCP**.
+
 ## Current boundary
 
 The current release exposes read tools, direct idempotent company creation, and approval-gated Google Maps scrape requests through personal access tokens and OAuth 2.1. Super Admin can pause read/write rollout and revoke registered OAuth clients. Marketplace publication still requires a stable production HTTPS hostname, public support/privacy URLs, namespace ownership verification, and a validated `server.json` before running `mcp-publisher publish`.

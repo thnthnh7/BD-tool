@@ -163,6 +163,7 @@ export default async function AppHomePage() {
           body: item.body,
           readAt: item.read_at,
           createdAt: item.created_at,
+          href: item.entity_type === "mcp_action_request" && item.entity_id ? `/app/mcp?request=${item.entity_id}` : undefined,
         }))}
       />
 

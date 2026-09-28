@@ -49,6 +49,7 @@ export type DashboardNotification = {
   body: string | null;
   readAt: string | null;
   createdAt: string;
+  href?: string;
 };
 
 export type SearchTarget = {
