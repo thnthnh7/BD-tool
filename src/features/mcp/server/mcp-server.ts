@@ -58,6 +58,22 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
   const server = new McpServer({ name: "Leadely", version: "1.0.0" });
   const admin = createAdminClient();
 
+  if (connection.scopes.includes("workspace:read")) {
+    const workspaceUri = `leadely://workspace/${connection.workspace_id}/profile`;
+    server.registerResource("workspace-profile", workspaceUri, { title: "Leadely workspace profile", description: "Workspace identity and subscription state for the connected Leadely tenant.", mimeType: "application/json" }, async () => {
+      const { data, error } = await admin.from("workspaces").select("id, name, slug, type, plan_id, plan_status, created_at").eq("id", connection.workspace_id).single();
+      if (error) throw error;
+      return { contents: [{ uri: workspaceUri, mimeType: "application/json", text: JSON.stringify(data, null, 2) }] };
+    });
+  }
+
+  if (connection.scopes.includes("crm:read")) {
+    const schemaUri = "leadely://schemas/crm";
+    server.registerResource("crm-schema", schemaUri, { title: "Leadely CRM schema", description: "Relationships and writable fields for Leadely CRM records.", mimeType: "application/json" }, async () => ({ contents: [{ uri: schemaUri, mimeType: "application/json", text: JSON.stringify({ company: { links: ["contacts", "leads", "deals", "tasks"] }, contact: { links: ["company", "leads", "deals", "tasks"] }, lead: { statuses: ["new", "working", "connected", "qualified", "unqualified"] }, deal: { requires: ["company", "pipeline", "stage"], priorities: ["low", "medium", "high"] }, writePolicy: "Additive and constrained updates require MCP client confirmation. Paid scrape runs require Leadely owner/admin approval." }, null, 2) }] }));
+    server.registerPrompt("research-prospect", { title: "Research a prospect", description: "Build a sourced prospect brief from Leadely CRM, Data Library and knowledge.", argsSchema: { companyName: z.string().min(1).max(160), objective: z.string().max(500).optional() } }, async ({ companyName, objective }) => ({ messages: [{ role: "user", content: { type: "text", text: `Research ${companyName} using Leadely tools. Check CRM records, Data Library evidence, scrape history and knowledge documents. ${objective ? `Objective: ${objective}. ` : ""}Separate verified facts from assumptions, cite record IDs or URLs, identify missing data, and recommend the next sales action.` } }] }));
+    server.registerPrompt("prepare-sales-follow-up", { title: "Prepare sales follow-up", description: "Prepare a grounded follow-up plan for a lead or deal.", argsSchema: { recordId: z.string().uuid(), recordType: z.enum(["lead", "deal"]) } }, async ({ recordId, recordType }) => ({ messages: [{ role: "user", content: { type: "text", text: `Prepare a concise follow-up plan for Leadely ${recordType} ${recordId}. Review related company, contact, tasks and available evidence. Do not invent facts. Recommend message angle, next action, owner task and timing.` } }] }));
+  }
+
   registerAuditedTool(server, connection, requestId, {
     name: "get_workspace", title: "Get workspace", description: "Return the current Leadely workspace profile and subscription state.", scope: "workspace:read", inputSchema: {},
   }, async () => {

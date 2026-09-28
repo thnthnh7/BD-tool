@@ -26,7 +26,7 @@ export default async function McpPage({ searchParams }: { searchParams: Promise<
     <SectionPanel title={t("connections")}><McpConnectionManager connections={data.connections} endpoint={endpoint} enabled={Boolean(data.settings?.enabled && data.settings.read_tools_enabled)} /></SectionPanel>
     <SectionPanel title={t("connectClient")}><Stack gap="xs"><Text size="sm">{t("connectHelp")}</Text><Paper withBorder p="sm" bg="gray.0"><Code block>{configExample}</Code></Paper><Text size="xs" c="dimmed">{t("replaceToken", { token: "<YOUR_TOKEN>" })}</Text></Stack></SectionPanel>
     <SectionPanel title={t("approvalQueue")}>
-      <Group gap="xs" mb="xs">{["all", "pending", "completed", "rejected", "failed", "expired"].map((status) => <Button key={status} component={Link} href={status === "all" ? "/app/mcp" : `/app/mcp?status=${status}`} size="compact-xs" variant={statusFilter === status ? "light" : "subtle"}>{status}</Button>)}</Group>
+      <Group gap="xs" mb="xs">{["all", "pending", "completed", "rejected", "failed", "expired"].map((status) => <Link key={status} href={status === "all" ? "/app/mcp" : `/app/mcp?status=${status}`} style={{ textDecoration: "none" }}><Button size="compact-xs" variant={statusFilter === status ? "light" : "subtle"}>{status}</Button></Link>)}</Group>
       <Stack gap="xs">{data.actionRequests.filter((request) => statusFilter === "all" || request.status === statusFilter).map((request) => {
         const payload = requestPayload(request.payload);
         const summary = request.action_type === "start_maps_scrape"
