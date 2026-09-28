@@ -11,6 +11,54 @@ type Rel = [];
 export type Database = {
   public: {
     Tables: {
+      mcp_connections: {
+        Row: { id: string; workspace_id: string; created_by: string | null; name: string; token_hash: string; token_prefix: string; scopes: string[]; status: string; last_used_at: string | null; expires_at: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; workspace_id: string; created_by?: string | null; name: string; token_hash: string; token_prefix: string; scopes?: string[]; status?: string; last_used_at?: string | null; expires_at?: string | null; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mcp_connections"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mcp_tool_calls: {
+        Row: { id: string; workspace_id: string; connection_id: string | null; actor_user_id: string | null; request_id: string | null; tool_name: string; status: string; duration_ms: number; input_summary: Json; result_count: number | null; error_code: string | null; created_at: string };
+        Insert: { id?: string; workspace_id: string; connection_id?: string | null; actor_user_id?: string | null; request_id?: string | null; tool_name: string; status: string; duration_ms?: number; input_summary?: Json; result_count?: number | null; error_code?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mcp_tool_calls"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mcp_settings: {
+        Row: { id: number; enabled: boolean; read_tools_enabled: boolean; write_tools_enabled: boolean; updated_by: string | null; updated_at: string };
+        Insert: { id?: number; enabled?: boolean; read_tools_enabled?: boolean; write_tools_enabled?: boolean; updated_by?: string | null; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mcp_settings"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mcp_action_requests: {
+        Row: { id: string; workspace_id: string; connection_id: string | null; requested_by: string | null; reviewed_by: string | null; action_type: string; payload: Json; status: string; result: Json | null; error_message: string | null; reviewed_at: string | null; completed_at: string | null; expires_at: string; idempotency_key: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; workspace_id: string; connection_id?: string | null; requested_by?: string | null; reviewed_by?: string | null; action_type: string; payload?: Json; status?: string; result?: Json | null; error_message?: string | null; reviewed_at?: string | null; completed_at?: string | null; expires_at?: string; idempotency_key?: string | null; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mcp_action_requests"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mcp_idempotency_keys: {
+        Row: { id: string; workspace_id: string; connection_id: string; tool_name: string; idempotency_key: string; result: Json; created_at: string };
+        Insert: { id?: string; workspace_id: string; connection_id: string; tool_name: string; idempotency_key: string; result?: Json; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mcp_idempotency_keys"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mcp_oauth_clients: {
+        Row: { client_id: string; client_name: string; redirect_uris: string[]; grant_types: string[]; response_types: string[]; token_endpoint_auth_method: string; status: string; created_at: string; last_used_at: string | null };
+        Insert: { client_id: string; client_name: string; redirect_uris: string[]; grant_types?: string[]; response_types?: string[]; token_endpoint_auth_method?: string; status?: string; created_at?: string; last_used_at?: string | null };
+        Update: Partial<Database["public"]["Tables"]["mcp_oauth_clients"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mcp_oauth_codes: {
+        Row: { code_hash: string; client_id: string; connection_id: string; workspace_id: string; user_id: string | null; redirect_uri: string; scopes: string[]; code_challenge: string; resource: string; expires_at: string; used_at: string | null; created_at: string };
+        Insert: { code_hash: string; client_id: string; connection_id: string; workspace_id: string; user_id?: string | null; redirect_uri: string; scopes?: string[]; code_challenge: string; resource: string; expires_at: string; used_at?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mcp_oauth_codes"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mcp_oauth_tokens: {
+        Row: { id: string; access_token_hash: string; refresh_token_hash: string | null; client_id: string; connection_id: string; workspace_id: string; user_id: string | null; scopes: string[]; resource: string; access_expires_at: string; refresh_expires_at: string | null; revoked_at: string | null; last_used_at: string | null; created_at: string };
+        Insert: { id?: string; access_token_hash: string; refresh_token_hash?: string | null; client_id: string; connection_id: string; workspace_id: string; user_id?: string | null; scopes?: string[]; resource: string; access_expires_at: string; refresh_expires_at?: string | null; revoked_at?: string | null; last_used_at?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mcp_oauth_tokens"]["Insert"]>;
+        Relationships: Rel;
+      };
       activities: {
         Row: {
           id: string;
@@ -1800,6 +1848,11 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      mcp_create_company: {
+        Args: { p_workspace_id: string; p_connection_id: string; p_actor_user_id: string | null; p_idempotency_key: string; p_company: Json };
+        Returns: Json;
+      };
+      expire_mcp_action_requests: { Args: { p_workspace_id?: string | null }; Returns: number };
       crm_provider_availability: {
         Args: Record<string, never>;
         Returns: { provider: string; enabled: boolean; rollout_status: string; credentials_configured: boolean }[];

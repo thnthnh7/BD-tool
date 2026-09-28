@@ -10,9 +10,11 @@ import classes from "@/styles/leadely-surfaces.module.css";
 export function AuthForm({
   mode,
   invite,
+  next,
 }: {
   mode: "login" | "signup" | "forgot";
   invite?: string;
+  next?: string;
 }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -47,6 +49,7 @@ export function AuthForm({
       </Text>
       <form action={onSubmit}>
         <Stack mt="lg" gap="md">
+          {next ? <input type="hidden" name="next" value={next} /> : null}
           <TextInput name="email" type="email" required placeholder="Email" />
           {mode !== "forgot" ? <PasswordInput name="password" required minLength={8} placeholder="Password" /> : null}
           {error ? <Alert color="red">{error}</Alert> : null}
@@ -57,7 +60,7 @@ export function AuthForm({
         </Stack>
       </form>
       {mode !== "forgot" ? (
-        <Button variant="default" fullWidth mt="sm" onClick={() => signInWithGoogle(invite)}>
+        <Button variant="default" fullWidth mt="sm" onClick={() => signInWithGoogle(invite, next)}>
           Continue with Google
         </Button>
       ) : null}

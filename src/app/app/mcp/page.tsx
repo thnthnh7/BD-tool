@@ -1,0 +1,25 @@
+import { Badge, Button, Code, Group, Paper, Stack, Text } from "@mantine/core";
+import { PageHeader } from "@/components/leadely/page-header";
+import { SectionPanel } from "@/components/leadely/section-panel";
+import { Table, TableTbody, TableTd, TableTh, TableThead, TableTr } from "@/components/leadely/table";
+import { McpConnectionManager } from "@/features/mcp/components/connection-manager";
+import { loadMcpWorkspace, reviewMcpActionRequestAction } from "@/features/mcp/server/actions";
+import { getTranslations } from "next-intl/server";
+
+export default async function McpPage({ searchParams }: { searchParams: Promise<{ request?: string }> }) {
+  const selectedRequest = (await searchParams).request;
+  const data = await loadMcpWorkspace();
+  const t = await getTranslations("Mcp");
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+  const endpoint = `${baseUrl}/api/mcp`;
+  const configExample = JSON.stringify({ mcpServers: { leadely: { type: "http", url: endpoint, headers: { Authorization: "Bearer <YOUR_TOKEN>" } } } }, null, 2);
+  return <Stack gap="md">
+    <PageHeader title={t("title")} subtitle={t("subtitle")} />
+    <SectionPanel title={t("connections")}><McpConnectionManager connections={data.connections} endpoint={endpoint} enabled={Boolean(data.settings?.enabled && data.settings.read_tools_enabled)} /></SectionPanel>
+    <SectionPanel title={t("connectClient")}><Stack gap="xs"><Text size="sm">{t("connectHelp")}</Text><Paper withBorder p="sm" bg="gray.0"><Code block>{configExample}</Code></Paper><Text size="xs" c="dimmed">{t("replaceToken", { token: "<YOUR_TOKEN>" })}</Text></Stack></SectionPanel>
+    <SectionPanel title={t("approvalQueue")}>
+      <Stack gap="xs">{data.actionRequests.map((request) => <Paper id={`request-${request.id}`} key={request.id} withBorder p="sm" radius="md" bg={selectedRequest === request.id ? "teal.0" : undefined}><Group justify="space-between" align="flex-start"><div><Group gap="xs"><Text fw={600} size="sm">{request.action_type === "create_company" ? t("createCompanyRequest") : t("startScrapeRequest")}</Text><Badge variant="light" color={request.status === "pending" ? "orange" : request.status === "completed" ? "teal" : request.status === "failed" ? "red" : "gray"}>{request.status}</Badge></Group><Text size="xs" c="dimmed" mt={4}>{JSON.stringify(request.payload)}</Text>{request.status === "pending" ? <Text size="xs" c="dimmed">{t("approvalExpires", { value: new Date(request.expires_at).toLocaleString() })}</Text> : null}{request.error_message ? <Text size="xs" c="red">{request.error_message}</Text> : null}</div>{request.status === "pending" ? <Group gap="xs"><form action={reviewMcpActionRequestAction}><input type="hidden" name="id" value={request.id} /><input type="hidden" name="decision" value="approve" /><Button type="submit" size="compact-sm">{t("approveRequest")}</Button></form><form action={reviewMcpActionRequestAction}><input type="hidden" name="id" value={request.id} /><input type="hidden" name="decision" value="reject" /><Button type="submit" size="compact-sm" variant="subtle" color="red">{t("rejectRequest")}</Button></form></Group> : null}</Group></Paper>)}{!data.actionRequests.length ? <Text size="sm" c="dimmed">{t("noActionRequests")}</Text> : null}</Stack>
+    </SectionPanel>
+    <SectionPanel title={t("recentCalls")} padded={false}><Table><TableThead><TableTr><TableTh>{t("when")}</TableTh><TableTh>{t("tool")}</TableTh><TableTh>{t("status")}</TableTh><TableTh>{t("results")}</TableTh><TableTh>{t("duration")}</TableTh></TableTr></TableThead><TableTbody>{data.calls.map((call) => <TableTr key={call.id}><TableTd>{new Date(call.created_at).toLocaleString()}</TableTd><TableTd>{call.tool_name}</TableTd><TableTd>{call.status}</TableTd><TableTd>{call.result_count ?? "—"}</TableTd><TableTd>{call.duration_ms} ms</TableTd></TableTr>)}</TableTbody></Table></SectionPanel>
+  </Stack>;
+}

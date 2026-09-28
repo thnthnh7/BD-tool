@@ -14,6 +14,11 @@ function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
 
+function safeInternalNext(value: FormDataEntryValue | string | null | undefined) {
+  const next = String(value || "");
+  return next.startsWith("/") && !next.startsWith("//") ? next : "";
+}
+
 export async function signUpWithPassword(formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
@@ -56,12 +61,14 @@ export async function signInWithPassword(formData: FormData) {
     redirect("/onboarding");
   }
   if (context.kind === "platform") redirect("/app/platform/plans");
+  const next = safeInternalNext(formData.get("next"));
+  if (next) redirect(next);
   redirect("/app");
 }
 
-export async function signInWithGoogle(inviteToken?: string) {
+export async function signInWithGoogle(inviteToken?: string, requestedNext?: string) {
   const supabase = await createClient();
-  const next = inviteToken ? `/invite/${inviteToken}` : "/app";
+  const next = inviteToken ? `/invite/${inviteToken}` : safeInternalNext(requestedNext) || "/app";
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: { redirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}` },

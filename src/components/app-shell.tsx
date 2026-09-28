@@ -23,6 +23,7 @@ import {
   LogOut,
   Library,
   Mail,
+  Network,
   Radar,
   PackagePlus,
   Plus,
@@ -101,6 +102,7 @@ const workspaceGroups: NavGroup[] = [
     items: [
       { href: "/app/team", label: "team", icon: Users, roles: ["owner", "admin"] },
       { href: "/app/crm-integrations", label: "crmIntegration", icon: Share2, roles: ["owner", "admin", "member"] },
+      { href: "/app/mcp", label: "mcp", icon: Network, roles: ["owner", "admin"] },
     ],
   },
 ];
@@ -115,6 +117,7 @@ const platformGroups: NavGroup[] = [
       { href: "/app/platform/plans", label: "plans", icon: PackagePlus, roles: ["super_admin", "support"] },
       { href: "/app/platform/payments", label: "payments", icon: CreditCard, roles: ["super_admin", "support"] },
       { href: "/app/platform/crm-integrations", label: "crmIntegration", icon: Share2, roles: ["super_admin", "support"] },
+      { href: "/app/platform/mcp", label: "mcp", icon: Network, roles: ["super_admin", "support"] },
       { href: "/app/platform/health", label: "health", icon: HeartPulse, roles: ["super_admin"] },
       { href: "/app/platform/audit", label: "audit", icon: ScrollText, roles: ["super_admin", "support"] },
     ],
