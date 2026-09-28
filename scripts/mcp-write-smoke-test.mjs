@@ -37,6 +37,16 @@ try {
   const leadResult = JSON.parse(leadCall.result?.content?.[0]?.text || "{}");
   const taskCall = await rpc({ jsonrpc: "2.0", id: 33, method: "tools/call", params: { name: "create_task", arguments: { idempotencyKey: "smoke-task-001", title: "Follow up MCP smoke test", companyId: companyResult.id, contactId: contactResult.id } } });
   const taskResult = JSON.parse(taskCall.result?.content?.[0]?.text || "{}");
+  const dealCall = await rpc({ jsonrpc: "2.0", id: 34, method: "tools/call", params: { name: "create_deal", arguments: { idempotencyKey: "smoke-deal-001", companyId: companyResult.id, contactId: contactResult.id, title: "MCP smoke deal", amount: 1000, currency: "USD" } } });
+  const dealResult = JSON.parse(dealCall.result?.content?.[0]?.text || "{}");
+  const companyUpdateCall = await rpc({ jsonrpc: "2.0", id: 35, method: "tools/call", params: { name: "update_company", arguments: { idempotencyKey: "smoke-company-update-001", companyId: companyResult.id, industry: "Software" } } });
+  const companyUpdateResult = JSON.parse(companyUpdateCall.result?.content?.[0]?.text || "{}");
+  const contactUpdateCall = await rpc({ jsonrpc: "2.0", id: 36, method: "tools/call", params: { name: "update_contact", arguments: { idempotencyKey: "smoke-contact-update-001", contactId: contactResult.id, jobTitle: "Buyer" } } });
+  const contactUpdateResult = JSON.parse(contactUpdateCall.result?.content?.[0]?.text || "{}");
+  const leadUpdateCall = await rpc({ jsonrpc: "2.0", id: 37, method: "tools/call", params: { name: "update_lead", arguments: { idempotencyKey: "smoke-lead-update-001", leadId: leadResult.id, status: "working" } } });
+  const leadUpdateResult = JSON.parse(leadUpdateCall.result?.content?.[0]?.text || "{}");
+  const dealUpdateCall = await rpc({ jsonrpc: "2.0", id: 38, method: "tools/call", params: { name: "update_deal", arguments: { idempotencyKey: "smoke-deal-update-001", dealId: dealResult.id, probability: 50 } } });
+  const dealUpdateResult = JSON.parse(dealUpdateCall.result?.content?.[0]?.text || "{}");
   const scrapeCall = await rpc({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "request_start_maps_scrape", arguments: { idempotencyKey: "smoke-scrape-001", query: "coffee", location: "Singapore", maxResults: 5 } } });
   const scrapeRequest = JSON.parse(scrapeCall.result?.content?.[0]?.text || "{}");
   const { count: approvalNotificationCount } = await admin.from("notifications").select("id", { count: "exact", head: true }).eq("entity_type", "mcp_action_request").eq("entity_id", scrapeRequest.id);
@@ -62,8 +72,9 @@ try {
     workspaceIsolation = foreignResult === null;
   }
 
-  console.log(JSON.stringify({ writeToolsAdvertised: ["create_company", "create_contact", "create_lead", "create_task"].every((name) => tools.result?.tools?.some((tool) => tool.name === name)), companyCreated: Boolean(companyResult.id), contactCreated: Boolean(contactResult.id), leadCreated: Boolean(leadResult.id), taskCreated: Boolean(taskResult.id), concurrentIdempotency: concurrentCompanyResult.id === companyResult.id, idempotentReplay: replayResult.id === companyResult.id && replayResult.replayed === true, auditRedacted: !auditText.includes("private-smoke@example.com") && !auditText.includes("MCP direct-write smoke test"), scrapeQueued: scrapeRequest.status === "pending", approvalNotificationCreated: (approvalNotificationCount || 0) > 0, directApprovalUrl: scrapeRequest.approvalUrl?.includes(`/app/mcp?request=${scrapeRequest.id}`), expiresAutomatically: expiredRequest.status === "expired", workspaceIsolation }, null, 2));
+  console.log(JSON.stringify({ writeToolsAdvertised: ["create_company", "create_contact", "create_lead", "create_task", "create_deal", "update_company", "update_contact", "update_lead", "update_deal"].every((name) => tools.result?.tools?.some((tool) => tool.name === name)), companyCreated: Boolean(companyResult.id), contactCreated: Boolean(contactResult.id), leadCreated: Boolean(leadResult.id), taskCreated: Boolean(taskResult.id), dealCreated: Boolean(dealResult.id), updatesApplied: companyUpdateResult.id === companyResult.id && contactUpdateResult.id === contactResult.id && leadUpdateResult.id === leadResult.id && dealUpdateResult.id === dealResult.id, concurrentIdempotency: concurrentCompanyResult.id === companyResult.id, idempotentReplay: replayResult.id === companyResult.id && replayResult.replayed === true, auditRedacted: !auditText.includes("private-smoke@example.com") && !auditText.includes("MCP direct-write smoke test"), scrapeQueued: scrapeRequest.status === "pending", approvalNotificationCreated: (approvalNotificationCount || 0) > 0, directApprovalUrl: scrapeRequest.approvalUrl?.includes(`/app/mcp?request=${scrapeRequest.id}`), expiresAutomatically: expiredRequest.status === "expired", workspaceIsolation }, null, 2));
   if (taskResult.id) await admin.from("tasks").delete().eq("id", taskResult.id).eq("workspace_id", workspace.id);
+  if (dealResult.id) await admin.from("deals").delete().eq("id", dealResult.id).eq("workspace_id", workspace.id);
   if (leadResult.id) await admin.from("leads").delete().eq("id", leadResult.id).eq("workspace_id", workspace.id);
   if (contactResult.id) await admin.from("contacts").delete().eq("id", contactResult.id).eq("workspace_id", workspace.id);
   if (companyResult.id) await admin.from("companies").delete().eq("id", companyResult.id).eq("workspace_id", workspace.id);

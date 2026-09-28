@@ -40,6 +40,11 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `create_contact` | `crm:write` | Create a contact and optionally link it to a workspace company |
 | `create_lead` | `crm:write` | Create a lead linked to workspace CRM records |
 | `create_task` | `crm:write` | Create and assign a CRM task to the connected user |
+| `create_deal` | `crm:write` | Create a deal in the default or selected sales pipeline |
+| `update_company` | `crm:write` | Update selected company fields |
+| `update_contact` | `crm:write` | Update selected contact fields |
+| `update_lead` | `crm:write` | Update lead status, score and next action |
+| `update_deal` | `crm:write` | Update selected deal fields |
 | `request_start_maps_scrape` | `scrape:write` | Queue a Google Maps scrape request for human approval |
 | `get_action_request` | `workspace:read` | Poll approval and execution status |
 
