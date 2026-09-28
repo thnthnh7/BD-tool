@@ -45,6 +45,8 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `update_contact` | `crm:write` | Update selected contact fields |
 | `update_lead` | `crm:write` | Update lead status, score and next action |
 | `update_deal` | `crm:write` | Update selected deal fields |
+| `add_company_to_list` | `crm:write` | Add a company and optional lead/contact context to a list |
+| `create_quote_draft` | `quotes:write` | Create a draft quote for human review without sending it |
 | `request_start_maps_scrape` | `scrape:write` | Queue a Google Maps scrape request for human approval |
 | `get_action_request` | `workspace:read` | Poll approval and execution status |
 

@@ -581,6 +581,7 @@
     "authorizeWarning": "Genehmigen Sie nur Kunden, die Sie kennen. Sie können diese Verbindung jederzeit in den MCP-Einstellungen widerrufen.",
     "authorize": "Autorisieren",
     "cancel": "Stornieren",
-    "redirectDestination": "Weiterleitung: {url}"
+    "redirectDestination": "Weiterleitung: {url}",
+    "scopeQuotesWrite": "Angebotsentwürfe erstellen"
   }
 }

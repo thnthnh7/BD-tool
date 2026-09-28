@@ -581,6 +581,7 @@
     "authorizeWarning": "الموافقة فقط على العملاء الذين تعرفهم. يمكنك إلغاء هذا الاتصال من إعدادات MCP في أي وقت.",
     "authorize": "يأذن",
     "cancel": "يلغي",
-    "redirectDestination": "إعادة التوجيه: {url}"
+    "redirectDestination": "إعادة التوجيه: {url}",
+    "scopeQuotesWrite": "إنشاء مسودات عروض الأسعار"
   }
 }

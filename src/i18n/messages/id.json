@@ -581,6 +581,7 @@
     "authorizeWarning": "Hanya setujui klien yang Anda kenal. Anda dapat mencabut koneksi ini dari pengaturan MCP kapan saja.",
     "authorize": "Mengizinkan",
     "cancel": "Membatalkan",
-    "redirectDestination": "Pengalihan: {url}"
+    "redirectDestination": "Pengalihan: {url}",
+    "scopeQuotesWrite": "Buat draf penawaran"
   }
 }

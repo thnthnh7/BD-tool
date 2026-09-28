@@ -1860,6 +1860,10 @@ export type Database = {
         Args: { p_workspace_id: string; p_connection_id: string; p_actor_user_id: string | null; p_tool_name: string; p_idempotency_key: string; p_record_id: string | null; p_payload: Json };
         Returns: Json;
       };
+      mcp_create_sales_artifact: {
+        Args: { p_workspace_id: string; p_connection_id: string; p_actor_user_id: string | null; p_tool_name: string; p_idempotency_key: string; p_payload: Json };
+        Returns: Json;
+      };
       cleanup_mcp_data: { Args: Record<string, never>; Returns: Json };
       expire_mcp_action_requests: { Args: { p_workspace_id?: string | null }; Returns: number };
       crm_provider_availability: {

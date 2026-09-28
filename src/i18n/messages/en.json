@@ -581,6 +581,7 @@
     "authorizeWarning": "Only approve clients you recognize. You can revoke this connection from MCP settings at any time.",
     "authorize": "Authorize",
     "cancel": "Cancel",
-    "redirectDestination": "Redirect: {url}"
+    "redirectDestination": "Redirect: {url}",
+    "scopeQuotesWrite": "Create quote drafts"
   }
 }

@@ -581,6 +581,7 @@
     "authorizeWarning": "อนุมัติเฉพาะลูกค้าที่คุณรู้จักเท่านั้น คุณสามารถเพิกถอนการเชื่อมต่อนี้จากการตั้งค่า MCP ได้ตลอดเวลา",
     "authorize": "อนุญาต",
     "cancel": "ยกเลิก",
-    "redirectDestination": "เปลี่ยนเส้นทาง: {url}"
+    "redirectDestination": "เปลี่ยนเส้นทาง: {url}",
+    "scopeQuotesWrite": "สร้างร่างใบเสนอราคา"
   }
 }

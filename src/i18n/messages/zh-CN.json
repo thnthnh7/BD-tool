@@ -581,6 +581,7 @@
     "authorizeWarning": "只批准您认可的客户。您可以随时从 MCP 设置中撤销此连接。",
     "authorize": "授权",
     "cancel": "取消",
-    "redirectDestination": "重定向：{url}"
+    "redirectDestination": "重定向：{url}",
+    "scopeQuotesWrite": "创建报价草稿"
   }
 }

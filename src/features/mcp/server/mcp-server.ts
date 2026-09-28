@@ -266,6 +266,15 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
       inputSchema: { idempotencyKey: z.string().min(8).max(120), dealId: z.string().uuid(), title: z.string().min(1).max(200).optional(), description: z.string().max(2000).optional(), amount: z.number().int().min(0).optional(), currency: z.string().length(3).optional(), probability: z.number().int().min(0).max(100).optional(), expectedCloseDate: z.string().date().optional(), priority: z.enum(["low", "medium", "high"]).optional() },
     }, async ({ idempotencyKey, dealId, ...payload }) => mutateCrmRecord("update_deal", idempotencyKey, dealId, payload));
 
+    registerAuditedTool<{ idempotencyKey: string; listId: string; companyId: string; leadId?: string; contactId?: string }>(server, connection, requestId, {
+      name: "add_company_to_list", title: "Add company to list", description: "Add a workspace company and its optional lead/contact context to a Leadely list.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      inputSchema: { idempotencyKey: z.string().min(8).max(120), listId: z.string().uuid(), companyId: z.string().uuid(), leadId: z.string().uuid().optional(), contactId: z.string().uuid().optional() },
+    }, async ({ idempotencyKey, ...payload }) => {
+      const { data, error } = await admin.rpc("mcp_create_sales_artifact", { p_workspace_id: connection.workspace_id, p_connection_id: connection.id, p_actor_user_id: connection.created_by, p_tool_name: "add_company_to_list", p_idempotency_key: idempotencyKey, p_payload: payload as Json });
+      if (error) throw error;
+      return { data, count: 1 };
+    });
+
     registerAuditedTool<{ idempotencyKey: string; query: string; location: string; language?: string; maxResults?: number; enrichPeople?: boolean; maxPeoplePerPlace?: number; verifyEmails?: boolean }>(server, connection, requestId, {
       name: "request_start_maps_scrape", title: "Request Google Maps scrape", description: "Create a pending Google Maps scrape request. A workspace owner or admin must approve it before Apify starts and incurs usage.", scope: "scrape:write",
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
@@ -287,6 +296,17 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
       const { data, error } = await admin.from("mcp_action_requests").select("id, action_type, status, result, error_message, reviewed_at, completed_at, created_at").eq("id", actionId).eq("workspace_id", connection.workspace_id).maybeSingle();
       if (error) throw error;
       return { data, count: data ? 1 : 0 };
+    });
+  }
+
+  if (writeToolsEnabled) {
+    registerAuditedTool<{ idempotencyKey: string; title: string; projectType?: string; currency?: string; items?: Json[]; discount?: number; vatRate?: number; validUntil?: string; projectOverview?: string; timeline?: string; nextSteps?: string; dealId?: string }>(server, connection, requestId, {
+      name: "create_quote_draft", title: "Create quote draft", description: "Create a draft quote for review in Leadely. This tool never sends or publishes the quote.", scope: "quotes:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      inputSchema: { idempotencyKey: z.string().min(8).max(120), title: z.string().min(1).max(200), projectType: z.string().max(120).default("Custom project"), currency: z.string().length(3).default("USD"), items: z.array(z.record(z.string(), z.unknown())).max(100).default([]), discount: z.number().min(0).max(100).default(0), vatRate: z.number().min(0).max(100).default(0), validUntil: z.string().date().optional(), projectOverview: z.string().max(5000).optional(), timeline: z.string().max(2000).optional(), nextSteps: z.string().max(2000).optional(), dealId: z.string().uuid().optional() },
+    }, async ({ idempotencyKey, ...payload }) => {
+      const { data, error } = await admin.rpc("mcp_create_sales_artifact", { p_workspace_id: connection.workspace_id, p_connection_id: connection.id, p_actor_user_id: connection.created_by, p_tool_name: "create_quote_draft", p_idempotency_key: idempotencyKey, p_payload: payload as Json });
+      if (error) throw error;
+      return { data, count: 1 };
     });
   }
 

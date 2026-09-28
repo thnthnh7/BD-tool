@@ -581,6 +581,7 @@
     "authorizeWarning": "Keur alleen klanten goed die u herkent. U kunt deze verbinding op elk gewenst moment intrekken via de MCP-instellingen.",
     "authorize": "Autoriseren",
     "cancel": "Annuleren",
-    "redirectDestination": "Omleiding: {url}"
+    "redirectDestination": "Omleiding: {url}",
+    "scopeQuotesWrite": "Offerteconcepten maken"
   }
 }

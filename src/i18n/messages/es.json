@@ -581,6 +581,7 @@
     "authorizeWarning": "Apruebe únicamente a los clientes que reconozca. Puede revocar esta conexión desde la configuración de MCP en cualquier momento.",
     "authorize": "Autorizar",
     "cancel": "Cancelar",
-    "redirectDestination": "Redirección: {url}"
+    "redirectDestination": "Redirección: {url}",
+    "scopeQuotesWrite": "Crear borradores de cotización"
   }
 }

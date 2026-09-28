@@ -581,6 +581,7 @@
     "authorizeWarning": "귀하가 인식하는 클라이언트만 승인하십시오. 언제든지 MCP 설정에서 이 연결을 취소할 수 있습니다.",
     "authorize": "승인하다",
     "cancel": "취소",
-    "redirectDestination": "이동: {url}"
+    "redirectDestination": "이동: {url}",
+    "scopeQuotesWrite": "견적 초안 만들기"
   }
 }

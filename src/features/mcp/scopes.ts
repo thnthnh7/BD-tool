@@ -1,4 +1,4 @@
-export const mcpScopes = ["workspace:read", "crm:read", "crm:write", "sources:read", "data:read", "knowledge:read", "quotes:read", "scrape:read", "scrape:write"] as const;
+export const mcpScopes = ["workspace:read", "crm:read", "crm:write", "sources:read", "data:read", "knowledge:read", "quotes:read", "quotes:write", "scrape:read", "scrape:write"] as const;
 export type McpScope = (typeof mcpScopes)[number];
 
 export const mcpScopeLabelKeys: Record<McpScope, string> = {
@@ -9,6 +9,7 @@ export const mcpScopeLabelKeys: Record<McpScope, string> = {
   "data:read": "scopeData",
   "knowledge:read": "scopeKnowledge",
   "quotes:read": "scopeQuotes",
+  "quotes:write": "scopeQuotesWrite",
   "scrape:read": "scopeScrape",
   "scrape:write": "scopeScrapeWrite",
 };

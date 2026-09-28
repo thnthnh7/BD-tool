@@ -581,6 +581,7 @@
     "authorizeWarning": "Chỉ cấp quyền cho client bạn nhận ra. Bạn có thể thu hồi kết nối này trong phần cài đặt MCP bất cứ lúc nào.",
     "authorize": "Cấp quyền",
     "cancel": "Hủy",
-    "redirectDestination": "Chuyển hướng đến: {url}"
+    "redirectDestination": "Chuyển hướng đến: {url}",
+    "scopeQuotesWrite": "Tạo bản nháp báo giá"
   }
 }

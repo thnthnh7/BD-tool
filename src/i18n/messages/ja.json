@@ -581,6 +581,7 @@
     "authorizeWarning": "認識しているクライアントのみを承認します。この接続は、MCP 設定からいつでも取り消すことができます。",
     "authorize": "承認する",
     "cancel": "キャンセル",
-    "redirectDestination": "リダイレクト: {url}"
+    "redirectDestination": "リダイレクト: {url}",
+    "scopeQuotesWrite": "見積書の下書きを作成"
   }
 }

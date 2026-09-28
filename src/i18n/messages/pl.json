@@ -581,6 +581,7 @@
     "authorizeWarning": "Zatwierdzaj tylko klientów, których znasz. Możesz w każdej chwili odwołać to połączenie w ustawieniach MCP.",
     "authorize": "Autoryzować",
     "cancel": "Anulować",
-    "redirectDestination": "Przekierowanie: {url}"
+    "redirectDestination": "Przekierowanie: {url}",
+    "scopeQuotesWrite": "Tworzenie wersji roboczych ofert"
   }
 }

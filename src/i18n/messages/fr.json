@@ -581,6 +581,7 @@
     "authorizeWarning": "Approuvez uniquement les clients que vous reconnaissez. Vous pouvez révoquer cette connexion à partir des paramètres MCP à tout moment.",
     "authorize": "Autoriser",
     "cancel": "Annuler",
-    "redirectDestination": "Redirection : {url}"
+    "redirectDestination": "Redirection : {url}",
+    "scopeQuotesWrite": "Créer des brouillons de devis"
   }
 }

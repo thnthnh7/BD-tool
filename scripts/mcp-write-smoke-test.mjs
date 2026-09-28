@@ -10,7 +10,7 @@ if (!workspaces?.length) throw new Error("No workspace available for MCP smoke t
 const workspace = workspaces[0];
 const { data: settings } = await admin.from("mcp_settings").select("write_tools_enabled").eq("id", 1).single();
 const token = `ldmcp_${randomBytes(32).toString("base64url")}`;
-const { data: connection, error: connectionError } = await admin.from("mcp_connections").insert({ workspace_id: workspace.id, name: "Write approval smoke test", token_hash: createHash("sha256").update(token).digest("hex"), token_prefix: `${token.slice(0, 13)}…`, scopes: ["workspace:read", "crm:write", "scrape:write"], expires_at: new Date(Date.now() + 300_000).toISOString() }).select("id").single();
+const { data: connection, error: connectionError } = await admin.from("mcp_connections").insert({ workspace_id: workspace.id, name: "Write approval smoke test", token_hash: createHash("sha256").update(token).digest("hex"), token_prefix: `${token.slice(0, 13)}…`, scopes: ["workspace:read", "crm:write", "quotes:write", "scrape:write"], expires_at: new Date(Date.now() + 300_000).toISOString() }).select("id").single();
 if (connectionError) throw connectionError;
 await admin.from("mcp_settings").update({ write_tools_enabled: true }).eq("id", 1);
 
@@ -47,6 +47,12 @@ try {
   const leadUpdateResult = JSON.parse(leadUpdateCall.result?.content?.[0]?.text || "{}");
   const dealUpdateCall = await rpc({ jsonrpc: "2.0", id: 38, method: "tools/call", params: { name: "update_deal", arguments: { idempotencyKey: "smoke-deal-update-001", dealId: dealResult.id, probability: 50 } } });
   const dealUpdateResult = JSON.parse(dealUpdateCall.result?.content?.[0]?.text || "{}");
+  const { data: list, error: listError } = await admin.from("lead_lists").insert({ workspace_id: workspace.id, name: "MCP smoke list", owner_user_id: null }).select("id").single();
+  if (listError) throw listError;
+  const listCall = await rpc({ jsonrpc: "2.0", id: 39, method: "tools/call", params: { name: "add_company_to_list", arguments: { idempotencyKey: "smoke-list-member-001", listId: list.id, companyId: companyResult.id, leadId: leadResult.id, contactId: contactResult.id } } });
+  const listResult = JSON.parse(listCall.result?.content?.[0]?.text || "{}");
+  const quoteCall = await rpc({ jsonrpc: "2.0", id: 40, method: "tools/call", params: { name: "create_quote_draft", arguments: { idempotencyKey: "smoke-quote-001", title: "MCP smoke quote", dealId: dealResult.id, currency: "USD", items: [{ description: "Service", quantity: 1, unitPrice: 1000 }] } } });
+  const quoteResult = JSON.parse(quoteCall.result?.content?.[0]?.text || "{}");
   const scrapeCall = await rpc({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "request_start_maps_scrape", arguments: { idempotencyKey: "smoke-scrape-001", query: "coffee", location: "Singapore", maxResults: 5 } } });
   const scrapeRequest = JSON.parse(scrapeCall.result?.content?.[0]?.text || "{}");
   const { count: approvalNotificationCount } = await admin.from("notifications").select("id", { count: "exact", head: true }).eq("entity_type", "mcp_action_request").eq("entity_id", scrapeRequest.id);
@@ -72,7 +78,9 @@ try {
     workspaceIsolation = foreignResult === null;
   }
 
-  console.log(JSON.stringify({ writeToolsAdvertised: ["create_company", "create_contact", "create_lead", "create_task", "create_deal", "update_company", "update_contact", "update_lead", "update_deal"].every((name) => tools.result?.tools?.some((tool) => tool.name === name)), companyCreated: Boolean(companyResult.id), contactCreated: Boolean(contactResult.id), leadCreated: Boolean(leadResult.id), taskCreated: Boolean(taskResult.id), dealCreated: Boolean(dealResult.id), updatesApplied: companyUpdateResult.id === companyResult.id && contactUpdateResult.id === contactResult.id && leadUpdateResult.id === leadResult.id && dealUpdateResult.id === dealResult.id, concurrentIdempotency: concurrentCompanyResult.id === companyResult.id, idempotentReplay: replayResult.id === companyResult.id && replayResult.replayed === true, auditRedacted: !auditText.includes("private-smoke@example.com") && !auditText.includes("MCP direct-write smoke test"), scrapeQueued: scrapeRequest.status === "pending", approvalNotificationCreated: (approvalNotificationCount || 0) > 0, directApprovalUrl: scrapeRequest.approvalUrl?.includes(`/app/mcp?request=${scrapeRequest.id}`), expiresAutomatically: expiredRequest.status === "expired", workspaceIsolation }, null, 2));
+  console.log(JSON.stringify({ writeToolsAdvertised: ["create_company", "create_contact", "create_lead", "create_task", "create_deal", "update_company", "update_contact", "update_lead", "update_deal", "add_company_to_list", "create_quote_draft"].every((name) => tools.result?.tools?.some((tool) => tool.name === name)), companyCreated: Boolean(companyResult.id), contactCreated: Boolean(contactResult.id), leadCreated: Boolean(leadResult.id), taskCreated: Boolean(taskResult.id), dealCreated: Boolean(dealResult.id), listMemberCreated: Boolean(listResult.id), quoteDraftCreated: Boolean(quoteResult.id), updatesApplied: companyUpdateResult.id === companyResult.id && contactUpdateResult.id === contactResult.id && leadUpdateResult.id === leadResult.id && dealUpdateResult.id === dealResult.id, concurrentIdempotency: concurrentCompanyResult.id === companyResult.id, idempotentReplay: replayResult.id === companyResult.id && replayResult.replayed === true, auditRedacted: !auditText.includes("private-smoke@example.com") && !auditText.includes("MCP direct-write smoke test"), scrapeQueued: scrapeRequest.status === "pending", approvalNotificationCreated: (approvalNotificationCount || 0) > 0, directApprovalUrl: scrapeRequest.approvalUrl?.includes(`/app/mcp?request=${scrapeRequest.id}`), expiresAutomatically: expiredRequest.status === "expired", workspaceIsolation }, null, 2));
+  if (quoteResult.id) await admin.from("quotes").delete().eq("id", quoteResult.id).eq("workspace_id", workspace.id);
+  if (list?.id) await admin.from("lead_lists").delete().eq("id", list.id).eq("workspace_id", workspace.id);
   if (taskResult.id) await admin.from("tasks").delete().eq("id", taskResult.id).eq("workspace_id", workspace.id);
   if (dealResult.id) await admin.from("deals").delete().eq("id", dealResult.id).eq("workspace_id", workspace.id);
   if (leadResult.id) await admin.from("leads").delete().eq("id", leadResult.id).eq("workspace_id", workspace.id);

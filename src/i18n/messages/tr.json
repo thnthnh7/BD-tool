@@ -581,6 +581,7 @@
     "authorizeWarning": "Yalnızca tanıdığınız müşterileri onaylayın. Bu bağlantıyı istediğiniz zaman MCP ayarlarından iptal edebilirsiniz.",
     "authorize": "Yetkilendir",
     "cancel": "İptal etmek",
-    "redirectDestination": "Yönlendirme: {url}"
+    "redirectDestination": "Yönlendirme: {url}",
+    "scopeQuotesWrite": "Teklif taslakları oluştur"
   }
 }
