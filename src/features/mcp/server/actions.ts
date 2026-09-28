@@ -132,12 +132,13 @@ export async function loadPlatformMcp() {
   const context = await requirePlatform();
   const admin = createAdminClient();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const [{ data: settings }, { data: connections }, { data: calls }, { data: workspaces }, { data: oauthClients }, { data: metricCalls }, { data: actionRequests }] = await Promise.all([
+  const [{ data: settings }, { data: connections }, { data: calls }, { data: workspaces }, { data: oauthClients }, { data: oauthTokens }, { data: metricCalls }, { data: actionRequests }] = await Promise.all([
     admin.from("mcp_settings").select("*").eq("id", 1).single(),
-    admin.from("mcp_connections").select("id, workspace_id, name, token_prefix, scopes, status, last_used_at, created_at").order("created_at", { ascending: false }).limit(100),
-    admin.from("mcp_tool_calls").select("id, workspace_id, tool_name, status, duration_ms, result_count, created_at").order("created_at", { ascending: false }).limit(50),
+    admin.from("mcp_connections").select("id, workspace_id, name, token_prefix, scopes, status, last_used_at, expires_at, created_at").order("created_at", { ascending: false }).limit(100),
+    admin.from("mcp_tool_calls").select("id, workspace_id, connection_id, request_id, tool_name, status, duration_ms, result_count, error_code, created_at").order("created_at", { ascending: false }).limit(100),
     admin.from("workspaces").select("id, name"),
     admin.from("mcp_oauth_clients").select("client_id, client_name, redirect_uris, status, created_at, last_used_at").order("created_at", { ascending: false }).limit(100),
+    admin.from("mcp_oauth_tokens").select("connection_id, client_id, access_expires_at, refresh_expires_at, revoked_at, created_at").order("created_at", { ascending: false }).limit(500),
     admin.from("mcp_tool_calls").select("tool_name, status, duration_ms").gte("created_at", since).limit(5000),
     admin.from("mcp_action_requests").select("status").gte("created_at", since).limit(5000),
   ]);
@@ -151,7 +152,7 @@ export async function loadPlatformMcp() {
     pendingApprovals: actionRequests?.filter((request) => request.status === "pending").length || 0,
     failedApprovals: actionRequests?.filter((request) => request.status === "failed").length || 0,
   };
-  return { canMutate: context.platformRole === "super_admin", settings, connections: connections || [], calls: calls || [], oauthClients: oauthClients || [], metrics, workspaceNames: Object.fromEntries((workspaces || []).map((workspace) => [workspace.id, workspace.name])) };
+  return { canMutate: context.platformRole === "super_admin", generatedAt: new Date().toISOString(), settings, connections: connections || [], calls: calls || [], oauthClients: oauthClients || [], oauthTokens: oauthTokens || [], metrics, workspaceNames: Object.fromEntries((workspaces || []).map((workspace) => [workspace.id, workspace.name])) };
 }
 
 export async function updateMcpSettingsAction(formData: FormData) {
@@ -178,4 +179,17 @@ export async function setMcpOAuthClientStatusAction(formData: FormData) {
   if (error) throw new Error(error.message);
   if (status === "revoked") await admin.from("mcp_oauth_tokens").update({ revoked_at: new Date().toISOString() }).eq("client_id", clientId).is("revoked_at", null);
   revalidatePath("/app/platform/mcp");
+}
+
+export async function revokePlatformMcpConnectionAction(formData: FormData) {
+  await requirePlatform("super_admin");
+  const connectionId = String(formData.get("connection_id") || "");
+  if (!connectionId) return;
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  const { error } = await admin.from("mcp_connections").update({ status: "revoked", updated_at: now }).eq("id", connectionId);
+  if (error) throw new Error(error.message);
+  await admin.from("mcp_oauth_tokens").update({ revoked_at: now }).eq("connection_id", connectionId).is("revoked_at", null);
+  revalidatePath("/app/platform/mcp");
+  revalidatePath("/app/mcp");
 }
