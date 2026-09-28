@@ -497,7 +497,7 @@ export async function saveWorkspaceOverrideAction(formData: FormData) {
     if (raw) quotas[key] = Number(raw);
   }
   const features: Record<string, boolean> = {};
-  for (const key of ["byok_ai", "lead_scrape", "export_docx", "custom_branding", "contracts"]) {
+  for (const key of ["byok_ai", "lead_scrape", "export_docx", "custom_branding", "contracts", "mcp_access"]) {
     if (String(formData.get(`feature_${key}`) || "") === "on") features[key] = true;
     if (String(formData.get(`feature_${key}_off`) || "") === "on") features[key] = false;
   }

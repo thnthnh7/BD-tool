@@ -45,6 +45,7 @@ type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   roles: NavRole[];
+  feature?: "mcp_access";
 };
 type NavGroup = {
   id: string;
@@ -102,7 +103,7 @@ const workspaceGroups: NavGroup[] = [
     items: [
       { href: "/app/team", label: "team", icon: Users, roles: ["owner", "admin"] },
       { href: "/app/crm-integrations", label: "crmIntegration", icon: Share2, roles: ["owner", "admin", "member"] },
-      { href: "/app/mcp", label: "mcp", icon: Network, roles: ["owner", "admin"] },
+      { href: "/app/mcp", label: "mcp", icon: Network, roles: ["owner", "admin"], feature: "mcp_access" },
     ],
   },
 ];
@@ -151,7 +152,7 @@ export function AppShellNav({
   const groups = (context.kind === "platform" ? platformGroups : workspaceGroups)
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => item.roles.includes(role)),
+      items: group.items.filter((item) => item.roles.includes(role) && (context.kind !== "workspace" || !item.feature || context.plan.features[item.feature])),
     }))
     .filter((group) => group.items.length > 0);
 

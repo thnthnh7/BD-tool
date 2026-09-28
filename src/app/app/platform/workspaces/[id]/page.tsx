@@ -105,6 +105,7 @@ export default async function PlatformWorkspaceDetailPage({
               <Checkbox name="feature_lead_scrape" label="Scrape" value="on" />
               <Checkbox name="feature_contracts" label="Contracts" value="on" />
               <Checkbox name="feature_export_docx" label="Docx" value="on" />
+              <Checkbox name="feature_mcp_access" label="MCP access" value="on" />
             </Group>
             <Button type="submit" mt="sm">
               Save override

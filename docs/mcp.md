@@ -1,6 +1,6 @@
 # Leadely MCP
 
-Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`.
+Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`. Access is controlled by the workspace SaaS plan through the `mcp_access` entitlement; Super Admin can configure it per plan or enable it for a specific workspace override.
 
 ## Connect
 
@@ -52,7 +52,7 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 
 Leadely also advertises a workspace profile resource, a CRM schema resource, and reusable prompts for prospect research and sales follow-up. These are scope-aware and only appear when the connection has the required read permission.
 
-All queries are restricted to the token's workspace. Each tool call is audited with sensitive input values redacted, and each connection is rate limited. Safe additive writes such as company creation run directly after the MCP client confirms them and require an idempotency key. Paid actions such as scrape runs require an owner or admin to approve the request in **Workspace → MCP** within 30 minutes. Scrape approval uses the existing plan, quota, Apify connection and webhook checks. Rotate a token when moving the connection to another client, and revoke it immediately when a client or device is no longer trusted. Rotation invalidates the old token immediately and issues a new 90-day token.
+All queries are restricted to the token's workspace. Every request rechecks the current plan entitlement, subscription status and workspace lock/archive state, so an existing token stops working when access is removed. Each tool call is audited with sensitive input values redacted, and each connection is rate limited. Safe additive writes such as company creation run directly after the MCP client confirms them and require an idempotency key. Paid actions such as scrape runs require an owner or admin to approve the request in **Workspace → MCP** within 30 minutes. Scrape approval uses the existing plan, quota, Apify connection and webhook checks. Rotate a token when moving the connection to another client, and revoke it immediately when a client or device is no longer trusted. Rotation invalidates the old token immediately and issues a new 90-day token.
 
 ## OAuth 2.1 client connection
 

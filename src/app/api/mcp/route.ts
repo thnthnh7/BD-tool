@@ -21,8 +21,20 @@ async function handle(request: Request) {
   if ("resource" in connection && connection.resource !== mcpResource(request)) return unauthorized(request, "The access token was issued for a different resource.");
 
   const admin = createAdminClient();
-  const { data: settings } = await admin.from("mcp_settings").select("enabled, read_tools_enabled, write_tools_enabled").eq("id", 1).single();
+  const [{ data: settings }, { data: workspace }] = await Promise.all([
+    admin.from("mcp_settings").select("enabled, read_tools_enabled, write_tools_enabled").eq("id", 1).single(),
+    admin.from("workspaces").select("plan_id, plan_status, locked, archived_at").eq("id", connection.workspace_id).maybeSingle(),
+  ]);
   if (!settings?.enabled || !settings.read_tools_enabled) return Response.json({ error: "MCP is temporarily unavailable." }, { status: 503 });
+  if (!workspace || workspace.locked || workspace.archived_at || ["expired", "canceled"].includes(workspace.plan_status)) return Response.json({ error: "This workspace cannot use MCP." }, { status: 403 });
+  const [{ data: plan }, { data: override }] = await Promise.all([
+    admin.from("plans").select("features").eq("id", workspace.plan_id).maybeSingle(),
+    admin.from("workspace_overrides").select("features").eq("workspace_id", connection.workspace_id).maybeSingle(),
+  ]);
+  const planFeatures = (plan?.features || {}) as Record<string, unknown>;
+  const overrideFeatures = (override?.features || {}) as Record<string, unknown>;
+  const mcpEnabled = typeof overrideFeatures.mcp_access === "boolean" ? overrideFeatures.mcp_access : Boolean(planFeatures.mcp_access);
+  if (!mcpEnabled) return Response.json({ error: "The workspace plan does not include MCP access." }, { status: 403 });
   const gate = await admit(admin, connection.id, "mcp_request", 120, 60);
   if (!("ok" in gate)) return Response.json({ error: gate.error }, { status: gate.status });
 

@@ -40,6 +40,7 @@ export async function updatePlanAction(formData: FormData) {
         export_docx: String(formData.get("export_docx") || "") === "on",
         custom_branding: String(formData.get("custom_branding") || "") === "on",
         contracts: String(formData.get("contracts") || "") === "on",
+        mcp_access: String(formData.get("mcp_access") || "") === "on",
       },
     })
     .eq("id", id);

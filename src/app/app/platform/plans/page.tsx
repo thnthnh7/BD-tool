@@ -78,6 +78,7 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                   <Checkbox name="export_docx" label="Export docx" defaultChecked={plan.features.export_docx} />
                   <Checkbox name="custom_branding" label="Custom branding" defaultChecked={plan.features.custom_branding} />
                   <Checkbox name="contracts" label="Contracts" defaultChecked={plan.features.contracts} />
+                  <Checkbox name="mcp_access" label="MCP access" defaultChecked={plan.features.mcp_access} />
                 </Group>
                 <Switch name="is_public" label="Listed on pricing" defaultChecked={plan.isPublic} mt={4} />
               </Stack>

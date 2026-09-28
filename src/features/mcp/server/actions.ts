@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireOwnerOrAdmin, requirePlatform } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateMcpToken, hashMcpToken, normalizeMcpScopes } from "@/features/mcp/server/service";
@@ -9,6 +10,7 @@ import type { Json } from "@/lib/database.types";
 
 export async function loadMcpWorkspace() {
   const context = await requireOwnerOrAdmin();
+  if (!context.plan.features.mcp_access || context.locked || ["expired", "canceled"].includes(context.planStatus)) redirect("/app/billing");
   const admin = createAdminClient();
   await admin.rpc("expire_mcp_action_requests", { p_workspace_id: context.workspaceId });
   const [{ data: connections }, { data: calls }, { data: settings }, { data: actionRequests }] = await Promise.all([
@@ -31,6 +33,7 @@ export async function loadMcpWorkspace() {
 
 export async function createMcpConnectionAction(formData: FormData) {
   const context = await requireOwnerOrAdmin();
+  if (!context.plan.features.mcp_access || context.locked || ["expired", "canceled"].includes(context.planStatus)) return { error: "Your workspace cannot use MCP." };
   const name = String(formData.get("name") || "").trim().slice(0, 80);
   const scopes = normalizeMcpScopes(formData.getAll("scopes").map(String));
   const expiry = String(formData.get("expiry") || "90");
@@ -55,6 +58,7 @@ export async function createMcpConnectionAction(formData: FormData) {
 
 export async function revokeMcpConnectionAction(id: string) {
   const context = await requireOwnerOrAdmin();
+  if (!context.plan.features.mcp_access || context.locked || ["expired", "canceled"].includes(context.planStatus)) return { error: "Your workspace cannot use MCP." };
   const { error } = await createAdminClient().from("mcp_connections").update({ status: "revoked" }).eq("id", id).eq("workspace_id", context.workspaceId);
   if (error) return { error: error.message };
   revalidatePath("/app/mcp");
@@ -67,6 +71,7 @@ function payloadObject(value: Json): Record<string, Json | undefined> {
 
 export async function reviewMcpActionRequestAction(formData: FormData) {
   const context = await requireOwnerOrAdmin();
+  if (!context.plan.features.mcp_access || context.locked || ["expired", "canceled"].includes(context.planStatus)) return;
   const id = String(formData.get("id") || "");
   const decision = String(formData.get("decision") || "");
   const admin = createAdminClient();
@@ -114,6 +119,7 @@ export async function reviewMcpActionRequestAction(formData: FormData) {
 
 export async function rotateMcpConnectionAction(id: string) {
   const context = await requireOwnerOrAdmin();
+  if (!context.plan.features.mcp_access || context.locked || ["expired", "canceled"].includes(context.planStatus)) return { error: "Your workspace cannot use MCP." };
   const token = generateMcpToken();
   const { data, error } = await createAdminClient().from("mcp_connections").update({
     token_hash: hashMcpToken(token),

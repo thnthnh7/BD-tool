@@ -13,6 +13,7 @@ export type PlanFeatures = {
   contracts: boolean;
   byok_ai: boolean;
   lead_scrape: boolean;
+  mcp_access: boolean;
 };
 
 export type ParsedPlan = {
@@ -72,6 +73,7 @@ export function parsePlan(row: {
       contracts: Boolean(features.contracts),
       byok_ai: Boolean(features.byok_ai),
       lead_scrape: Boolean(features.lead_scrape),
+      mcp_access: Boolean(features.mcp_access),
     },
     sortOrder: row.sort_order,
     badge: row.badge,
@@ -130,6 +132,7 @@ function pickFeatures(patch: Partial<PlanFeatures>): Partial<PlanFeatures> {
     "contracts",
     "byok_ai",
     "lead_scrape",
+    "mcp_access",
   ];
   const next: Partial<PlanFeatures> = {};
   for (const key of keys) {
