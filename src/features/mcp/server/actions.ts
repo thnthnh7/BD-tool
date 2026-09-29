@@ -119,13 +119,13 @@ export async function reviewMcpActionRequestAction(formData: FormData) {
     } else if (request.action_type === "start_crm_sync") {
       const connectionId = String(payload.connectionId || "");
       const requestedObjects = Array.isArray(payload.objects) ? payload.objects.map(String) : [];
-      const syncObjects = requestedObjects.filter((objectType) => ["companies", "contacts"].includes(objectType));
+      const syncObjects = requestedObjects.filter((objectType) => ["companies", "contacts", "deals"].includes(objectType));
       const { data: crmConnection, error: connectionError } = await admin.from("crm_connections").select("id, provider, status, sync_direction, sync_objects").eq("id", connectionId).eq("workspace_id", context.workspaceId).maybeSingle();
       if (connectionError) throw connectionError;
       if (!crmConnection || crmConnection.provider !== "hubspot" || crmConnection.status !== "connected") throw new Error("An active HubSpot connection is required.");
       if (!['import', 'bidirectional'].includes(crmConnection.sync_direction)) throw new Error("This CRM connection does not allow imports.");
       const allowedObjects = syncObjects.filter((objectType) => crmConnection.sync_objects.includes(objectType));
-      if (!allowedObjects.length) throw new Error("Select at least one configured HubSpot object: companies or contacts.");
+      if (!allowedObjects.length) throw new Error("Select at least one configured HubSpot object: companies, contacts or deals.");
       const { data: run, error: runError } = await admin.from("crm_sync_runs").insert({ workspace_id: context.workspaceId, connection_id: connectionId, direction: "import", status: "queued", sync_objects: allowedObjects, requested_by: context.userId }).select("id, status, sync_objects, started_at").single();
       if (runError) throw runError;
       result = { runId: run.id, status: run.status, objects: run.sync_objects, queuedAt: run.started_at };

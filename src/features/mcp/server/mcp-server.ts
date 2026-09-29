@@ -523,8 +523,8 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     });
 
     registerAuditedTool<{ idempotencyKey: string; connectionId: string; objects?: string[] }>(server, connection, requestId, {
-      name: "request_start_crm_sync", title: "Request HubSpot synchronization", description: "Request owner or admin approval to import configured companies and contacts from HubSpot. The approved run is processed asynchronously.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      inputSchema: { idempotencyKey: z.string().min(8).max(120), connectionId: z.string().uuid(), objects: z.array(z.enum(["companies", "contacts"])).min(1).max(2).default(["companies", "contacts"]) },
+      name: "request_start_crm_sync", title: "Request HubSpot synchronization", description: "Request owner or admin approval to import configured companies, contacts and deals from HubSpot. The approved run is processed asynchronously.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      inputSchema: { idempotencyKey: z.string().min(8).max(120), connectionId: z.string().uuid(), objects: z.array(z.enum(["companies", "contacts", "deals"])).min(1).max(3).default(["companies", "contacts", "deals"]) },
     }, async (input) => {
       const { data: crmConnection, error: connectionError } = await admin.from("crm_connections").select("id, provider, status, sync_direction, sync_objects").eq("id", input.connectionId).eq("workspace_id", connection.workspace_id).maybeSingle();
       if (connectionError) throw connectionError;
