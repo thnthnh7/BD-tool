@@ -521,6 +521,24 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
       if (error) throw error;
       return { data: { ...data, approvalUrl: `${appOrigin()}/app/mcp?request=${data.id}`, requiresApproval: true }, count: 1 };
     });
+
+    registerAuditedTool<{ idempotencyKey: string; connectionId: string; objects?: string[] }>(server, connection, requestId, {
+      name: "request_start_crm_sync", title: "Request HubSpot synchronization", description: "Request owner or admin approval to import configured companies and contacts from HubSpot. The approved run is processed asynchronously.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      inputSchema: { idempotencyKey: z.string().min(8).max(120), connectionId: z.string().uuid(), objects: z.array(z.enum(["companies", "contacts"])).min(1).max(2).default(["companies", "contacts"]) },
+    }, async (input) => {
+      const { data: crmConnection, error: connectionError } = await admin.from("crm_connections").select("id, provider, status, sync_direction, sync_objects").eq("id", input.connectionId).eq("workspace_id", connection.workspace_id).maybeSingle();
+      if (connectionError) throw connectionError;
+      if (!crmConnection || crmConnection.provider !== "hubspot" || crmConnection.status !== "connected") throw new Error("An active HubSpot connection is required.");
+      if (!["import", "bidirectional"].includes(crmConnection.sync_direction)) throw new Error("This CRM connection does not allow imports.");
+      const requestedObjects = [...new Set(input.objects)].filter((objectType) => crmConnection.sync_objects.includes(objectType));
+      if (!requestedObjects.length) throw new Error("None of the requested objects are enabled for this connection.");
+      const { data: existing } = await admin.from("mcp_action_requests").select("id, action_type, status, created_at, expires_at, result").eq("connection_id", connection.id).eq("action_type", "start_crm_sync").eq("idempotency_key", input.idempotencyKey).maybeSingle();
+      if (existing) return { data: { ...existing, approvalUrl: `${appOrigin()}/app/mcp?request=${existing.id}`, replayed: true }, count: 1 };
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      const { data, error } = await admin.from("mcp_action_requests").insert({ workspace_id: connection.workspace_id, connection_id: connection.id, requested_by: connection.created_by, action_type: "start_crm_sync", idempotency_key: input.idempotencyKey, expires_at: expiresAt, payload: { connectionId: input.connectionId, objects: requestedObjects } }).select("id, action_type, status, created_at, expires_at").single();
+      if (error) throw error;
+      return { data: { ...data, approvalUrl: `${appOrigin()}/app/mcp?request=${data.id}`, requiresApproval: true }, count: 1 };
+    });
   }
 
   return server;

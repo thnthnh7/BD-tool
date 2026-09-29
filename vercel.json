@@ -7,6 +7,10 @@
     {
       "path": "/api/mcp/cron",
       "schedule": "15 2 * * *"
+    },
+    {
+      "path": "/api/integrations/crm/sync",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

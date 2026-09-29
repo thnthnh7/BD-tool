@@ -1511,6 +1511,11 @@ export type Database = {
           error_summary: string | null;
           started_at: string;
           completed_at: string | null;
+          sync_objects: string[];
+          cursor_state: Json;
+          attempt_count: number;
+          next_attempt_at: string;
+          requested_by: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["crm_sync_runs"]["Row"]> & {
           workspace_id: string;
@@ -1870,6 +1875,7 @@ export type Database = {
       };
       cleanup_mcp_data: { Args: Record<string, never>; Returns: Json };
       expire_mcp_action_requests: { Args: { p_workspace_id?: string | null }; Returns: number };
+      claim_next_crm_sync_run: { Args: Record<string, never>; Returns: Database["public"]["Tables"]["crm_sync_runs"]["Row"][] };
       crm_provider_availability: {
         Args: Record<string, never>;
         Returns: { provider: string; enabled: boolean; rollout_status: string; credentials_configured: boolean }[];
