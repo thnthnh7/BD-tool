@@ -83,6 +83,13 @@ export async function reviewMcpActionRequestAction(formData: FormData) {
     revalidatePath("/app/mcp");
     return;
   }
+  if (request.action_type === "mark_quote_sent") {
+    if (!["approve", "reject"].includes(decision)) return;
+    const { error } = await admin.rpc("review_mcp_quote_action", { p_request_id: id, p_workspace_id: context.workspaceId, p_reviewer_id: context.userId, p_decision: decision });
+    if (error) throw new Error(error.message);
+    revalidatePath("/app/mcp");
+    return;
+  }
   if (decision === "reject") {
     await admin.from("mcp_action_requests").update({ status: "rejected", reviewed_by: context.userId, reviewed_at: now, completed_at: now }).eq("id", id).eq("status", "pending");
     revalidatePath("/app/mcp");
@@ -109,13 +116,6 @@ export async function reviewMcpActionRequestAction(formData: FormData) {
       if (scrape.error) throw new Error(scrape.error);
       if (!("id" in scrape)) throw new Error("Scrape job was not created.");
       result = { jobId: scrape.id };
-    } else if (request.action_type === "mark_quote_sent") {
-      const quoteId = String(payload.quoteId || "");
-      const sentAt = new Date().toISOString();
-      const { data, error } = await admin.from("quotes").update({ status: "sent", quote_status_v2: "sent", sent_at: sentAt }).eq("id", quoteId).eq("workspace_id", context.workspaceId).eq("quote_status_v2", "draft").select("id, title, status, quote_status_v2, sent_at").maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error("Quote is no longer a draft or was not found.");
-      result = data as unknown as Json;
     } else throw new Error("Unsupported MCP action.");
     await admin.from("mcp_action_requests").update({ status: "completed", result, completed_at: new Date().toISOString() }).eq("id", id);
   } catch (error) {

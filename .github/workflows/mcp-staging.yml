@@ -2,6 +2,14 @@ name: MCP staging smoke tests
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/app/api/mcp/**"
+      - "src/features/mcp/**"
+      - "scripts/mcp-*.mjs"
+      - "supabase/migrations/*mcp*.sql"
+      - ".github/workflows/mcp-staging.yml"
 
 jobs:
   smoke:
@@ -12,6 +20,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.STAGING_SUPABASE_DB_URL }}
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       MCP_TEST_BASE_URL: http://127.0.0.1:3000
@@ -22,6 +31,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Apply MCP migrations to staging
+        run: npx supabase db push --db-url "$SUPABASE_DB_URL" --include-all
       - name: Start Leadely
         run: npm run dev > /tmp/leadely-next.log 2>&1 &
       - name: Wait for server
@@ -36,3 +47,10 @@ jobs:
       - run: npm run test:mcp:oauth
       - run: npm run test:mcp:sdk
       - run: npm run test:mcp:write
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-staging-server-log
+          path: /tmp/leadely-next.log
+          retention-days: 7

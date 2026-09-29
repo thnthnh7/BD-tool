@@ -1966,6 +1966,10 @@ export type Database = {
       };
       release_hold: { Args: { p_subject: string; p_bucket: string }; Returns: undefined };
       remove_workspace_member: { Args: { p_workspace_id: string; p_user_id: string }; Returns: undefined };
+      review_mcp_quote_action: {
+        Args: { p_request_id: string; p_workspace_id: string; p_reviewer_id: string; p_decision: string };
+        Returns: Json;
+      };
       set_workspace_member_role: {
         Args: { p_workspace_id: string; p_user_id: string; p_role: string };
         Returns: undefined;
