@@ -43,10 +43,14 @@ try {
   const integrationsResult = await rpc({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "list_crm_integrations", arguments: {} } });
   const listsResult = await rpc({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "list_lead_lists", arguments: { limit: 1 } } });
   const knowledgeResult = await rpc({ jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "search_knowledge", arguments: { query: "pricing proposal", limit: 2 } } });
+  const crmRunsResult = await rpc({ jsonrpc: "2.0", id: 11, method: "tools/call", params: { name: "list_crm_sync_runs", arguments: { limit: 1 } } });
+  const crmIssuesResult = await rpc({ jsonrpc: "2.0", id: 12, method: "tools/call", params: { name: "list_crm_sync_issues", arguments: { limit: 1 } } });
   const pipelines = JSON.parse(pipelinesResult.result?.content?.[0]?.text || "[]");
   const integrations = JSON.parse(integrationsResult.result?.content?.[0]?.text || "[]");
   const listsPage = JSON.parse(listsResult.result?.content?.[0]?.text || "{}");
   const knowledgePage = JSON.parse(knowledgeResult.result?.content?.[0]?.text || "{}");
+  const crmRunsPage = JSON.parse(crmRunsResult.result?.content?.[0]?.text || "{}");
+  const crmIssuesPage = JSON.parse(crmIssuesResult.result?.content?.[0]?.text || "{}");
   const companyId = companiesPage.items?.[0]?.id;
   const companyDetailResult = companyId ? await rpc({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "get_company", arguments: { companyId } } }) : null;
   const companyDetail = companyDetailResult ? JSON.parse(companyDetailResult.result?.content?.[0]?.text || "null") : null;
@@ -62,6 +66,8 @@ try {
     paginatedCompanies: Array.isArray(companiesPage.items) && "hasMore" in companiesPage && "nextCursor" in companiesPage,
     salesContextReadable: Array.isArray(pipelines) && Array.isArray(integrations) && Array.isArray(listsPage.items),
     hybridKnowledgeReadable: Array.isArray(knowledgePage.items),
+    crmSyncOperationsReadable: Array.isArray(crmRunsPage.items) && Array.isArray(crmIssuesPage.items),
+    crmSyncToolsAdvertised: ["list_crm_sync_runs", "get_crm_sync_run", "list_crm_field_mappings", "list_crm_sync_issues", "get_crm_sync_readiness"].every((name) => tools.result?.tools?.some((tool) => tool.name === name)),
     detailToolsAdvertised: detailTools.every((name) => tools.result?.tools?.some((tool) => tool.name === name)),
     companyDetailReadable: !companyId || companyDetail?.id === companyId,
     detailWorkspaceIsolation: !foreignCompany || foreignCompanyDetail === null,

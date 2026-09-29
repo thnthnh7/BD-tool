@@ -269,6 +269,76 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     return { data, count: data.length };
   });
 
+  registerAuditedTool<{ connectionId?: string; status?: string; direction?: string; limit?: number; cursor?: string }>(server, connection, requestId, {
+    name: "list_crm_sync_runs", title: "List CRM sync runs", description: "Return synchronization history for CRM integrations in this workspace, including record counts and failure summaries.", scope: "crm:read",
+    inputSchema: { connectionId: z.string().uuid().optional(), status: z.enum(["running", "completed", "partial", "failed"]).optional(), direction: z.enum(["import", "export"]).optional(), limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
+  }, async ({ connectionId, status, direction, limit = 20, cursor }) => {
+    const offset = cursorOffset(cursor);
+    let request = admin.from("crm_sync_runs").select("id, connection_id, direction, status, records_read, records_created, records_updated, records_skipped, records_failed, error_summary, started_at, completed_at").eq("workspace_id", connection.workspace_id).order("started_at", { ascending: false }).range(offset, offset + limit);
+    if (connectionId) request = request.eq("connection_id", connectionId);
+    if (status) request = request.eq("status", status);
+    if (direction) request = request.eq("direction", direction);
+    const { data, error } = await request;
+    if (error) throw error;
+    const result = page(data, offset, limit);
+    return { data: result, count: result.items.length };
+  });
+
+  registerAuditedTool<{ runId: string }>(server, connection, requestId, {
+    name: "get_crm_sync_run", title: "Get CRM sync run", description: "Return one CRM synchronization run from this workspace with its processing totals and error summary.", scope: "crm:read",
+    inputSchema: { runId: z.string().uuid() },
+  }, async ({ runId }) => {
+    const { data, error } = await admin.from("crm_sync_runs").select("id, connection_id, direction, status, records_read, records_created, records_updated, records_skipped, records_failed, error_summary, started_at, completed_at").eq("id", runId).eq("workspace_id", connection.workspace_id).maybeSingle();
+    if (error) throw error;
+    return { data, count: data ? 1 : 0 };
+  });
+
+  registerAuditedTool<{ connectionId: string; objectType?: string }>(server, connection, requestId, {
+    name: "list_crm_field_mappings", title: "List CRM field mappings", description: "Return the configured field mappings for one workspace CRM connection.", scope: "crm:read",
+    inputSchema: { connectionId: z.string().uuid(), objectType: z.enum(["contacts", "companies", "deals", "activities", "tasks", "notes"]).optional() },
+  }, async ({ connectionId, objectType }) => {
+    let request = admin.from("crm_field_mappings").select("id, connection_id, object_type, leadely_field, external_field, sync_direction, transformation, required, updated_at").eq("workspace_id", connection.workspace_id).eq("connection_id", connectionId).order("object_type").order("leadely_field");
+    if (objectType) request = request.eq("object_type", objectType);
+    const { data, error } = await request;
+    if (error) throw error;
+    return { data, count: data.length };
+  });
+
+  registerAuditedTool<{ connectionId?: string; status?: string; objectType?: string; limit?: number; cursor?: string }>(server, connection, requestId, {
+    name: "list_crm_sync_issues", title: "List CRM sync issues", description: "Return unresolved CRM record conflicts and errors without exposing provider credentials.", scope: "crm:read",
+    inputSchema: { connectionId: z.string().uuid().optional(), status: z.enum(["conflict", "error"]).optional(), objectType: z.string().min(1).max(80).optional(), limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
+  }, async ({ connectionId, status, objectType, limit = 20, cursor }) => {
+    const offset = cursorOffset(cursor);
+    let request = admin.from("crm_record_links").select("id, connection_id, object_type, leadely_record_id, external_record_id, leadely_updated_at, external_updated_at, last_synced_at, sync_status, last_error, updated_at").eq("workspace_id", connection.workspace_id).in("sync_status", status ? [status] : ["conflict", "error"]).order("updated_at", { ascending: false }).range(offset, offset + limit);
+    if (connectionId) request = request.eq("connection_id", connectionId);
+    if (objectType) request = request.eq("object_type", objectType);
+    const { data, error } = await request;
+    if (error) throw error;
+    const result = page(data, offset, limit);
+    return { data: result, count: result.items.length };
+  });
+
+  registerAuditedTool<{ connectionId: string }>(server, connection, requestId, {
+    name: "get_crm_sync_readiness", title: "Check CRM sync readiness", description: "Explain whether a CRM connection has the authorization, object selection and field mappings needed for synchronization.", scope: "crm:read",
+    inputSchema: { connectionId: z.string().uuid() },
+  }, async ({ connectionId }) => {
+    const [{ data: crmConnection, error: connectionError }, { data: mappings, error: mappingError }] = await Promise.all([
+      admin.from("crm_connections").select("id, provider, status, sync_direction, sync_objects, setup_step, webhook_status, token_expires_at, last_error").eq("id", connectionId).eq("workspace_id", connection.workspace_id).maybeSingle(),
+      admin.from("crm_field_mappings").select("object_type, required").eq("connection_id", connectionId).eq("workspace_id", connection.workspace_id),
+    ]);
+    if (connectionError) throw connectionError;
+    if (mappingError) throw mappingError;
+    if (!crmConnection) return { data: null, count: 0 };
+    const mappedObjects = [...new Set(mappings.map((mapping) => mapping.object_type))];
+    const missingMappings = crmConnection.sync_objects.filter((objectType) => !mappedObjects.includes(objectType));
+    const blockers: string[] = [];
+    if (crmConnection.status !== "connected") blockers.push(`Connection status is ${crmConnection.status}.`);
+    if (crmConnection.token_expires_at && new Date(crmConnection.token_expires_at).getTime() <= Date.now()) blockers.push("Provider authorization has expired.");
+    if (!crmConnection.sync_objects.length) blockers.push("No CRM objects are selected for synchronization.");
+    if (missingMappings.length) blockers.push(`Missing field mappings for: ${missingMappings.join(", ")}.`);
+    return { data: { connectionId, provider: crmConnection.provider, ready: blockers.length === 0, blockers, syncDirection: crmConnection.sync_direction, syncObjects: crmConnection.sync_objects, mappedObjects, setupStep: crmConnection.setup_step, webhookStatus: crmConnection.webhook_status, lastError: crmConnection.last_error }, count: 1 };
+  });
+
   registerAuditedTool<{ limit?: number; cursor?: string }>(server, connection, requestId, {
     name: "list_lead_lists", title: "List lead lists", description: "List workspace lead lists and their current status.", scope: "crm:read", inputSchema: { limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
   }, async ({ limit = 20, cursor }) => {

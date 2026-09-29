@@ -38,6 +38,11 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `get_task` | `crm:read` | Read one task by ID |
 | `list_sales_pipelines` | `crm:read` | List sales pipelines and their stages |
 | `list_crm_integrations` | `crm:read` | Read connection and synchronization status without exposing credentials |
+| `list_crm_sync_runs` | `crm:read` | Read paginated CRM synchronization history and processing totals |
+| `get_crm_sync_run` | `crm:read` | Read one synchronization run in the token workspace |
+| `list_crm_field_mappings` | `crm:read` | Inspect field mappings for one CRM connection |
+| `list_crm_sync_issues` | `crm:read` | Read unresolved record conflicts and synchronization errors |
+| `get_crm_sync_readiness` | `crm:read` | Check authorization, object selection and mapping readiness |
 | `list_lead_lists` | `crm:read` | List workspace lead lists |
 | `get_list` | `crm:read` | Read one lead list with up to 50 memberships |
 | `list_scrape_sources` | `sources:read` | Installed scrape sources |
@@ -81,4 +86,4 @@ Call `GET /api/mcp/cron` on a daily schedule with `Authorization: Bearer <CRON_S
 
 ## Current boundary
 
-The current release exposes workspace, CRM, pipeline, integration, list, source, data-library, knowledge, quote and scrape reads. It supports idempotent company, contact, lead, task, deal, list and quote-draft writes, constrained CRM updates, and approval-gated quote delivery and Google Maps scrape requests through personal access tokens and OAuth 2.1. Super Admin can pause read/write rollout, inspect tool activity, revoke connections and revoke registered OAuth clients. Marketplace publication still requires a stable production HTTPS hostname, public support/privacy URLs, namespace ownership verification, and a validated `server.json` before running `mcp-publisher publish`.
+The current release exposes workspace, CRM, pipeline, integration, synchronization history, field-mapping, conflict, list, source, data-library, knowledge, quote and scrape reads. It supports idempotent company, contact, lead, task, deal, list and quote-draft writes, constrained CRM updates, and approval-gated quote delivery and Google Maps scrape requests through personal access tokens and OAuth 2.1. CRM provider execution is intentionally not exposed as an MCP action until provider-specific workers can execute and reconcile queued runs; the readiness tool reports blockers instead of creating a run that cannot finish. Super Admin can pause read/write rollout, inspect tool activity, revoke connections and revoke registered OAuth clients. Marketplace publication still requires a stable production HTTPS hostname, public support/privacy URLs, namespace ownership verification, and a validated `server.json` before running `mcp-publisher publish`.
