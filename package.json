@@ -11,6 +11,7 @@
     "test:mcp:oauth": "node scripts/mcp-oauth-smoke-test.mjs",
     "test:mcp:write": "node scripts/mcp-write-smoke-test.mjs",
     "test:mcp:sdk": "node scripts/mcp-sdk-compat-test.mjs",
+    "test:mcp:load": "node scripts/mcp-load-test.mjs",
     "start": "next start",
     "lint": "eslint",
     "seed:demo": "npx tsx scripts/seed-demo.ts"

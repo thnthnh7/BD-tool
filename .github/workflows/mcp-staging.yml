@@ -47,6 +47,7 @@ jobs:
       - run: npm run test:mcp:oauth
       - run: npm run test:mcp:sdk
       - run: npm run test:mcp:write
+      - run: npm run test:mcp:load
       - name: Upload server log on failure
         if: failure()
         uses: actions/upload-artifact@v4

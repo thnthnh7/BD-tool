@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { evaluateAndSendMcpHealthAlert } from "@/features/mcp/server/alerts";
 
 export const runtime = "nodejs";
 
@@ -13,5 +14,6 @@ export async function GET(request: Request) {
   }
   const { data, error } = await createAdminClient().rpc("cleanup_mcp_data");
   if (error) return Response.json({ error: error.message }, { status: 500, headers: { "Cache-Control": "no-store" } });
-  return Response.json(data, { headers: { "Cache-Control": "no-store" } });
+  const health = await evaluateAndSendMcpHealthAlert();
+  return Response.json({ cleanup: data, health }, { headers: { "Cache-Control": "no-store" } });
 }
