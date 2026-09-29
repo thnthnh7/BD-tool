@@ -42,9 +42,18 @@ try {
   const pipelinesResult = await rpc({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "list_sales_pipelines", arguments: {} } });
   const integrationsResult = await rpc({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "list_crm_integrations", arguments: {} } });
   const listsResult = await rpc({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "list_lead_lists", arguments: { limit: 1 } } });
+  const knowledgeResult = await rpc({ jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "search_knowledge", arguments: { query: "pricing proposal", limit: 2 } } });
   const pipelines = JSON.parse(pipelinesResult.result?.content?.[0]?.text || "[]");
   const integrations = JSON.parse(integrationsResult.result?.content?.[0]?.text || "[]");
   const listsPage = JSON.parse(listsResult.result?.content?.[0]?.text || "{}");
+  const knowledgePage = JSON.parse(knowledgeResult.result?.content?.[0]?.text || "{}");
+  const companyId = companiesPage.items?.[0]?.id;
+  const companyDetailResult = companyId ? await rpc({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "get_company", arguments: { companyId } } }) : null;
+  const companyDetail = companyDetailResult ? JSON.parse(companyDetailResult.result?.content?.[0]?.text || "null") : null;
+  const detailTools = ["get_company", "get_contact", "get_lead", "get_deal", "get_task", "get_list", "get_data_record", "get_scrape_run"];
+  const { data: foreignCompany } = await admin.from("companies").select("id").neq("workspace_id", workspace.id).limit(1).maybeSingle();
+  const foreignCompanyResult = foreignCompany ? await rpc({ jsonrpc: "2.0", id: 10, method: "tools/call", params: { name: "get_company", arguments: { companyId: foreignCompany.id } } }) : null;
+  const foreignCompanyDetail = foreignCompanyResult ? JSON.parse(foreignCompanyResult.result?.content?.[0]?.text || "null") : null;
   console.log(JSON.stringify({
     initialize: initialized.result?.serverInfo?.name || null,
     protocolVersion: initialized.result?.protocolVersion || null,
@@ -52,6 +61,10 @@ try {
     getWorkspaceOk: Array.isArray(workspaceResult.result?.content) && workspaceResult.result.content.length > 0,
     paginatedCompanies: Array.isArray(companiesPage.items) && "hasMore" in companiesPage && "nextCursor" in companiesPage,
     salesContextReadable: Array.isArray(pipelines) && Array.isArray(integrations) && Array.isArray(listsPage.items),
+    hybridKnowledgeReadable: Array.isArray(knowledgePage.items),
+    detailToolsAdvertised: detailTools.every((name) => tools.result?.tools?.some((tool) => tool.name === name)),
+    companyDetailReadable: !companyId || companyDetail?.id === companyId,
+    detailWorkspaceIsolation: !foreignCompany || foreignCompanyDetail === null,
     structuredContent: Boolean(companiesResult.result?.structuredContent),
   }, null, 2));
 } finally {

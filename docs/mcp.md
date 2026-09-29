@@ -31,14 +31,22 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `search_companies` | `crm:read` | Search CRM companies |
 | `search_contacts` | `crm:read` | Search CRM contacts |
 | `list_leads` | `crm:read` | List recent leads |
+| `get_company` | `crm:read` | Read one company by ID |
+| `get_contact` | `crm:read` | Read one contact by ID |
+| `get_lead` | `crm:read` | Read one lead by ID |
+| `get_deal` | `crm:read` | Read one deal by ID |
+| `get_task` | `crm:read` | Read one task by ID |
 | `list_sales_pipelines` | `crm:read` | List sales pipelines and their stages |
 | `list_crm_integrations` | `crm:read` | Read connection and synchronization status without exposing credentials |
 | `list_lead_lists` | `crm:read` | List workspace lead lists |
+| `get_list` | `crm:read` | Read one lead list with up to 50 memberships |
 | `list_scrape_sources` | `sources:read` | Installed scrape sources |
 | `search_data_library` | `data:read` | Search normalized scraped records |
-| `search_knowledge` | `knowledge:read` | Search document evidence excerpts |
+| `get_data_record` | `data:read` | Read one normalized record with bounded payload size |
+| `search_knowledge` | `knowledge:read` | Hybrid semantic and keyword search with source and relevance score |
 | `get_quotes` | `quotes:read` | Read recent quotes or one quote |
 | `list_scrape_runs` | `scrape:read` | Read scrape status, counts, cost and runner |
+| `get_scrape_run` | `scrape:read` | Read one scrape run by ID |
 | `create_company` | `crm:write` | Create a company after confirmation in the MCP client; retries use an idempotency key |
 | `create_contact` | `crm:write` | Create a contact and optionally link it to a workspace company |
 | `create_lead` | `crm:write` | Create a lead linked to workspace CRM records |
@@ -57,7 +65,7 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `request_start_maps_scrape` | `scrape:write` | Queue a Google Maps scrape request for human approval |
 | `get_action_request` | `workspace:read` | Poll approval and execution status |
 
-Leadely also advertises a workspace profile resource, a CRM schema resource, and reusable prompts for prospect research and sales follow-up. These are scope-aware and only appear when the connection has the required read permission.
+Leadely also advertises a workspace profile resource, a CRM schema resource, and reusable prompts for prospect research and sales follow-up. These are scope-aware and only appear when the connection has the required read permission. List responses are paginated, large structured fields are bounded, and detail tools always apply the token workspace filter.
 
 All queries are restricted to the token's workspace. Every request rechecks the current plan entitlement, subscription status and workspace lock/archive state, so an existing token stops working when access is removed. Each tool call is audited with sensitive input values redacted, and each connection is rate limited. Safe additive writes such as company creation run directly after the MCP client confirms them and require an idempotency key. Externally meaningful actions such as marking a quote as sent, and paid actions such as scrape runs, require an owner or admin to approve the request in **Workspace → MCP** within 30 minutes. Scrape approval uses the existing plan, quota, Apify connection and webhook checks. Rotate a token when moving the connection to another client, and revoke it immediately when a client or device is no longer trusted. Rotation invalidates the old token immediately and issues a new 90-day token.
 

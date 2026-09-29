@@ -7,6 +7,7 @@ import { recordMcpCall } from "@/features/mcp/server/service";
 import type { McpScope } from "@/features/mcp/scopes";
 import type { Json } from "@/lib/database.types";
 import { appOrigin } from "@/features/mcp/server/oauth";
+import { embedTexts, vectorLiteral } from "@/features/knowledge/server/embedding";
 
 type Connection = {
   id: string;
@@ -26,6 +27,11 @@ function page<T>(items: T[], offset: number, limit: number) {
 
 function cursorOffset(cursor?: string) {
   return cursor ? Number(cursor) : 0;
+}
+
+function boundedJson(value: Json, maxLength = 12000): Json {
+  const serialized = JSON.stringify(value);
+  return serialized.length <= maxLength ? value : { truncated: true, preview: serialized.slice(0, maxLength), originalLength: serialized.length };
 }
 
 function registerAuditedTool<T extends Record<string, unknown>>(
@@ -121,6 +127,46 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     return { data: result, count: result.items.length };
   });
 
+  registerAuditedTool<{ companyId: string }>(server, connection, requestId, {
+    name: "get_company", title: "Get company", description: "Get one workspace company with its CRM profile.", scope: "crm:read", inputSchema: { companyId: z.string().uuid() },
+  }, async ({ companyId }) => {
+    const { data, error } = await admin.from("companies").select("id, name, domain, website, industry, company_size, phone, email, address, tax_code, lifecycle_stage, lead_source, notes, owner_user_id, created_at, updated_at").eq("id", companyId).eq("workspace_id", connection.workspace_id).maybeSingle();
+    if (error) throw error;
+    return { data, count: data ? 1 : 0 };
+  });
+
+  registerAuditedTool<{ contactId: string }>(server, connection, requestId, {
+    name: "get_contact", title: "Get contact", description: "Get one workspace contact with its company relationship.", scope: "crm:read", inputSchema: { contactId: z.string().uuid() },
+  }, async ({ contactId }) => {
+    const { data, error } = await admin.from("contacts").select("id, company_id, display_name, first_name, last_name, email, phone, job_title, linkedin_url, relationship_strength, notes, owner_user_id, created_at, updated_at").eq("id", contactId).eq("workspace_id", connection.workspace_id).maybeSingle();
+    if (error) throw error;
+    return { data, count: data ? 1 : 0 };
+  });
+
+  registerAuditedTool<{ leadId: string }>(server, connection, requestId, {
+    name: "get_lead", title: "Get lead", description: "Get one workspace lead and its current qualification state.", scope: "crm:read", inputSchema: { leadId: z.string().uuid() },
+  }, async ({ leadId }) => {
+    const { data, error } = await admin.from("leads").select("id, company_id, contact_id, owner_user_id, status, source, score, score_reason, next_action_at, last_activity_at, converted_deal_id, created_at, updated_at").eq("id", leadId).eq("workspace_id", connection.workspace_id).maybeSingle();
+    if (error) throw error;
+    return { data, count: data ? 1 : 0 };
+  });
+
+  registerAuditedTool<{ dealId: string }>(server, connection, requestId, {
+    name: "get_deal", title: "Get deal", description: "Get one workspace deal with pipeline, stage and commercial details.", scope: "crm:read", inputSchema: { dealId: z.string().uuid() },
+  }, async ({ dealId }) => {
+    const { data, error } = await admin.from("deals").select("id, company_id, primary_contact_id, pipeline_id, stage_id, owner_user_id, title, description, deal_type, amount, currency, probability, expected_close_date, priority, source, lost_reason, won_at, lost_at, last_activity_at, next_activity_at, created_at, updated_at").eq("id", dealId).eq("workspace_id", connection.workspace_id).maybeSingle();
+    if (error) throw error;
+    return { data, count: data ? 1 : 0 };
+  });
+
+  registerAuditedTool<{ taskId: string }>(server, connection, requestId, {
+    name: "get_task", title: "Get task", description: "Get one workspace task with assignments and linked CRM records.", scope: "crm:read", inputSchema: { taskId: z.string().uuid() },
+  }, async ({ taskId }) => {
+    const { data, error } = await admin.from("tasks").select("id, assigned_to, deal_id, company_id, contact_id, type, title, description, priority, status, due_at, completed_at, created_by, created_at, updated_at").eq("id", taskId).eq("workspace_id", connection.workspace_id).maybeSingle();
+    if (error) throw error;
+    return { data, count: data ? 1 : 0 };
+  });
+
   registerAuditedTool<Record<string, never>>(server, connection, requestId, {
     name: "list_scrape_sources", title: "List installed scrape sources", description: "Return scrape sources installed in this Leadely workspace.", scope: "sources:read", inputSchema: {},
   }, async () => {
@@ -143,19 +189,28 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     if (type) request = request.eq("record_type", type);
     const { data, error } = await request;
     if (error) throw error;
-    const result = page(data, offset, limit);
+    const result = page(data.map((item) => ({ ...item, normalized_data: boundedJson(item.normalized_data, 4000) })), offset, limit);
     return { data: result, count: result.items.length };
   });
 
+  registerAuditedTool<{ recordId: string }>(server, connection, requestId, {
+    name: "get_data_record", title: "Get data record", description: "Get one normalized Data Library record. Large normalized payloads are safely truncated.", scope: "data:read", inputSchema: { recordId: z.string().uuid() },
+  }, async ({ recordId }) => {
+    const { data, error } = await admin.from("data_records").select("id, collection_id, scrape_result_id, source_item_key, record_type, title, canonical_url, normalized_data, identity_keys, promoted_company_id, promoted_contact_id, captured_at, created_at, updated_at").eq("id", recordId).eq("workspace_id", connection.workspace_id).maybeSingle();
+    if (error) throw error;
+    return { data: data ? { ...data, normalized_data: boundedJson(data.normalized_data) } : null, count: data ? 1 : 0 };
+  });
+
   registerAuditedTool<{ query: string; limit?: number; cursor?: string }>(server, connection, requestId, {
-    name: "search_knowledge", title: "Search knowledge", description: "Search extracted workspace documents and return short evidence excerpts.", scope: "knowledge:read",
+    name: "search_knowledge", title: "Search knowledge", description: "Hybrid semantic and keyword search across approved workspace knowledge, with source and relevance scores.", scope: "knowledge:read",
     inputSchema: { query: z.string().min(2).max(200), limit: z.number().int().min(1).max(20).default(8), cursor: z.string().regex(/^\d+$/).optional() },
   }, async ({ query, limit = 8, cursor }) => {
     const offset = cursorOffset(cursor);
-    const { data, error } = await admin.from("knowledge_chunks").select("id, document_id, chunk_index, content, metadata").eq("workspace_id", connection.workspace_id).ilike("content", `%${query.trim()}%`).order("created_at", { ascending: false }).range(offset, offset + limit);
+    const [embedding] = await embedTexts([query]);
+    const { data, error } = await admin.rpc("match_mcp_knowledge_chunks", { p_workspace_id: connection.workspace_id, p_connection_id: connection.id, query_embedding: vectorLiteral(embedding), query_text: query.slice(0, 2000), match_count: Math.min(offset + limit + 1, 20) });
     if (error) throw error;
-    const excerpts = data.map((item) => ({ ...item, content: item.content.slice(0, 1200) }));
-    const result = page(excerpts, offset, limit);
+    const ranked = data.slice(offset).map((item) => ({ ...item, content: item.content.slice(0, 1600), metadata: boundedJson(item.metadata, 2000), score: Number(item.similarity || 0) * 0.72 + Number(item.text_rank || 0) * 0.28 }));
+    const result = page(ranked, offset, limit);
     return { data: result, count: result.items.length };
   });
 
@@ -168,7 +223,7 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     if (quoteId) request = request.eq("id", quoteId).limit(1);
     const { data, error } = await request;
     if (error) throw error;
-    const result = page(data, offset, quoteId ? data.length : limit);
+    const result = page(data.map((item) => ({ ...item, items: boundedJson(item.items, 6000) })), offset, quoteId ? data.length : limit);
     return { data: result, count: result.items.length };
   });
 
@@ -183,6 +238,14 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     if (error) throw error;
     const result = page(data, offset, limit);
     return { data: result, count: result.items.length };
+  });
+
+  registerAuditedTool<{ runId: string }>(server, connection, requestId, {
+    name: "get_scrape_run", title: "Get scrape run", description: "Get one workspace scrape run with progress, cost and result counts.", scope: "scrape:read", inputSchema: { runId: z.string().uuid() },
+  }, async ({ runId }) => {
+    const { data, error } = await admin.from("lead_scrape_jobs").select("id, source_id, created_by, query, location, language, max_results, filters, status, apify_actor_id, apify_run_id, apify_dataset_id, apify_usage_usd, places_found, places_imported, people_found, people_imported, enrich_people, max_people_per_place, verify_emails, started_at, finished_at, created_at, updated_at").eq("id", runId).eq("workspace_id", connection.workspace_id).maybeSingle();
+    if (error) throw error;
+    return { data, count: data ? 1 : 0 };
   });
 
   registerAuditedTool<Record<string, never>>(server, connection, requestId, {
@@ -214,6 +277,18 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     if (error) throw error;
     const result = page(data, offset, limit);
     return { data: result, count: result.items.length };
+  });
+
+  registerAuditedTool<{ listId: string }>(server, connection, requestId, {
+    name: "get_list", title: "Get lead list", description: "Get one workspace lead list and up to 50 current memberships.", scope: "crm:read", inputSchema: { listId: z.string().uuid() },
+  }, async ({ listId }) => {
+    const [{ data: list, error: listError }, { data: members, error: memberError }] = await Promise.all([
+      admin.from("lead_lists").select("id, name, description, source, status, owner_user_id, scrape_job_id, created_at, updated_at").eq("id", listId).eq("workspace_id", connection.workspace_id).maybeSingle(),
+      admin.from("lead_list_members").select("id, company_id, lead_id, contact_id, added_from, status, created_at").eq("list_id", listId).eq("workspace_id", connection.workspace_id).order("created_at", { ascending: false }).limit(50),
+    ]);
+    if (listError) throw listError;
+    if (memberError) throw memberError;
+    return { data: list ? { ...list, members } : null, count: list ? 1 : 0 };
   });
 
   if (writeToolsEnabled) {

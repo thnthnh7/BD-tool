@@ -1945,6 +1945,19 @@ export type Database = {
           text_rank: number;
         }[];
       };
+      match_mcp_knowledge_chunks: {
+        Args: { p_workspace_id: string; p_connection_id: string; query_embedding: string; query_text: string; match_count?: number };
+        Returns: {
+          id: string;
+          document_id: string;
+          file_name: string;
+          chunk_index: number;
+          content: string;
+          metadata: Json;
+          similarity: number;
+          text_rank: number;
+        }[];
+      };
       platform_role: { Args: Record<string, never>; Returns: string };
       platform_workspace_counts: { Args: { p_workspace_id: string }; Returns: Json };
       record_platform_audit: {
