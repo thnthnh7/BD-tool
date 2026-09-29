@@ -571,6 +571,7 @@
     "approvalQueue": "Approval queue",
     "createCompanyRequest": "Create company",
     "startScrapeRequest": "Start Google Maps scrape",
+    "markQuoteSentRequest": "Mark quote as sent",
     "approveRequest": "Approve & run",
     "rejectRequest": "Reject",
     "noActionRequests": "No MCP action requests yet.",

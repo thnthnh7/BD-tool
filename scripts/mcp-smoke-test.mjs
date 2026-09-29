@@ -39,12 +39,19 @@ try {
   const workspaceResult = await rpc({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_workspace", arguments: {} } });
   const companiesResult = await rpc({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "search_companies", arguments: { limit: 1 } } });
   const companiesPage = JSON.parse(companiesResult.result?.content?.[0]?.text || "{}");
+  const pipelinesResult = await rpc({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "list_sales_pipelines", arguments: {} } });
+  const integrationsResult = await rpc({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "list_crm_integrations", arguments: {} } });
+  const listsResult = await rpc({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "list_lead_lists", arguments: { limit: 1 } } });
+  const pipelines = JSON.parse(pipelinesResult.result?.content?.[0]?.text || "[]");
+  const integrations = JSON.parse(integrationsResult.result?.content?.[0]?.text || "[]");
+  const listsPage = JSON.parse(listsResult.result?.content?.[0]?.text || "{}");
   console.log(JSON.stringify({
     initialize: initialized.result?.serverInfo?.name || null,
     protocolVersion: initialized.result?.protocolVersion || null,
     tools: tools.result?.tools?.map((tool) => tool.name) || [],
     getWorkspaceOk: Array.isArray(workspaceResult.result?.content) && workspaceResult.result.content.length > 0,
     paginatedCompanies: Array.isArray(companiesPage.items) && "hasMore" in companiesPage && "nextCursor" in companiesPage,
+    salesContextReadable: Array.isArray(pipelines) && Array.isArray(integrations) && Array.isArray(listsPage.items),
     structuredContent: Boolean(companiesResult.result?.structuredContent),
   }, null, 2));
 } finally {

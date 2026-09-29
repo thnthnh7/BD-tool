@@ -571,6 +571,7 @@
     "approvalQueue": "Черга затвердження",
     "createCompanyRequest": "Створити компанію",
     "startScrapeRequest": "Запустіть сканування Карт Google",
+    "markQuoteSentRequest": "Позначити пропозицію як надіслану",
     "approveRequest": "Схвалити та запустити",
     "rejectRequest": "Відхиляти",
     "noActionRequests": "Ще немає запитів на дії MCP.",

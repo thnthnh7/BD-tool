@@ -571,6 +571,7 @@
     "approvalQueue": "Kolejka do akceptacji",
     "createCompanyRequest": "Utwórz firmę",
     "startScrapeRequest": "Rozpocznij skrobanie Map Google",
+    "markQuoteSentRequest": "Oznacz ofertę jako wysłaną",
     "approveRequest": "Zatwierdź i uruchom",
     "rejectRequest": "Odrzucić",
     "noActionRequests": "Nie ma jeszcze żadnych żądań działania MCP.",

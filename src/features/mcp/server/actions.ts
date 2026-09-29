@@ -109,6 +109,13 @@ export async function reviewMcpActionRequestAction(formData: FormData) {
       if (scrape.error) throw new Error(scrape.error);
       if (!("id" in scrape)) throw new Error("Scrape job was not created.");
       result = { jobId: scrape.id };
+    } else if (request.action_type === "mark_quote_sent") {
+      const quoteId = String(payload.quoteId || "");
+      const sentAt = new Date().toISOString();
+      const { data, error } = await admin.from("quotes").update({ status: "sent", quote_status_v2: "sent", sent_at: sentAt }).eq("id", quoteId).eq("workspace_id", context.workspaceId).eq("quote_status_v2", "draft").select("id, title, status, quote_status_v2, sent_at").maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Quote is no longer a draft or was not found.");
+      result = data as unknown as Json;
     } else throw new Error("Unsupported MCP action.");
     await admin.from("mcp_action_requests").update({ status: "completed", result, completed_at: new Date().toISOString() }).eq("id", id);
   } catch (error) {

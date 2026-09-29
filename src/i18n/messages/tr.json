@@ -571,6 +571,7 @@
     "approvalQueue": "Onay kuyruğu",
     "createCompanyRequest": "Şirket oluştur",
     "startScrapeRequest": "Google Haritalar kazımasını başlat",
+    "markQuoteSentRequest": "Teklifi gönderildi olarak işaretle",
     "approveRequest": "Onayla ve çalıştır",
     "rejectRequest": "Reddetmek",
     "noActionRequests": "Henüz MCP eylemi isteği yok.",

@@ -571,6 +571,7 @@
     "approvalQueue": "قائمة انتظار الموافقة",
     "createCompanyRequest": "إنشاء شركة",
     "startScrapeRequest": "ابدأ كشط خرائط Google",
+    "markQuoteSentRequest": "وضع علامة على عرض السعر كمُرسل",
     "approveRequest": "الموافقة والتشغيل",
     "rejectRequest": "يرفض",
     "noActionRequests": "لا توجد طلبات إجراء MCP حتى الآن.",

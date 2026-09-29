@@ -571,6 +571,7 @@
     "approvalQueue": "審批佇列",
     "createCompanyRequest": "創建公司",
     "startScrapeRequest": "",
+    "markQuoteSentRequest": "將報價標記為已傳送",
     "approveRequest": "批准並運行",
     "rejectRequest": "拒絕",
     "noActionRequests": "尚無 MCP 操作請求。",

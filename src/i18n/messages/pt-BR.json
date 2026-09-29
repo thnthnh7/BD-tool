@@ -571,6 +571,7 @@
     "approvalQueue": "Fila de aprovação",
     "createCompanyRequest": "Criar empresa",
     "startScrapeRequest": "Iniciar raspagem do Google Maps",
+    "markQuoteSentRequest": "Marcar orçamento como enviado",
     "approveRequest": "Aprovar e executar",
     "rejectRequest": "Rejeitar",
     "noActionRequests": "Nenhuma solicitação de ação do MCP ainda.",

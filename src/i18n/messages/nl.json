@@ -571,6 +571,7 @@
     "approvalQueue": "Goedkeuringswachtrij",
     "createCompanyRequest": "Bedrijf creëren",
     "startScrapeRequest": "Start Google Maps-scrapen",
+    "markQuoteSentRequest": "Offerte als verzonden markeren",
     "approveRequest": "Goedkeuren en uitvoeren",
     "rejectRequest": "Afwijzen",
     "noActionRequests": "Nog geen MCP-actieverzoeken.",

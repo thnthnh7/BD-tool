@@ -571,6 +571,7 @@
     "approvalQueue": "Очередь одобрения",
     "createCompanyRequest": "Создать компанию",
     "startScrapeRequest": "Запустить очистку Карт Google",
+    "markQuoteSentRequest": "Отметить предложение как отправленное",
     "approveRequest": "Утвердить и запустить",
     "rejectRequest": "Отклонять",
     "noActionRequests": "Запросов на действия MCP пока нет.",

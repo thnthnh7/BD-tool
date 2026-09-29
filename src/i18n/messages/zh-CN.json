@@ -571,6 +571,7 @@
     "approvalQueue": "审批队列",
     "createCompanyRequest": "创建公司",
     "startScrapeRequest": "启动 Google 地图抓取",
+    "markQuoteSentRequest": "将报价标记为已发送",
     "approveRequest": "批准并运行",
     "rejectRequest": "拒绝",
     "noActionRequests": "尚无 MCP 操作请求。",

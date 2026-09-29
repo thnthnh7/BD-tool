@@ -571,6 +571,7 @@
     "approvalQueue": "Yêu cầu chờ duyệt",
     "createCompanyRequest": "Tạo công ty",
     "startScrapeRequest": "Chạy Google Maps scrape",
+    "markQuoteSentRequest": "Đánh dấu báo giá đã gửi",
     "approveRequest": "Duyệt và chạy",
     "rejectRequest": "Từ chối",
     "noActionRequests": "Chưa có yêu cầu hành động MCP.",

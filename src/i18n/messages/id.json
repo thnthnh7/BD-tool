@@ -571,6 +571,7 @@
     "approvalQueue": "Antrian persetujuan",
     "createCompanyRequest": "Buat perusahaan",
     "startScrapeRequest": "Mulai pengikisan Google Maps",
+    "markQuoteSentRequest": "Tandai penawaran sebagai terkirim",
     "approveRequest": "Setujui & jalankan",
     "rejectRequest": "Menolak",
     "noActionRequests": "Belum ada permintaan tindakan MCP.",

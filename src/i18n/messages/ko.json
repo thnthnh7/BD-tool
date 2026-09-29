@@ -571,6 +571,7 @@
     "approvalQueue": "승인 대기열",
     "createCompanyRequest": "회사 만들기",
     "startScrapeRequest": "Google 지도 스크랩 시작",
+    "markQuoteSentRequest": "견적서를 전송됨으로 표시",
     "approveRequest": "승인 및 실행",
     "rejectRequest": "거부하다",
     "noActionRequests": "아직 MCP 작업 요청이 없습니다.",

@@ -185,6 +185,37 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     return { data: result, count: result.items.length };
   });
 
+  registerAuditedTool<Record<string, never>>(server, connection, requestId, {
+    name: "list_sales_pipelines", title: "List sales pipelines", description: "Return workspace sales pipelines and their ordered stages for deal creation and updates.", scope: "crm:read", inputSchema: {},
+  }, async () => {
+    const [{ data: pipelines, error: pipelineError }, { data: stages, error: stageError }] = await Promise.all([
+      admin.from("pipelines").select("id, name, kind, is_default").eq("workspace_id", connection.workspace_id).order("is_default", { ascending: false }).order("name"),
+      admin.from("pipeline_stages").select("id, pipeline_id, name, position, probability, stage_type").eq("workspace_id", connection.workspace_id).order("position"),
+    ]);
+    if (pipelineError) throw pipelineError;
+    if (stageError) throw stageError;
+    const data = pipelines.map((pipeline) => ({ ...pipeline, stages: stages.filter((stage) => stage.pipeline_id === pipeline.id) }));
+    return { data, count: data.length };
+  });
+
+  registerAuditedTool<Record<string, never>>(server, connection, requestId, {
+    name: "list_crm_integrations", title: "List CRM integrations", description: "Return configured CRM connections and synchronization health without exposing credentials or tokens.", scope: "crm:read", inputSchema: {},
+  }, async () => {
+    const { data, error } = await admin.from("crm_connections").select("id, provider, status, sync_direction, sync_objects, account_label, setup_step, webhook_status, last_synced_at, last_full_sync_at, next_sync_at, token_expires_at, updated_at").eq("workspace_id", connection.workspace_id).order("updated_at", { ascending: false });
+    if (error) throw error;
+    return { data, count: data.length };
+  });
+
+  registerAuditedTool<{ limit?: number; cursor?: string }>(server, connection, requestId, {
+    name: "list_lead_lists", title: "List lead lists", description: "List workspace lead lists and their current status.", scope: "crm:read", inputSchema: { limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
+  }, async ({ limit = 20, cursor }) => {
+    const offset = cursorOffset(cursor);
+    const { data, error } = await admin.from("lead_lists").select("id, name, description, source, status, owner_user_id, created_at, updated_at").eq("workspace_id", connection.workspace_id).order("updated_at", { ascending: false }).range(offset, offset + limit);
+    if (error) throw error;
+    const result = page(data, offset, limit);
+    return { data: result, count: result.items.length };
+  });
+
   if (writeToolsEnabled) {
     registerAuditedTool<{ idempotencyKey: string; name: string; website?: string; industry?: string; email?: string; phone?: string; notes?: string }>(server, connection, requestId, {
       name: "create_company", title: "Create company", description: "Create a company immediately after the MCP client confirms this additive CRM change. Reuse the same idempotencyKey when retrying.", scope: "crm:write",
@@ -216,6 +247,12 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
       return { data, count: 1 };
     };
 
+    const manageSalesWorkflow = async (toolName: "create_list" | "remove_company_from_list" | "update_task", idempotencyKey: string, payload: Record<string, unknown>) => {
+      const { data, error } = await admin.rpc("mcp_manage_sales_workflow", { p_workspace_id: connection.workspace_id, p_connection_id: connection.id, p_actor_user_id: connection.created_by, p_tool_name: toolName, p_idempotency_key: idempotencyKey, p_payload: payload as Json });
+      if (error) throw error;
+      return { data, count: 1 };
+    };
+
     registerAuditedTool<{ idempotencyKey: string; displayName: string; firstName?: string; lastName?: string; email?: string; phone?: string; jobTitle?: string; linkedinUrl?: string; companyId?: string; notes?: string }>(server, connection, requestId, {
       name: "create_contact", title: "Create contact", description: "Create a contact after the MCP client confirms this additive CRM change. Reuse the same idempotencyKey when retrying.", scope: "crm:write",
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -233,6 +270,21 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       inputSchema: { idempotencyKey: z.string().min(8).max(120), title: z.string().min(1).max(200), description: z.string().max(2000).optional(), type: z.enum(["follow_up", "call", "email", "meeting", "proposal", "review", "other"]).default("follow_up"), priority: z.enum(["low", "medium", "high"]).default("medium"), dueAt: z.string().datetime({ offset: true }).optional(), companyId: z.string().uuid().optional(), contactId: z.string().uuid().optional(), dealId: z.string().uuid().optional() },
     }, async ({ idempotencyKey, ...payload }) => createCrmRecord("create_task", idempotencyKey, payload));
+
+    registerAuditedTool<{ idempotencyKey: string; name: string; description?: string }>(server, connection, requestId, {
+      name: "create_list", title: "Create lead list", description: "Create a new workspace lead list after client confirmation.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      inputSchema: { idempotencyKey: z.string().min(8).max(120), name: z.string().min(1).max(160), description: z.string().max(1000).optional() },
+    }, async ({ idempotencyKey, ...payload }) => manageSalesWorkflow("create_list", idempotencyKey, payload));
+
+    registerAuditedTool<{ idempotencyKey: string; listId: string; companyId: string }>(server, connection, requestId, {
+      name: "remove_company_from_list", title: "Remove company from list", description: "Remove a company membership from a workspace lead list after client confirmation.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      inputSchema: { idempotencyKey: z.string().min(8).max(120), listId: z.string().uuid(), companyId: z.string().uuid() },
+    }, async ({ idempotencyKey, ...payload }) => manageSalesWorkflow("remove_company_from_list", idempotencyKey, payload));
+
+    registerAuditedTool<{ idempotencyKey: string; taskId: string; title?: string; description?: string; priority?: "low" | "medium" | "high"; status?: "open" | "completed" | "canceled"; dueAt?: string }>(server, connection, requestId, {
+      name: "update_task", title: "Update task", description: "Update selected task fields or completion status after client confirmation.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      inputSchema: { idempotencyKey: z.string().min(8).max(120), taskId: z.string().uuid(), title: z.string().min(1).max(200).optional(), description: z.string().max(2000).optional(), priority: z.enum(["low", "medium", "high"]).optional(), status: z.enum(["open", "completed", "canceled"]).optional(), dueAt: z.string().datetime({ offset: true }).optional() },
+    }, async ({ idempotencyKey, ...payload }) => manageSalesWorkflow("update_task", idempotencyKey, payload));
 
     const mutateCrmRecord = async (toolName: "create_deal" | "update_company" | "update_contact" | "update_lead" | "update_deal", idempotencyKey: string, recordId: string | null, payload: Record<string, unknown>) => {
       const { data, error } = await admin.rpc("mcp_mutate_crm_record", { p_workspace_id: connection.workspace_id, p_connection_id: connection.id, p_actor_user_id: connection.created_by, p_tool_name: toolName, p_idempotency_key: idempotencyKey, p_record_id: recordId, p_payload: payload as Json });
@@ -307,6 +359,22 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
       const { data, error } = await admin.rpc("mcp_create_sales_artifact", { p_workspace_id: connection.workspace_id, p_connection_id: connection.id, p_actor_user_id: connection.created_by, p_tool_name: "create_quote_draft", p_idempotency_key: idempotencyKey, p_payload: payload as Json });
       if (error) throw error;
       return { data, count: 1 };
+    });
+
+    registerAuditedTool<{ idempotencyKey: string; quoteId: string }>(server, connection, requestId, {
+      name: "request_mark_quote_sent", title: "Request quote status change", description: "Request owner/admin approval to mark a draft quote as sent. This updates lifecycle state but does not send email.", scope: "quotes:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      inputSchema: { idempotencyKey: z.string().min(8).max(120), quoteId: z.string().uuid() },
+    }, async (input) => {
+      const { data: quote, error: quoteError } = await admin.from("quotes").select("id, title, status, quote_status_v2").eq("id", input.quoteId).eq("workspace_id", connection.workspace_id).maybeSingle();
+      if (quoteError) throw quoteError;
+      if (!quote) throw new Error("Quote not found in this workspace.");
+      if ((quote.quote_status_v2 || quote.status) !== "draft") throw new Error("Only a draft quote can be marked as sent.");
+      const { data: existing } = await admin.from("mcp_action_requests").select("id, action_type, status, created_at, expires_at").eq("connection_id", connection.id).eq("action_type", "mark_quote_sent").eq("idempotency_key", input.idempotencyKey).maybeSingle();
+      if (existing) return { data: { ...existing, approvalUrl: `${appOrigin()}/app/mcp?request=${existing.id}`, replayed: true }, count: 1 };
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      const { data, error } = await admin.from("mcp_action_requests").insert({ workspace_id: connection.workspace_id, connection_id: connection.id, requested_by: connection.created_by, action_type: "mark_quote_sent", idempotency_key: input.idempotencyKey, expires_at: expiresAt, payload: { quoteId: input.quoteId, title: quote.title } }).select("id, action_type, status, created_at, expires_at").single();
+      if (error) throw error;
+      return { data: { ...data, approvalUrl: `${appOrigin()}/app/mcp?request=${data.id}`, requiresApproval: true }, count: 1 };
     });
   }
 

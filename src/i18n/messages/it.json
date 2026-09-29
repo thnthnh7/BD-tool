@@ -571,6 +571,7 @@
     "approvalQueue": "Coda di approvazione",
     "createCompanyRequest": "Crea azienda",
     "startScrapeRequest": "Avvia lo scraping di Google Maps",
+    "markQuoteSentRequest": "Segna preventivo come inviato",
     "approveRequest": "Approva ed esegui",
     "rejectRequest": "Rifiutare",
     "noActionRequests": "Nessuna richiesta di azione MCP ancora.",

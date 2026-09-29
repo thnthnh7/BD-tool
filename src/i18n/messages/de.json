@@ -571,6 +571,7 @@
     "approvalQueue": "Genehmigungswarteschlange",
     "createCompanyRequest": "Unternehmen gründen",
     "startScrapeRequest": "Starten Sie Google Maps Scrape",
+    "markQuoteSentRequest": "Angebot als gesendet markieren",
     "approveRequest": "Genehmigen und ausführen",
     "rejectRequest": "Ablehnen",
     "noActionRequests": "Noch keine MCP-Aktionsanfragen.",

@@ -31,6 +31,9 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `search_companies` | `crm:read` | Search CRM companies |
 | `search_contacts` | `crm:read` | Search CRM contacts |
 | `list_leads` | `crm:read` | List recent leads |
+| `list_sales_pipelines` | `crm:read` | List sales pipelines and their stages |
+| `list_crm_integrations` | `crm:read` | Read connection and synchronization status without exposing credentials |
+| `list_lead_lists` | `crm:read` | List workspace lead lists |
 | `list_scrape_sources` | `sources:read` | Installed scrape sources |
 | `search_data_library` | `data:read` | Search normalized scraped records |
 | `search_knowledge` | `knowledge:read` | Search document evidence excerpts |
@@ -46,13 +49,17 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `update_lead` | `crm:write` | Update lead status, score and next action |
 | `update_deal` | `crm:write` | Update selected deal fields |
 | `add_company_to_list` | `crm:write` | Add a company and optional lead/contact context to a list |
+| `create_list` | `crm:write` | Create a workspace lead list |
+| `remove_company_from_list` | `crm:write` | Remove a company membership from a list |
+| `update_task` | `crm:write` | Update task details, priority, status and due date |
 | `create_quote_draft` | `quotes:write` | Create a draft quote for human review without sending it |
+| `request_mark_quote_sent` | `quotes:write` | Request owner or admin approval before marking a draft quote as sent |
 | `request_start_maps_scrape` | `scrape:write` | Queue a Google Maps scrape request for human approval |
 | `get_action_request` | `workspace:read` | Poll approval and execution status |
 
 Leadely also advertises a workspace profile resource, a CRM schema resource, and reusable prompts for prospect research and sales follow-up. These are scope-aware and only appear when the connection has the required read permission.
 
-All queries are restricted to the token's workspace. Every request rechecks the current plan entitlement, subscription status and workspace lock/archive state, so an existing token stops working when access is removed. Each tool call is audited with sensitive input values redacted, and each connection is rate limited. Safe additive writes such as company creation run directly after the MCP client confirms them and require an idempotency key. Paid actions such as scrape runs require an owner or admin to approve the request in **Workspace → MCP** within 30 minutes. Scrape approval uses the existing plan, quota, Apify connection and webhook checks. Rotate a token when moving the connection to another client, and revoke it immediately when a client or device is no longer trusted. Rotation invalidates the old token immediately and issues a new 90-day token.
+All queries are restricted to the token's workspace. Every request rechecks the current plan entitlement, subscription status and workspace lock/archive state, so an existing token stops working when access is removed. Each tool call is audited with sensitive input values redacted, and each connection is rate limited. Safe additive writes such as company creation run directly after the MCP client confirms them and require an idempotency key. Externally meaningful actions such as marking a quote as sent, and paid actions such as scrape runs, require an owner or admin to approve the request in **Workspace → MCP** within 30 minutes. Scrape approval uses the existing plan, quota, Apify connection and webhook checks. Rotate a token when moving the connection to another client, and revoke it immediately when a client or device is no longer trusted. Rotation invalidates the old token immediately and issues a new 90-day token.
 
 ## OAuth 2.1 client connection
 
@@ -66,4 +73,4 @@ Call `GET /api/mcp/cron` on a daily schedule with `Authorization: Bearer <CRON_S
 
 ## Current boundary
 
-The current release exposes workspace, CRM, source, data-library, knowledge, quote and scrape reads. It supports idempotent company, contact, lead, task, deal, list-membership and quote-draft writes, constrained CRM updates, and approval-gated Google Maps scrape requests through personal access tokens and OAuth 2.1. Super Admin can pause read/write rollout, inspect tool activity, revoke connections and revoke registered OAuth clients. Marketplace publication still requires a stable production HTTPS hostname, public support/privacy URLs, namespace ownership verification, and a validated `server.json` before running `mcp-publisher publish`.
+The current release exposes workspace, CRM, pipeline, integration, list, source, data-library, knowledge, quote and scrape reads. It supports idempotent company, contact, lead, task, deal, list and quote-draft writes, constrained CRM updates, and approval-gated quote delivery and Google Maps scrape requests through personal access tokens and OAuth 2.1. Super Admin can pause read/write rollout, inspect tool activity, revoke connections and revoke registered OAuth clients. Marketplace publication still requires a stable production HTTPS hostname, public support/privacy URLs, namespace ownership verification, and a validated `server.json` before running `mcp-publisher publish`.

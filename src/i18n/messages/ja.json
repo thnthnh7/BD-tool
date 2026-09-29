@@ -571,6 +571,7 @@
     "approvalQueue": "承認キュー",
     "createCompanyRequest": "会社を作成する",
     "startScrapeRequest": "Googleマップのスクレイピングを開始する",
+    "markQuoteSentRequest": "見積書を送信済みにする",
     "approveRequest": "承認して実行",
     "rejectRequest": "拒否する",
     "noActionRequests": "MCP アクション要求はまだありません。",

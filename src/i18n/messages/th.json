@@ -571,6 +571,7 @@
     "approvalQueue": "คิวอนุมัติ",
     "createCompanyRequest": "สร้างบริษัท",
     "startScrapeRequest": "เริ่มการขูด Google Maps",
+    "markQuoteSentRequest": "ทำเครื่องหมายใบเสนอราคาว่าส่งแล้ว",
     "approveRequest": "อนุมัติและดำเนินการ",
     "rejectRequest": "ปฏิเสธ",
     "noActionRequests": "ยังไม่มีคำขอดำเนินการ MCP",

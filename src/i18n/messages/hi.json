@@ -571,6 +571,7 @@
     "approvalQueue": "अनुमोदन कतार",
     "createCompanyRequest": "कंपनी बनाएं",
     "startScrapeRequest": "Google मानचित्र स्क्रैप प्रारंभ करें",
+    "markQuoteSentRequest": "कोटेशन को भेजा गया चिह्नित करें",
     "approveRequest": "स्वीकृत करें और चलाएं",
     "rejectRequest": "अस्वीकार करना",
     "noActionRequests": "अभी तक कोई एमसीपी कार्रवाई अनुरोध नहीं।",
