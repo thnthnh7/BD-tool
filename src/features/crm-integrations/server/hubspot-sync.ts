@@ -7,7 +7,7 @@ import type { Json } from "@/lib/database.types";
 type HubSpotObject = "companies" | "contacts" | "deals";
 type HubSpotRecord = { id: string; properties: Record<string, string | null>; createdAt: string; updatedAt: string; archived?: boolean; associations?: Record<string, { results?: Array<{ id: string }> }> };
 type HubSpotPage = { results?: HubSpotRecord[]; paging?: { next?: { after?: string } }; message?: string };
-type QueueRun = { id: string; workspace_id: string; connection_id: string; sync_objects: string[]; cursor_state: Json; records_read: number; records_created: number; records_updated: number; records_skipped: number; records_failed: number; attempt_count: number };
+type QueueRun = { id: string; workspace_id: string; connection_id: string; sync_objects: string[]; cursor_state: Json; records_read: number; records_created: number; records_updated: number; records_skipped: number; records_failed: number; attempt_count: number; cancel_requested: boolean };
 
 const supportedObjects: HubSpotObject[] = ["companies", "contacts", "deals"];
 const properties: Record<HubSpotObject, string[]> = {
@@ -94,6 +94,10 @@ export async function processNextHubSpotSyncPage() {
   if (error) throw error;
   const run = data?.[0] as QueueRun | undefined;
   if (!run) return null;
+  if (run.cancel_requested) {
+    await admin.from("crm_sync_runs").update({ status: "canceled", completed_at: new Date().toISOString() }).eq("id", run.id);
+    return { runId: run.id, status: "canceled" };
+  }
   try {
     const selected = run.sync_objects.filter((item): item is HubSpotObject => supportedObjects.includes(item as HubSpotObject));
     const cursor = objectCursor(run.cursor_state);
@@ -109,17 +113,20 @@ export async function processNextHubSpotSyncPage() {
       try { if (await importRecord(run, objectType, record)) created += 1; else updated += 1; }
       catch { failed += 1; }
     }
+    const { data: currentRun } = await admin.from("crm_sync_runs").select("cancel_requested").eq("id", run.id).single();
     const nextAfter = page.paging?.next?.after;
     const finished = !nextAfter && cursor.objectIndex + 1 >= selected.length;
     const nextCursor = nextAfter ? { objectIndex: cursor.objectIndex, after: nextAfter } : { objectIndex: cursor.objectIndex + 1 };
-    await admin.from("crm_sync_runs").update({ status: finished ? (failed ? "partial" : "completed") : "queued", cursor_state: nextCursor, records_read: run.records_read + (page.results?.length || 0), records_created: run.records_created + created, records_updated: run.records_updated + updated, records_failed: run.records_failed + failed, next_attempt_at: new Date().toISOString(), completed_at: finished ? new Date().toISOString() : null }).eq("id", run.id);
-    if (finished) await admin.from("crm_connections").update({ last_synced_at: new Date().toISOString(), last_full_sync_at: new Date().toISOString(), last_error: failed ? `${failed} record(s) failed.` : null, setup_step: "active" }).eq("id", run.connection_id).eq("workspace_id", run.workspace_id);
-    return { runId: run.id, status: finished ? (failed ? "partial" : "completed") : "queued", objectType, read: page.results?.length || 0, created, updated, failed };
+    const canceled = Boolean(currentRun?.cancel_requested);
+    const nextStatus = canceled ? "canceled" : finished ? (failed ? "partial" : "completed") : "queued";
+    await admin.from("crm_sync_runs").update({ status: nextStatus, cursor_state: nextCursor, records_read: run.records_read + (page.results?.length || 0), records_created: run.records_created + created, records_updated: run.records_updated + updated, records_failed: run.records_failed + failed, next_attempt_at: new Date().toISOString(), completed_at: canceled || finished ? new Date().toISOString() : null }).eq("id", run.id);
+    if (finished && !canceled) await admin.from("crm_connections").update({ last_synced_at: new Date().toISOString(), last_full_sync_at: new Date().toISOString(), last_error: failed ? `${failed} record(s) failed.` : null, setup_step: "active" }).eq("id", run.connection_id).eq("workspace_id", run.workspace_id);
+    return { runId: run.id, status: nextStatus, objectType, read: page.results?.length || 0, created, updated, failed };
   } catch (error) {
     const message = error instanceof Error ? error.message : "HubSpot synchronization failed.";
     const retry = run.attempt_count < 4;
-    await admin.from("crm_sync_runs").update({ status: retry ? "queued" : "failed", error_summary: message.slice(0, 1000), next_attempt_at: new Date(Date.now() + Math.min(2 ** run.attempt_count, 30) * 60_000).toISOString(), completed_at: retry ? null : new Date().toISOString() }).eq("id", run.id);
+    await admin.from("crm_sync_runs").update({ status: retry ? "queued" : "dead_letter", error_summary: message.slice(0, 1000), next_attempt_at: new Date(Date.now() + Math.min(2 ** run.attempt_count, 30) * 60_000).toISOString(), completed_at: retry ? null : new Date().toISOString() }).eq("id", run.id);
     await admin.from("crm_connections").update({ last_error: message.slice(0, 1000) }).eq("id", run.connection_id).eq("workspace_id", run.workspace_id);
-    return { runId: run.id, status: retry ? "queued" : "failed", error: message };
+    return { runId: run.id, status: retry ? "queued" : "dead_letter", error: message };
   }
 }

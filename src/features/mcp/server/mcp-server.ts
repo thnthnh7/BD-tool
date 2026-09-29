@@ -271,7 +271,7 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
 
   registerAuditedTool<{ connectionId?: string; status?: string; direction?: string; limit?: number; cursor?: string }>(server, connection, requestId, {
     name: "list_crm_sync_runs", title: "List CRM sync runs", description: "Return synchronization history for CRM integrations in this workspace, including record counts and failure summaries.", scope: "crm:read",
-    inputSchema: { connectionId: z.string().uuid().optional(), status: z.enum(["running", "completed", "partial", "failed"]).optional(), direction: z.enum(["import", "export"]).optional(), limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
+    inputSchema: { connectionId: z.string().uuid().optional(), status: z.enum(["queued", "running", "completed", "partial", "failed", "canceled", "dead_letter"]).optional(), direction: z.enum(["import", "export"]).optional(), limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
   }, async ({ connectionId, status, direction, limit = 20, cursor }) => {
     const offset = cursorOffset(cursor);
     let request = admin.from("crm_sync_runs").select("id, connection_id, direction, status, records_read, records_created, records_updated, records_skipped, records_failed, error_summary, started_at, completed_at").eq("workspace_id", connection.workspace_id).order("started_at", { ascending: false }).range(offset, offset + limit);
@@ -538,6 +538,35 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
       const { data, error } = await admin.from("mcp_action_requests").insert({ workspace_id: connection.workspace_id, connection_id: connection.id, requested_by: connection.created_by, action_type: "start_crm_sync", idempotency_key: input.idempotencyKey, expires_at: expiresAt, payload: { connectionId: input.connectionId, objects: requestedObjects } }).select("id, action_type, status, created_at, expires_at").single();
       if (error) throw error;
       return { data: { ...data, approvalUrl: `${appOrigin()}/app/mcp?request=${data.id}`, requiresApproval: true }, count: 1 };
+    });
+
+    registerAuditedTool<{ runId: string }>(server, connection, requestId, {
+      name: "cancel_crm_sync", title: "Cancel CRM synchronization", description: "Cancel a queued CRM run or request a safe stop after the current page for a running job.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      inputSchema: { runId: z.string().uuid() },
+    }, async ({ runId }) => {
+      const { data: run, error: runError } = await admin.from("crm_sync_runs").select("id, status, cancel_requested").eq("id", runId).eq("workspace_id", connection.workspace_id).maybeSingle();
+      if (runError) throw runError;
+      if (!run) throw new Error("CRM synchronization run not found.");
+      if (["completed", "partial", "failed", "canceled", "dead_letter"].includes(run.status)) return { data: { id: run.id, status: run.status, canceled: run.status === "canceled" }, count: 1 };
+      const update = run.status === "queued" ? { cancel_requested: true, status: "canceled", completed_at: new Date().toISOString() } : { cancel_requested: true };
+      const { data, error } = await admin.from("crm_sync_runs").update(update).eq("id", runId).eq("workspace_id", connection.workspace_id).eq("status", run.status).select("id, status, cancel_requested").maybeSingle();
+      if (error) throw error;
+      return { data: data || { id: run.id, status: run.status, cancel_requested: true }, count: 1 };
+    });
+
+    registerAuditedTool<{ runId: string }>(server, connection, requestId, {
+      name: "retry_crm_sync", title: "Retry CRM synchronization", description: "Requeue a failed, partial, canceled or dead-letter CRM run from its saved cursor.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      inputSchema: { runId: z.string().uuid() },
+    }, async ({ runId }) => {
+      const retryable = ["failed", "partial", "canceled", "dead_letter"];
+      const { data: run, error: runError } = await admin.from("crm_sync_runs").select("id, status").eq("id", runId).eq("workspace_id", connection.workspace_id).maybeSingle();
+      if (runError) throw runError;
+      if (!run) throw new Error("CRM synchronization run not found.");
+      if (!retryable.includes(run.status)) throw new Error("Only stopped or failed CRM runs can be retried.");
+      const { data, error } = await admin.from("crm_sync_runs").update({ status: "queued", cancel_requested: false, attempt_count: 0, error_summary: null, completed_at: null, next_attempt_at: new Date().toISOString() }).eq("id", runId).eq("workspace_id", connection.workspace_id).eq("status", run.status).select("id, status, cursor_state, sync_objects").maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("CRM run changed before it could be retried.");
+      return { data, count: 1 };
     });
   }
 

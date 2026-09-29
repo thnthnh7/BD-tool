@@ -7,7 +7,7 @@ import { Table, TableTbody, TableTd, TableTh, TableThead, TableTr } from "@/comp
 import { ActionForm } from "@/features/crm/components/action-form";
 import { crmProvider, crmProviders, crmSyncObjects, leadelyMappingFields } from "@/features/crm-integrations/catalog";
 import { CrmProviderLogo } from "@/features/crm-integrations/components/crm-provider-logo";
-import { disconnectCrmConnectionAction, loadCrmIntegrations, saveActiveCampaignCredentialsAction, saveCrmConnectionAction, saveCrmFieldMappingAction, setCrmConnectionStateAction } from "@/features/crm-integrations/server/actions";
+import { disconnectCrmConnectionAction, loadCrmIntegrations, manageCrmSyncRunAction, saveActiveCampaignCredentialsAction, saveCrmConnectionAction, saveCrmFieldMappingAction, setCrmConnectionStateAction } from "@/features/crm-integrations/server/actions";
 
 function directionLabel(direction: string) {
   if (direction === "import") return "CRM → Leadely";
@@ -245,7 +245,7 @@ export default async function CrmIntegrationsPage({
 
       {data.runs.length ? (
         <SectionPanel title="Recent sync runs" padded={false}>
-          <Table><TableThead><TableTr><TableTh>Started</TableTh><TableTh>Direction</TableTh><TableTh>Status</TableTh><TableTh>Created</TableTh><TableTh>Updated</TableTh><TableTh>Failed</TableTh></TableTr></TableThead><TableTbody>{data.runs.map((run) => <TableTr key={run.id}><TableTd>{new Date(run.started_at).toLocaleString()}</TableTd><TableTd>{run.direction}</TableTd><TableTd>{run.status}</TableTd><TableTd>{run.records_created}</TableTd><TableTd>{run.records_updated}</TableTd><TableTd>{run.records_failed}</TableTd></TableTr>)}</TableTbody></Table>
+          <Table><TableThead><TableTr><TableTh>Started</TableTh><TableTh>Direction</TableTh><TableTh>Status</TableTh><TableTh>Created</TableTh><TableTh>Updated</TableTh><TableTh>Failed</TableTh><TableTh /></TableTr></TableThead><TableTbody>{data.runs.map((run) => <TableTr key={run.id}><TableTd>{new Date(run.started_at).toLocaleString()}</TableTd><TableTd>{run.direction}</TableTd><TableTd><Badge size="sm" variant="light" color={run.status === "completed" ? "teal" : run.status === "dead_letter" || run.status === "failed" ? "red" : run.status === "canceled" ? "gray" : "yellow"}>{run.status.replaceAll("_", " ")}</Badge></TableTd><TableTd>{run.records_created}</TableTd><TableTd>{run.records_updated}</TableTd><TableTd>{run.records_failed}</TableTd><TableTd>{canManage && ["queued", "running"].includes(run.status) ? <ActionForm action={manageCrmSyncRunAction} submitLabel="Cancel" layout="inline" variant="light"><input type="hidden" name="id" value={run.id} /><input type="hidden" name="mode" value="cancel" /></ActionForm> : canManage && ["failed", "partial", "canceled", "dead_letter"].includes(run.status) ? <ActionForm action={manageCrmSyncRunAction} submitLabel="Retry" layout="inline" variant="light"><input type="hidden" name="id" value={run.id} /><input type="hidden" name="mode" value="retry" /></ActionForm> : null}</TableTd></TableTr>)}</TableTbody></Table>
         </SectionPanel>
       ) : null}
 

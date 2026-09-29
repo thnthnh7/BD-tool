@@ -1516,6 +1516,8 @@ export type Database = {
           attempt_count: number;
           next_attempt_at: string;
           requested_by: string | null;
+          cancel_requested: boolean;
+          updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["crm_sync_runs"]["Row"]> & {
           workspace_id: string;

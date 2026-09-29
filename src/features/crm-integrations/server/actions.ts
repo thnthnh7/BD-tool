@@ -136,6 +136,30 @@ export async function setCrmConnectionStateAction(formData: FormData) {
   return { ok: true as const };
 }
 
+export async function manageCrmSyncRunAction(formData: FormData) {
+  const workspace = await editableWorkspace();
+  if ("error" in workspace) return { error: workspace.error };
+  const id = text(formData, "id");
+  const mode = text(formData, "mode");
+  if (!id || !["retry", "cancel"].includes(mode)) return { error: "Invalid synchronization action." };
+  const { context, supabase } = workspace;
+  const { data: run, error: runError } = await supabase.from("crm_sync_runs").select("id, status").eq("id", id).eq("workspace_id", context.workspaceId).maybeSingle();
+  if (runError) return { error: runError.message };
+  if (!run) return { error: "Synchronization run not found." };
+  if (mode === "retry") {
+    if (!["failed", "partial", "canceled", "dead_letter"].includes(run.status)) return { error: "Only stopped or failed runs can be retried." };
+    const { error } = await supabase.from("crm_sync_runs").update({ status: "queued", cancel_requested: false, attempt_count: 0, error_summary: null, completed_at: null, next_attempt_at: new Date().toISOString() }).eq("id", id).eq("workspace_id", context.workspaceId).eq("status", run.status);
+    if (error) return { error: error.message };
+  } else {
+    if (!['queued', 'running'].includes(run.status)) return { error: "Only queued or running runs can be canceled." };
+    const update = run.status === "queued" ? { cancel_requested: true, status: "canceled", completed_at: new Date().toISOString() } : { cancel_requested: true };
+    const { error } = await supabase.from("crm_sync_runs").update(update).eq("id", id).eq("workspace_id", context.workspaceId).eq("status", run.status);
+    if (error) return { error: error.message };
+  }
+  revalidatePath("/app/crm-integrations");
+  return { ok: true as const };
+}
+
 export async function disconnectCrmConnectionAction(formData: FormData) {
   const workspace = await editableWorkspace();
   if ("error" in workspace) return { error: workspace.error };

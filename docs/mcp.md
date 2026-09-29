@@ -69,6 +69,8 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `request_mark_quote_sent` | `quotes:write` | Request owner or admin approval before marking a draft quote as sent |
 | `request_start_maps_scrape` | `scrape:write` | Queue a Google Maps scrape request for human approval |
 | `request_start_crm_sync` | `crm:write` | Request approval for an asynchronous HubSpot company/contact/deal import |
+| `cancel_crm_sync` | `crm:write` | Cancel a queued run or safely stop a running job after its current page |
+| `retry_crm_sync` | `crm:write` | Requeue a stopped or failed run from its saved cursor |
 | `get_action_request` | `workspace:read` | Poll approval and execution status |
 
 Leadely also advertises a workspace profile resource, a CRM schema resource, and reusable prompts for prospect research and sales follow-up. These are scope-aware and only appear when the connection has the required read permission. List responses are paginated, large structured fields are bounded, and detail tools always apply the token workspace filter.

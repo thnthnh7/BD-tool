@@ -15,6 +15,8 @@ const token = `ldmcp_${randomBytes(32).toString("base64url")}`;
 const { data: connection, error: connectionError } = await admin.from("mcp_connections").insert({ workspace_id: workspace.id, name: "Write approval smoke test", token_hash: createHash("sha256").update(token).digest("hex"), token_prefix: `${token.slice(0, 13)}…`, scopes: ["workspace:read", "crm:write", "quotes:write", "scrape:write"], expires_at: new Date(Date.now() + 300_000).toISOString() }).select("id").single();
 if (connectionError) throw connectionError;
 await admin.from("mcp_settings").update({ write_tools_enabled: true }).eq("id", 1);
+let crmQueueRunId;
+let createdCrmConnectionId;
 
 async function rpc(body) {
   const response = await fetch("http://localhost:3000/api/mcp", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify(body) });
@@ -88,6 +90,21 @@ try {
   const { data: auditRows } = await admin.from("mcp_tool_calls").select("input_summary").eq("connection_id", connection.id).eq("tool_name", "create_company");
   const auditText = JSON.stringify(auditRows || []);
 
+  let { data: crmConnection } = await admin.from("crm_connections").select("id").eq("workspace_id", workspace.id).eq("provider", "hubspot").maybeSingle();
+  if (!crmConnection) {
+    const inserted = await admin.from("crm_connections").insert({ workspace_id: workspace.id, provider: "hubspot", status: "needs_authorization", sync_objects: ["companies"] }).select("id").single();
+    if (inserted.error) throw inserted.error;
+    crmConnection = inserted.data;
+    createdCrmConnectionId = crmConnection.id;
+  }
+  const { data: crmQueueRun, error: crmQueueError } = await admin.from("crm_sync_runs").insert({ workspace_id: workspace.id, connection_id: crmConnection.id, direction: "import", status: "queued", sync_objects: ["companies"] }).select("id").single();
+  if (crmQueueError) throw crmQueueError;
+  crmQueueRunId = crmQueueRun.id;
+  const cancelCrmCall = await rpc({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "cancel_crm_sync", arguments: { runId: crmQueueRun.id } } });
+  const canceledCrmRun = JSON.parse(cancelCrmCall.result?.content?.[0]?.text || "{}");
+  const retryCrmCall = await rpc({ jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "retry_crm_sync", arguments: { runId: crmQueueRun.id } } });
+  const retriedCrmRun = JSON.parse(retryCrmCall.result?.content?.[0]?.text || "{}");
+
   let workspaceIsolation = true;
   let foreignConnectionId;
   let foreignRequestId;
@@ -104,7 +121,7 @@ try {
     workspaceIsolation = foreignResult === null;
   }
 
-  console.log(JSON.stringify({ writeToolsAdvertised: ["create_company", "create_contact", "create_lead", "create_task", "create_deal", "create_list", "update_company", "update_contact", "update_lead", "update_deal", "update_task", "add_company_to_list", "remove_company_from_list", "create_quote_draft", "request_mark_quote_sent", "request_start_crm_sync"].every((name) => tools.result?.tools?.some((tool) => tool.name === name)), companyCreated: Boolean(companyResult.id), contactCreated: Boolean(contactResult.id), leadCreated: Boolean(leadResult.id), taskCreated: Boolean(taskResult.id), taskUpdated: taskUpdateResult.id === taskResult.id, dealCreated: Boolean(dealResult.id), listCreated: Boolean(createListResult.id), listMemberCreated: Boolean(listResult.id), listMemberRemoved: Boolean(removeListResult.updatedAt), quoteDraftCreated: Boolean(quoteResult.id), quoteSentApprovalQueued: quoteSentRequest.status === "pending", quoteApprovalCompleted: completedQuoteRequest?.status === "completed" && completedQuoteRequest.reviewed_by === reviewer.user_id && approvedQuote?.quote_status_v2 === "sent" && Boolean(approvedQuote.sent_at), quoteRejectionSafe: rejectedRequestState?.status === "rejected" && rejectedQuoteState?.quote_status_v2 === "draft" && !rejectedQuoteState.sent_at, concurrentApprovalSafe: [firstApproval.data?.status, concurrentApproval.data?.status].includes("completed"), updatesApplied: companyUpdateResult.id === companyResult.id && contactUpdateResult.id === contactResult.id && leadUpdateResult.id === leadResult.id && dealUpdateResult.id === dealResult.id, concurrentIdempotency: concurrentCompanyResult.id === companyResult.id, idempotentReplay: replayResult.id === companyResult.id && replayResult.replayed === true, auditRedacted: !auditText.includes("private-smoke@example.com") && !auditText.includes("MCP direct-write smoke test"), scrapeQueued: scrapeRequest.status === "pending", approvalNotificationCreated: (approvalNotificationCount || 0) > 0, directApprovalUrl: scrapeRequest.approvalUrl?.includes(`/app/mcp?request=${scrapeRequest.id}`), expiresAutomatically: expiredRequest.status === "expired", workspaceIsolation }, null, 2));
+  console.log(JSON.stringify({ writeToolsAdvertised: ["create_company", "create_contact", "create_lead", "create_task", "create_deal", "create_list", "update_company", "update_contact", "update_lead", "update_deal", "update_task", "add_company_to_list", "remove_company_from_list", "create_quote_draft", "request_mark_quote_sent", "request_start_crm_sync", "cancel_crm_sync", "retry_crm_sync"].every((name) => tools.result?.tools?.some((tool) => tool.name === name)), crmQueueControls: canceledCrmRun.status === "canceled" && retriedCrmRun.status === "queued", companyCreated: Boolean(companyResult.id), contactCreated: Boolean(contactResult.id), leadCreated: Boolean(leadResult.id), taskCreated: Boolean(taskResult.id), taskUpdated: taskUpdateResult.id === taskResult.id, dealCreated: Boolean(dealResult.id), listCreated: Boolean(createListResult.id), listMemberCreated: Boolean(listResult.id), listMemberRemoved: Boolean(removeListResult.updatedAt), quoteDraftCreated: Boolean(quoteResult.id), quoteSentApprovalQueued: quoteSentRequest.status === "pending", quoteApprovalCompleted: completedQuoteRequest?.status === "completed" && completedQuoteRequest.reviewed_by === reviewer.user_id && approvedQuote?.quote_status_v2 === "sent" && Boolean(approvedQuote.sent_at), quoteRejectionSafe: rejectedRequestState?.status === "rejected" && rejectedQuoteState?.quote_status_v2 === "draft" && !rejectedQuoteState.sent_at, concurrentApprovalSafe: [firstApproval.data?.status, concurrentApproval.data?.status].includes("completed"), updatesApplied: companyUpdateResult.id === companyResult.id && contactUpdateResult.id === contactResult.id && leadUpdateResult.id === leadResult.id && dealUpdateResult.id === dealResult.id, concurrentIdempotency: concurrentCompanyResult.id === companyResult.id, idempotentReplay: replayResult.id === companyResult.id && replayResult.replayed === true, auditRedacted: !auditText.includes("private-smoke@example.com") && !auditText.includes("MCP direct-write smoke test"), scrapeQueued: scrapeRequest.status === "pending", approvalNotificationCreated: (approvalNotificationCount || 0) > 0, directApprovalUrl: scrapeRequest.approvalUrl?.includes(`/app/mcp?request=${scrapeRequest.id}`), expiresAutomatically: expiredRequest.status === "expired", workspaceIsolation }, null, 2));
   if (quoteResult.id) await admin.from("quotes").delete().eq("id", quoteResult.id).eq("workspace_id", workspace.id);
   if (rejectedQuote.id) await admin.from("quotes").delete().eq("id", rejectedQuote.id).eq("workspace_id", workspace.id);
   if (createListResult.id) await admin.from("lead_lists").delete().eq("id", createListResult.id).eq("workspace_id", workspace.id);
@@ -119,6 +136,8 @@ try {
   }
   if (foreignConnectionId) await admin.from("mcp_connections").delete().eq("id", foreignConnectionId);
 } finally {
+  if (crmQueueRunId) await admin.from("crm_sync_runs").delete().eq("id", crmQueueRunId);
+  if (createdCrmConnectionId) await admin.from("crm_connections").delete().eq("id", createdCrmConnectionId);
   const { data: requests } = await admin.from("mcp_action_requests").select("id").eq("connection_id", connection.id);
   const requestIds = (requests || []).map((item) => item.id);
   if (requestIds.length) await admin.from("notifications").delete().eq("entity_type", "mcp_action_request").in("entity_id", requestIds);
