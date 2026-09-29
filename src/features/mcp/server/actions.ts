@@ -134,14 +134,20 @@ export async function rotateMcpConnectionAction(id: string) {
   return { ok: true as const, token };
 }
 
-export async function loadPlatformMcp() {
+export async function loadPlatformMcp(options: { callPage?: number; status?: string; tool?: string } = {}) {
   const context = await requirePlatform();
   const admin = createAdminClient();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const callPage = Math.max(1, Math.floor(options.callPage || 1));
+  const callPageSize = 25;
+  const callFrom = (callPage - 1) * callPageSize;
+  let callQuery = admin.from("mcp_tool_calls").select("id, workspace_id, connection_id, request_id, tool_name, status, duration_ms, result_count, error_code, created_at").order("created_at", { ascending: false }).range(callFrom, callFrom + callPageSize);
+  if (["success", "error"].includes(options.status || "")) callQuery = callQuery.eq("status", options.status!);
+  if (options.tool) callQuery = callQuery.eq("tool_name", options.tool);
   const [{ data: settings }, { data: connections }, { data: calls }, { data: workspaces }, { data: oauthClients }, { data: oauthTokens }, { data: metricCalls }, { data: actionRequests }] = await Promise.all([
     admin.from("mcp_settings").select("*").eq("id", 1).single(),
     admin.from("mcp_connections").select("id, workspace_id, name, token_prefix, scopes, status, last_used_at, expires_at, created_at").order("created_at", { ascending: false }).limit(100),
-    admin.from("mcp_tool_calls").select("id, workspace_id, connection_id, request_id, tool_name, status, duration_ms, result_count, error_code, created_at").order("created_at", { ascending: false }).limit(100),
+    callQuery,
     admin.from("workspaces").select("id, name"),
     admin.from("mcp_oauth_clients").select("client_id, client_name, redirect_uris, status, created_at, last_used_at").order("created_at", { ascending: false }).limit(100),
     admin.from("mcp_oauth_tokens").select("connection_id, client_id, access_expires_at, refresh_expires_at, revoked_at, created_at").order("created_at", { ascending: false }).limit(500),
@@ -158,7 +164,20 @@ export async function loadPlatformMcp() {
     pendingApprovals: actionRequests?.filter((request) => request.status === "pending").length || 0,
     failedApprovals: actionRequests?.filter((request) => request.status === "failed").length || 0,
   };
-  return { canMutate: context.platformRole === "super_admin", generatedAt: new Date().toISOString(), settings, connections: connections || [], calls: calls || [], oauthClients: oauthClients || [], oauthTokens: oauthTokens || [], metrics, workspaceNames: Object.fromEntries((workspaces || []).map((workspace) => [workspace.id, workspace.name])) };
+  const callRows = calls || [];
+  return { canMutate: context.platformRole === "super_admin", generatedAt: new Date().toISOString(), settings, connections: connections || [], calls: callRows.slice(0, callPageSize), callPage, callHasMore: callRows.length > callPageSize, toolNames: Array.from(new Set((metricCalls || []).map((call) => call.tool_name))).sort(), oauthClients: oauthClients || [], oauthTokens: oauthTokens || [], metrics, workspaceNames: Object.fromEntries((workspaces || []).map((workspace) => [workspace.id, workspace.name])) };
+}
+
+export async function loadPlatformMcpCall(id: string) {
+  await requirePlatform();
+  const admin = createAdminClient();
+  const { data: call } = await admin.from("mcp_tool_calls").select("id, workspace_id, connection_id, actor_user_id, request_id, tool_name, status, duration_ms, input_summary, result_count, error_code, created_at").eq("id", id).maybeSingle();
+  if (!call) return null;
+  const [{ data: workspace }, { data: connection }] = await Promise.all([
+    admin.from("workspaces").select("name").eq("id", call.workspace_id).maybeSingle(),
+    call.connection_id ? admin.from("mcp_connections").select("name, token_prefix, scopes, status").eq("id", call.connection_id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  return { call, workspace, connection };
 }
 
 export async function updateMcpSettingsAction(formData: FormData) {
