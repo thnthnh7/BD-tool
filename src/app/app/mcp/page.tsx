@@ -20,7 +20,7 @@ export default async function McpPage({ searchParams }: { searchParams: Promise<
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
   const endpoint = `${baseUrl}/api/mcp`;
   const connectionNames = Object.fromEntries(data.connections.map((connection) => [connection.id, connection.name]));
-  const configExample = JSON.stringify({ mcpServers: { leadely: { type: "http", url: endpoint, headers: { Authorization: "Bearer <YOUR_TOKEN>" } } } }, null, 2);
+  const configExample = JSON.stringify({ mcpServers: { bizcraw: { type: "http", url: endpoint, headers: { Authorization: "Bearer <YOUR_TOKEN>" } } } }, null, 2);
   return <Stack gap="md">
     <PageHeader title={t("title")} subtitle={t("subtitle")} />
     <SectionPanel title={t("connections")}><McpConnectionManager connections={data.connections} endpoint={endpoint} enabled={Boolean(data.settings?.enabled && data.settings.read_tools_enabled)} /></SectionPanel>

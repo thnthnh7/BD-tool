@@ -1,14 +1,15 @@
 import nextEnv from "@next/env";
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { createMcpTestWorkspace } from "./mcp-test-fixture.mjs";
 
 nextEnv.loadEnvConfig(process.cwd());
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) throw new Error("Missing Supabase environment variables.");
 const admin = createClient(url, key, { auth: { persistSession: false } });
-const { data: workspace, error: workspaceError } = await admin.from("workspaces").select("id").order("created_at").limit(1).single();
-if (workspaceError) throw workspaceError;
+const fixture = await createMcpTestWorkspace(admin);
+const workspace = fixture.workspace;
 const token = `ldmcp_${randomBytes(32).toString("base64url")}`;
 const tokenHash = createHash("sha256").update(token).digest("hex");
 const { data: connection, error: insertError } = await admin.from("mcp_connections").insert({
@@ -34,7 +35,7 @@ async function rpc(body) {
 }
 
 try {
-  const initialized = await rpc({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "leadely-smoke", version: "1.0.0" } } });
+  const initialized = await rpc({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "bizcraw-smoke", version: "1.0.0" } } });
   const tools = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
   const workspaceResult = await rpc({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_workspace", arguments: {} } });
   const companiesResult = await rpc({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "search_companies", arguments: { limit: 1 } } });
@@ -76,4 +77,5 @@ try {
 } finally {
   await admin.from("mcp_tool_calls").delete().eq("connection_id", connection.id);
   await admin.from("mcp_connections").delete().eq("id", connection.id);
+  await fixture.cleanup();
 }

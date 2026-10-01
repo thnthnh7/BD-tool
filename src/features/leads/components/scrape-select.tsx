@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Checkbox } from "@mantine/core";
 import { toggleScrapeSelectionAction } from "@/features/leads/server/scrape-actions";
@@ -20,14 +20,14 @@ export function ScrapeSelectCheckbox({
   ariaLabel?: string;
   locked?: boolean;
 }) {
+  return <ScrapeSelectCheckboxState key={`${resultId || personId || "selection"}:${selected}`} resultId={resultId} personId={personId} selected={selected} label={label} ariaLabel={ariaLabel} locked={locked} />;
+}
+
+function ScrapeSelectCheckboxState({ resultId, personId, selected, label, ariaLabel, locked = false }: { resultId?: string; personId?: string; selected: boolean; label?: string; ariaLabel?: string; locked?: boolean }) {
   const router = useRouter();
   const [override, setOverride] = useState<boolean | null>(null);
   const [pending, startTransition] = useTransition();
   const shown = override ?? selected;
-
-  useEffect(() => {
-    setOverride(null);
-  }, [selected]);
 
   return (
     <Checkbox

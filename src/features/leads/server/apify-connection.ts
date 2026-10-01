@@ -173,7 +173,7 @@ export async function saveApifyOauthConnection(input: { workspaceId: string; use
 export async function saveApifyTokenAction(formData: FormData) {
   const context = await requireOwnerOrAdmin();
   const token = formText(formData, "api_token");
-  const label = formText(formData, "token_label") || "Leadely";
+  const label = formText(formData, "token_label") || "Bizcraw";
   if (token.length < 20) return { error: "API token không hợp lệ." };
   try {
     const [user, limits] = await Promise.all([apifyGet<ApifyUser>("/users/me", token), apifyGet<ApifyLimits>("/users/me/limits", token)]);

@@ -23,28 +23,34 @@ export async function signUpWithPassword(formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const inviteToken = String(formData.get("invite") || "");
+  const inviteKind = String(formData.get("invite_kind") || "") === "platform" ? "platform" : "workspace";
   if (!email || password.length < 8) {
     return { error: "Email và mật khẩu (tối thiểu 8 ký tự) là bắt buộc." };
   }
 
   const supabase = await createClient();
+  const confirmationNext = inviteToken
+    ? `/invite/${encodeURIComponent(inviteToken)}${inviteKind === "platform" ? "?kind=platform" : ""}`
+    : "/onboarding";
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${siteUrl()}/auth/callback` },
+    options: { emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(confirmationNext)}` },
   });
   if (error) return { error: error.message };
 
   if (data.session) {
     if (inviteToken) {
-      const accepted = await acceptInvite(inviteToken);
+      const accepted = inviteKind === "platform"
+        ? await acceptPlatformInvite(inviteToken)
+        : await acceptInvite(inviteToken);
       if (accepted.error) return accepted;
-      redirect("/app");
+      redirect(inviteKind === "platform" ? "/app/platform/plans" : "/app");
     }
     redirect("/onboarding");
   }
 
-  return { error: "Hãy kiểm tra email để xác nhận tài khoản, rồi đăng nhập." };
+  return { ok: true as const, message: "Hãy kiểm tra email để xác nhận tài khoản, rồi đăng nhập." };
 }
 
 export async function signInWithPassword(formData: FormData) {
@@ -81,9 +87,24 @@ export async function resetPassword(formData: FormData) {
   const email = String(formData.get("email") || "").trim();
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl()}/auth/callback?next=/login`,
+    redirectTo: `${siteUrl()}/auth/callback?next=/update-password`,
   });
   if (error) return { error: error.message };
+  return { ok: true as const };
+}
+
+export async function updatePassword(formData: FormData) {
+  const password = String(formData.get("password") || "");
+  const confirmation = String(formData.get("password_confirmation") || "");
+  if (password.length < 8) return { error: "Mật khẩu phải có ít nhất 8 ký tự." };
+  if (password !== confirmation) return { error: "Mật khẩu xác nhận không khớp." };
+
+  const supabase = await createClient();
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) return { error: "Link đặt lại mật khẩu đã hết hạn. Vui lòng yêu cầu link mới." };
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+  await supabase.auth.signOut();
   return { ok: true as const };
 }
 

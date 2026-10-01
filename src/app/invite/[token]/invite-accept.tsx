@@ -40,7 +40,7 @@ export function InviteAccept({ token, kind }: { token: string; kind: "workspace"
       </Button>
       <Text size="sm" mt="md">
         Chưa có tài khoản?{" "}
-        <Anchor href={`/signup?invite=${token}`} fw={700} underline="always">
+        <Anchor href={`/signup?invite=${token}${kind === "platform" ? "&kind=platform" : ""}`} fw={700} underline="always">
           Đăng ký
         </Anchor>
       </Text>

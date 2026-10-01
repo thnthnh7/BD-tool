@@ -1,15 +1,14 @@
 import nextEnv from "@next/env";
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { createMcpTestWorkspace } from "./mcp-test-fixture.mjs";
 
 nextEnv.loadEnvConfig(process.cwd());
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-const { data: workspaces, error: workspaceError } = await admin.from("workspaces").select("id").order("created_at").limit(2);
-if (workspaceError) throw workspaceError;
-if (!workspaces?.length) throw new Error("No workspace available for MCP smoke test.");
-const workspace = workspaces[0];
-const { data: reviewer, error: reviewerError } = await admin.from("workspace_members").select("user_id").eq("workspace_id", workspace.id).in("role", ["owner", "admin"]).limit(1).single();
-if (reviewerError) throw reviewerError;
+const fixture = await createMcpTestWorkspace(admin, { withOwner: true });
+const foreignFixture = await createMcpTestWorkspace(admin);
+const workspace = fixture.workspace;
+const reviewer = { user_id: fixture.owner.id };
 const { data: settings } = await admin.from("mcp_settings").select("write_tools_enabled").eq("id", 1).single();
 const token = `ldmcp_${randomBytes(32).toString("base64url")}`;
 const { data: connection, error: connectionError } = await admin.from("mcp_connections").insert({ workspace_id: workspace.id, name: "Write approval smoke test", token_hash: createHash("sha256").update(token).digest("hex"), token_prefix: `${token.slice(0, 13)}…`, scopes: ["workspace:read", "crm:write", "quotes:write", "scrape:write"], expires_at: new Date(Date.now() + 300_000).toISOString() }).select("id").single();
@@ -108,12 +107,12 @@ try {
   let workspaceIsolation = true;
   let foreignConnectionId;
   let foreignRequestId;
-  if (workspaces.length > 1) {
+  if (foreignFixture.workspace) {
     const foreignToken = `ldmcp_${randomBytes(32).toString("base64url")}`;
-    const { data: foreignConnection, error: foreignConnectionError } = await admin.from("mcp_connections").insert({ workspace_id: workspaces[1].id, name: "MCP isolation smoke test", token_hash: createHash("sha256").update(foreignToken).digest("hex"), token_prefix: `${foreignToken.slice(0, 13)}…`, scopes: ["workspace:read"], expires_at: new Date(Date.now() + 300_000).toISOString() }).select("id").single();
+    const { data: foreignConnection, error: foreignConnectionError } = await admin.from("mcp_connections").insert({ workspace_id: foreignFixture.workspace.id, name: "MCP isolation smoke test", token_hash: createHash("sha256").update(foreignToken).digest("hex"), token_prefix: `${foreignToken.slice(0, 13)}…`, scopes: ["workspace:read"], expires_at: new Date(Date.now() + 300_000).toISOString() }).select("id").single();
     if (foreignConnectionError) throw foreignConnectionError;
     foreignConnectionId = foreignConnection.id;
-    const { data: foreignRequest, error: foreignRequestError } = await admin.from("mcp_action_requests").insert({ workspace_id: workspaces[1].id, connection_id: foreignConnection.id, action_type: "start_maps_scrape", payload: {}, idempotency_key: "foreign-smoke-001" }).select("id").single();
+    const { data: foreignRequest, error: foreignRequestError } = await admin.from("mcp_action_requests").insert({ workspace_id: foreignFixture.workspace.id, connection_id: foreignConnection.id, action_type: "start_maps_scrape", payload: {}, idempotency_key: "foreign-smoke-001" }).select("id").single();
     if (foreignRequestError) throw foreignRequestError;
     foreignRequestId = foreignRequest.id;
     const foreignRead = await rpc({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "get_action_request", arguments: { requestId: foreignRequest.id } } });
@@ -146,4 +145,6 @@ try {
   await admin.from("mcp_tool_calls").delete().eq("connection_id", connection.id);
   await admin.from("mcp_connections").delete().eq("id", connection.id);
   await admin.from("mcp_settings").update({ write_tools_enabled: Boolean(settings?.write_tools_enabled) }).eq("id", 1);
+  await foreignFixture.cleanup();
+  await fixture.cleanup();
 }

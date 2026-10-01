@@ -41,7 +41,7 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
           <Text fw={700} size="sm">{t("tokenConnect")}</Text>
           <Text size="xs" c="dimmed">{t("tokenHelp")}</Text>
           <ActionForm action={saveApifyTokenAction} submitLabel={t("connect")}>
-            <TextInput name="token_label" label={t("tokenName")} defaultValue="Leadely" placeholder="Leadely" />
+            <TextInput name="token_label" label={t("tokenName")} defaultValue="Bizcraw" placeholder="Bizcraw" />
             <TextInput name="api_token" type="password" label="API token" placeholder={t("tokenPlaceholder")} autoComplete="new-password" required />
           </ActionForm>
         </Stack>
@@ -113,7 +113,7 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
     {showSetup && canManage && <>
       <Divider my="sm" />
       <Group justify="space-between" align="flex-start" gap="sm" wrap="wrap">
-        <Box component="details" className={classes.tokenDetails}><Text component="summary" size="sm" fw={600} style={{ cursor: "pointer" }}>{connection.auth_method === "api_token" ? t("replaceToken") : t("switchToken")}</Text><Box pt="sm" maw={520}><ActionForm action={saveApifyTokenAction} submitLabel={t("updateToken")}><TextInput name="token_label" label={t("tokenName")} defaultValue={connection.token_label || "Leadely"} /><TextInput name="api_token" type="password" label={t("newToken")} placeholder={t("newTokenPlaceholder")} autoComplete="new-password" required /></ActionForm></Box></Box>
+        <Box component="details" className={classes.tokenDetails}><Text component="summary" size="sm" fw={600} style={{ cursor: "pointer" }}>{connection.auth_method === "api_token" ? t("replaceToken") : t("switchToken")}</Text><Box pt="sm" maw={520}><ActionForm action={saveApifyTokenAction} submitLabel={t("updateToken")}><TextInput name="token_label" label={t("tokenName")} defaultValue={connection.token_label || "Bizcraw"} /><TextInput name="api_token" type="password" label={t("newToken")} placeholder={t("newTokenPlaceholder")} autoComplete="new-password" required /></ActionForm></Box></Box>
         <Group gap={4}>
           {oauthReady && <LinkButton href="/api/integrations/apify/connect" variant="subtle" size="compact-sm">{t("reconnect")}</LinkButton>}
           <ApifyUnlinkButton />

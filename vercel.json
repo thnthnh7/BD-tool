@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/integrations/crm/sync",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }

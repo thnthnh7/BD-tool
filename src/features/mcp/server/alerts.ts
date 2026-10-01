@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { mcpAlertFingerprint, shouldSuppressMcpAlert } from "@/features/mcp/server/alert-policy";
 
 export async function evaluateAndSendMcpHealthAlert() {
   const admin = createAdminClient();
@@ -23,10 +24,25 @@ export async function evaluateAndSendMcpHealthAlert() {
     failedApprovals > 0 ? `${failedApprovals} MCP approval execution(s) failed` : null,
   ].filter((issue): issue is string => Boolean(issue));
   const metrics = { windowMinutes: 60, calls: calls.length, errors, errorRate, p95, failedApprovals };
-  if (!issues.length) return { status: "healthy" as const, issues, metrics, delivery: "not_needed" as const };
+  const now = new Date();
+  const { data: alertState, error: stateError } = await admin.from("mcp_settings").select("last_alert_fingerprint, last_alert_sent_at").eq("id", 1).single();
+  if (stateError) throw new Error(stateError.message);
+  if (!issues.length) {
+    if (alertState.last_alert_fingerprint) await admin.from("mcp_settings").update({ last_alert_fingerprint: null, last_alert_resolved_at: now.toISOString() }).eq("id", 1);
+    return { status: "healthy" as const, issues, metrics, delivery: "not_needed" as const };
+  }
+
+  const fingerprint = mcpAlertFingerprint(issues);
+  const cooldownMinutes = Math.max(5, Number(process.env.MCP_ALERT_COOLDOWN_MINUTES || 60));
+  if (shouldSuppressMcpAlert({ fingerprint, previousFingerprint: alertState.last_alert_fingerprint, previousSentAt: alertState.last_alert_sent_at, now, cooldownMinutes })) {
+    return { status: "attention" as const, issues, metrics, delivery: "suppressed" as const };
+  }
 
   const webhookUrl = process.env.MCP_ALERT_WEBHOOK_URL;
   if (!webhookUrl) return { status: "attention" as const, issues, metrics, delivery: "not_configured" as const };
+  const { data: claimed, error: claimError } = await admin.rpc("claim_mcp_alert_delivery", { p_fingerprint: fingerprint, p_sent_at: now.toISOString(), p_cooldown_minutes: cooldownMinutes });
+  if (claimError) throw new Error(claimError.message);
+  if (!claimed) return { status: "attention" as const, issues, metrics, delivery: "suppressed" as const };
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
@@ -39,6 +55,7 @@ export async function evaluateAndSendMcpHealthAlert() {
     return { status: "attention" as const, issues, metrics, delivery: "sent" as const };
   } catch (error) {
     console.error("mcp alert delivery failed", error);
+    await admin.from("mcp_settings").update({ last_alert_fingerprint: null, last_alert_sent_at: null }).eq("id", 1).eq("last_alert_fingerprint", fingerprint).eq("last_alert_sent_at", now.toISOString());
     return { status: "attention" as const, issues, metrics, delivery: "failed" as const };
   }
 }

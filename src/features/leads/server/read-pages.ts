@@ -9,6 +9,5 @@ export async function readAllPages<T>(
     if (error) throw new Error(error.message);
     if (!data?.length) return rows;
     rows.push(...data);
-    if (data.length < pageSize) return rows;
   }
 }

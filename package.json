@@ -7,11 +7,17 @@
     "build": "next build",
     "i18n:check": "node scripts/check-i18n.mjs",
     "i18n:translate": "node scripts/translate-messages.mjs",
+    "test:core": "tsx --test src/features/leads/tests/*.test.ts src/features/data-library/tests/*.test.ts",
     "test:mcp": "node scripts/mcp-smoke-test.mjs",
     "test:mcp:oauth": "node scripts/mcp-oauth-smoke-test.mjs",
     "test:mcp:write": "node scripts/mcp-write-smoke-test.mjs",
     "test:mcp:sdk": "node scripts/mcp-sdk-compat-test.mjs",
     "test:mcp:load": "node scripts/mcp-load-test.mjs",
+    "test:mcp:contract": "npx tsx scripts/mcp-contract-test.ts",
+    "test:mcp:db-contract": "node scripts/mcp-db-contract-test.mjs",
+    "test:mcp:access": "node scripts/mcp-access-control-test.mjs",
+    "test:mcp:reliability": "npx tsx scripts/mcp-reliability-test.ts",
+    "test:crm-sync-logic": "npx tsx scripts/crm-sync-logic-test.ts",
     "start": "next start",
     "lint": "eslint",
     "seed:demo": "npx tsx scripts/seed-demo.ts"
@@ -50,6 +56,11 @@
     "eslint-config-next": "^16.3.6",
     "postcss-preset-mantine": "^1.18.0",
     "postcss-simple-vars": "^7.0.1",
+    "tsx": "^4.20.6",
     "typescript": "^5"
+  },
+  "overrides": {
+    "image-size": "2.0.4",
+    "undici": "6.28.1"
   }
 }

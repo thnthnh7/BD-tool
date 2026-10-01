@@ -50,14 +50,16 @@ async function safeActiveCampaignOrigin(rawUrl: string) {
 export async function loadCrmIntegrations() {
   const context = await requireWorkspace();
   const supabase = await createClient();
-  const [{ data: connections }, { data: runs }, { data: mappings }, { data: providerConfigs }, { data: audit }] = await Promise.all([
+  const [{ data: connections }, { data: runs }, { data: mappings }, { data: providerConfigs }, { data: audit }, { data: issues }, { data: recordFailures }] = await Promise.all([
     supabase.from("crm_connections").select("*").eq("workspace_id", context.workspaceId).order("updated_at", { ascending: false }),
     supabase.from("crm_sync_runs").select("*").eq("workspace_id", context.workspaceId).order("started_at", { ascending: false }).limit(20),
     supabase.from("crm_field_mappings").select("*").eq("workspace_id", context.workspaceId).order("object_type").order("leadely_field"),
     supabase.rpc("crm_provider_availability"),
     supabase.from("crm_connection_audit").select("*").eq("workspace_id", context.workspaceId).order("created_at", { ascending: false }).limit(30),
+    supabase.from("crm_record_links").select("id, connection_id, object_type, leadely_record_id, external_record_id, leadely_updated_at, external_updated_at, last_synced_at, sync_status, last_error, updated_at").eq("workspace_id", context.workspaceId).in("sync_status", ["conflict", "error"]).order("updated_at", { ascending: false }).limit(50),
+    supabase.from("crm_sync_record_failures").select("id, connection_id, run_id, object_type, external_record_id, error_message, status, attempt_count, last_attempt_at, updated_at").eq("workspace_id", context.workspaceId).neq("status", "resolved").order("updated_at", { ascending: false }).limit(50),
   ]);
-  return { context, connections: connections || [], runs: runs || [], mappings: mappings || [], providerConfigs: providerConfigs || [], audit: audit || [] };
+  return { context, connections: connections || [], runs: runs || [], mappings: mappings || [], providerConfigs: providerConfigs || [], audit: audit || [], issues: issues || [], recordFailures: recordFailures || [] };
 }
 
 export async function saveCrmConnectionAction(formData: FormData) {
@@ -103,7 +105,7 @@ export async function saveCrmFieldMappingAction(formData: FormData) {
   const syncDirection = text(formData, "sync_direction");
   if (!connectionId) return { error: "Save the connection setup before adding field mappings." };
   if (!crmSyncObjects.includes(objectType)) return { error: "Invalid data type." };
-  if (!leadelyMappingFields[objectType].includes(leadelyField)) return { error: "Invalid Leadely field." };
+  if (!leadelyMappingFields[objectType].includes(leadelyField)) return { error: "Invalid Bizcraw field." };
   if (!externalField) return { error: "Enter the field name used by the connected CRM." };
   if (!directions.has(syncDirection)) return { error: "Invalid mapping direction." };
   const { data: connection } = await supabase.from("crm_connections").select("id").eq("id", connectionId).eq("workspace_id", context.workspaceId).maybeSingle();
@@ -156,6 +158,38 @@ export async function manageCrmSyncRunAction(formData: FormData) {
     const { error } = await supabase.from("crm_sync_runs").update(update).eq("id", id).eq("workspace_id", context.workspaceId).eq("status", run.status);
     if (error) return { error: error.message };
   }
+  revalidatePath("/app/crm-integrations");
+  return { ok: true as const };
+}
+
+export async function resolveCrmSyncIssueAction(formData: FormData) {
+  const workspace = await editableWorkspace();
+  if ("error" in workspace) return { error: workspace.error };
+  const issueId = text(formData, "issue_id");
+  const resolution = text(formData, "resolution");
+  if (!issueId || !["keep_local", "use_external"].includes(resolution)) return { error: "Invalid conflict resolution." };
+  const { error } = await createAdminClient().rpc("resolve_crm_sync_conflict", {
+    p_workspace_id: workspace.context.workspaceId,
+    p_issue_id: issueId,
+    p_resolution: resolution,
+    p_requested_by: workspace.context.userId,
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/app/crm-integrations");
+  return { ok: true as const };
+}
+
+export async function retryCrmRecordFailureAction(formData: FormData) {
+  const workspace = await editableWorkspace();
+  if ("error" in workspace) return { error: workspace.error };
+  const failureId = text(formData, "failure_id");
+  if (!failureId) return { error: "Invalid CRM record failure." };
+  const { error } = await createAdminClient().rpc("retry_crm_sync_record_failure", {
+    p_workspace_id: workspace.context.workspaceId,
+    p_failure_id: failureId,
+    p_requested_by: workspace.context.userId,
+  });
+  if (error) return { error: error.message };
   revalidatePath("/app/crm-integrations");
   return { ok: true as const };
 }

@@ -7,8 +7,12 @@ on:
     paths:
       - "src/app/api/mcp/**"
       - "src/features/mcp/**"
+      - "src/features/crm-integrations/**"
       - "scripts/mcp-*.mjs"
+      - "scripts/mcp-*.ts"
+      - "scripts/crm-sync-logic-test.ts"
       - "supabase/migrations/*mcp*.sql"
+      - "supabase/migrations/*crm*.sql"
       - ".github/workflows/mcp-staging.yml"
 
 jobs:
@@ -33,25 +37,30 @@ jobs:
       - run: npm ci
       - name: Apply MCP migrations to staging
         run: npx supabase db push --db-url "$SUPABASE_DB_URL" --include-all
-      - name: Start Leadely
-        run: npm run dev > /tmp/leadely-next.log 2>&1 &
+      - name: Start Bizcraw
+        run: npm run dev > /tmp/bizcraw-next.log 2>&1 &
       - name: Wait for server
         run: |
           for attempt in {1..60}; do
             if curl --fail --silent http://127.0.0.1:3000/login > /dev/null; then exit 0; fi
             sleep 1
           done
-          cat /tmp/leadely-next.log
+          cat /tmp/bizcraw-next.log
           exit 1
       - run: npm run test:mcp
       - run: npm run test:mcp:oauth
       - run: npm run test:mcp:sdk
       - run: npm run test:mcp:write
       - run: npm run test:mcp:load
+      - run: npm run test:mcp:contract
+      - run: npm run test:mcp:db-contract
+      - run: npm run test:mcp:access
+      - run: npm run test:mcp:reliability
+      - run: npm run test:crm-sync-logic
       - name: Upload server log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: mcp-staging-server-log
-          path: /tmp/leadely-next.log
+          path: /tmp/bizcraw-next.log
           retention-days: 7

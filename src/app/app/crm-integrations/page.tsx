@@ -7,12 +7,12 @@ import { Table, TableTbody, TableTd, TableTh, TableThead, TableTr } from "@/comp
 import { ActionForm } from "@/features/crm/components/action-form";
 import { crmProvider, crmProviders, crmSyncObjects, leadelyMappingFields } from "@/features/crm-integrations/catalog";
 import { CrmProviderLogo } from "@/features/crm-integrations/components/crm-provider-logo";
-import { disconnectCrmConnectionAction, loadCrmIntegrations, manageCrmSyncRunAction, saveActiveCampaignCredentialsAction, saveCrmConnectionAction, saveCrmFieldMappingAction, setCrmConnectionStateAction } from "@/features/crm-integrations/server/actions";
+import { disconnectCrmConnectionAction, loadCrmIntegrations, manageCrmSyncRunAction, resolveCrmSyncIssueAction, retryCrmRecordFailureAction, saveActiveCampaignCredentialsAction, saveCrmConnectionAction, saveCrmFieldMappingAction, setCrmConnectionStateAction } from "@/features/crm-integrations/server/actions";
 
 function directionLabel(direction: string) {
-  if (direction === "import") return "CRM → Leadely";
-  if (direction === "export") return "Leadely → CRM";
-  return "Leadely ↔ CRM";
+  if (direction === "import") return "CRM → Bizcraw";
+  if (direction === "export") return "Bizcraw → CRM";
+  return "Bizcraw ↔ CRM";
 }
 
 function statusColor(status: string) {
@@ -48,7 +48,7 @@ export default async function CrmIntegrationsPage({
     <Stack gap="md">
       <PageHeader
         title="CRM Integration"
-        subtitle="Keep contacts, companies, deals and activities synchronized between Leadely and the CRM your team already uses."
+        subtitle="Keep contacts, companies, deals and activities synchronized between Bizcraw and the CRM your team already uses."
       />
       {oauth === "connected" ? <Alert color="teal">CRM authorization completed successfully.</Alert> : null}
       {oauth && oauth !== "connected" ? <Alert color="red">CRM authorization could not be completed ({oauth.replaceAll("_", " ")}). Check the provider configuration and try again.</Alert> : null}
@@ -59,6 +59,40 @@ export default async function CrmIntegrationsPage({
         <Paper withBorder radius="md" p="md"><Text size="xs" c="dimmed">Records synced</Text><Text fw={700} size="xl">{syncedRecords.toLocaleString()}</Text></Paper>
         <Paper withBorder radius="md" p="md"><Text size="xs" c="dimmed">Needs attention</Text><Text fw={700} size="xl" c={errors ? "red" : undefined}>{errors}</Text></Paper>
       </SimpleGrid>
+
+      {data.issues.length ? (
+        <SectionPanel title={`Sync issues · ${data.issues.length}`} padded={false}>
+          <Table>
+            <TableThead><TableTr><TableTh>Record</TableTh><TableTh>Issue</TableTh><TableTh>Changed</TableTh><TableTh /></TableTr></TableThead>
+            <TableTbody>{data.issues.map((issue) => {
+              const provider = crmProvider(data.connections.find((item) => item.id === issue.connection_id)?.provider || "");
+              return <TableTr key={issue.id}>
+                <TableTd><Text size="sm" fw={600}>{issue.object_type} · {issue.external_record_id}</Text><Text size="xs" c="dimmed">{provider?.name || "CRM"}</Text></TableTd>
+                <TableTd><Badge size="sm" variant="light" color={issue.sync_status === "conflict" ? "orange" : "red"}>{issue.sync_status}</Badge>{issue.last_error ? <Text size="xs" c="dimmed" mt={4} lineClamp={2}>{issue.last_error}</Text> : null}</TableTd>
+                <TableTd><Text size="xs">Bizcraw: {issue.leadely_updated_at ? new Date(issue.leadely_updated_at).toLocaleString() : "—"}</Text><Text size="xs">CRM: {issue.external_updated_at ? new Date(issue.external_updated_at).toLocaleString() : "—"}</Text></TableTd>
+                <TableTd>{canManage && issue.sync_status === "conflict" ? <Group justify="flex-end" gap="xs" wrap="nowrap">
+                  <ActionForm action={resolveCrmSyncIssueAction} submitLabel="Keep Bizcraw" layout="inline" variant="light"><input type="hidden" name="issue_id" value={issue.id} /><input type="hidden" name="resolution" value="keep_local" /></ActionForm>
+                  <ActionForm action={resolveCrmSyncIssueAction} submitLabel="Use CRM" layout="inline" variant="light"><input type="hidden" name="issue_id" value={issue.id} /><input type="hidden" name="resolution" value="use_external" /></ActionForm>
+                </Group> : null}</TableTd>
+              </TableTr>;
+            })}</TableTbody>
+          </Table>
+        </SectionPanel>
+      ) : null}
+
+      {data.recordFailures.length ? (
+        <SectionPanel title={`Failed records · ${data.recordFailures.length}`} padded={false}>
+          <Table>
+            <TableThead><TableTr><TableTh>Record</TableTh><TableTh>Error</TableTh><TableTh>Attempts</TableTh><TableTh /></TableTr></TableThead>
+            <TableTbody>{data.recordFailures.map((failure) => <TableTr key={failure.id}>
+              <TableTd><Text size="sm" fw={600}>{failure.object_type} · {failure.external_record_id}</Text><Text size="xs" c="dimmed">{new Date(failure.last_attempt_at).toLocaleString()}</Text></TableTd>
+              <TableTd><Text size="xs" lineClamp={2}>{failure.error_message}</Text></TableTd>
+              <TableTd><Badge size="sm" variant="light" color={failure.status === "retrying" ? "blue" : "red"}>{failure.status} · {failure.attempt_count}</Badge></TableTd>
+              <TableTd>{canManage && failure.status === "open" ? <ActionForm action={retryCrmRecordFailureAction} submitLabel="Retry record" layout="inline" variant="light"><input type="hidden" name="failure_id" value={failure.id} /></ActionForm> : null}</TableTd>
+            </TableTr>)}</TableTbody>
+          </Table>
+        </SectionPanel>
+      ) : null}
 
       {data.connections.length ? (
         <SectionPanel title="Connections" padded={false}>
@@ -114,9 +148,9 @@ export default async function CrmIntegrationsPage({
                 label="Synchronization direction"
                 defaultValue={selectedConnection?.sync_direction || "bidirectional"}
                 data={[
-                  { value: "bidirectional", label: "Two-way · Leadely ↔ CRM" },
-                  { value: "import", label: "Import only · CRM → Leadely" },
-                  { value: "export", label: "Export only · Leadely → CRM" },
+                  { value: "bidirectional", label: "Two-way · Bizcraw ↔ CRM" },
+                  { value: "import", label: "Import only · CRM → Bizcraw" },
+                  { value: "export", label: "Export only · Bizcraw → CRM" },
                 ]}
               />
               <NativeSelect
@@ -138,7 +172,7 @@ export default async function CrmIntegrationsPage({
                 defaultValue={selectedConnection?.conflict_policy || "latest_update"}
                 data={[
                   { value: "latest_update", label: "Use the most recently updated record" },
-                  { value: "leadely_wins", label: "Leadely wins" },
+                  { value: "leadely_wins", label: "Bizcraw wins" },
                   { value: "crm_wins", label: `${selectedProvider.name} wins` },
                 ]}
               />
@@ -168,7 +202,7 @@ export default async function CrmIntegrationsPage({
         </SimpleGrid>
         <Alert mt="md" color={providerCredentialsReady ? "teal" : "yellow"} title={providerCredentialsReady ? "Platform credentials ready" : "Authorization setup required"}>
           {providerCredentialsReady
-            ? `Leadely has the ${selectedProvider.name} application credentials. The provider-specific OAuth route is the next implementation step.`
+            ? `Bizcraw has the ${selectedProvider.name} application credentials. The provider-specific OAuth route is the next implementation step.`
             : selectedProvider.credentials.length
               ? `Super Admin must configure ${selectedProvider.credentials.join(" and ")} before users can authorize ${selectedProvider.name}.`
               : `${selectedProvider.name} requires a secure workspace credential vault for its account API URL and API key.`}
@@ -203,16 +237,16 @@ export default async function CrmIntegrationsPage({
             <ActionForm action={saveCrmFieldMappingAction} submitLabel="Add field mapping" layout="inline">
               <input type="hidden" name="connection_id" value={selectedConnection.id} />
               <input type="hidden" name="object_type" value={selectedObject} />
-              <NativeSelect name="leadely_field" label="Leadely field" data={leadelyMappingFields[selectedObject]} />
+              <NativeSelect name="leadely_field" label="Bizcraw field" data={leadelyMappingFields[selectedObject]} />
               <TextInput name="external_field" label={`${selectedProvider.name} field`} placeholder="API field name" required />
               <NativeSelect name="sync_direction" label="Direction" defaultValue="bidirectional" data={[
                 { value: "bidirectional", label: "Both directions" },
-                { value: "import", label: "CRM → Leadely" },
-                { value: "export", label: "Leadely → CRM" },
+                { value: "import", label: "CRM → Bizcraw" },
+                { value: "export", label: "Bizcraw → CRM" },
               ]} />
             </ActionForm>
             {selectedMappings.length ? (
-              <Table><TableThead><TableTr><TableTh>Object</TableTh><TableTh>Leadely field</TableTh><TableTh>{selectedProvider.name} field</TableTh><TableTh>Direction</TableTh></TableTr></TableThead><TableTbody>{selectedMappings.map((mapping) => <TableTr key={mapping.id}><TableTd>{mapping.object_type}</TableTd><TableTd>{mapping.leadely_field}</TableTd><TableTd>{mapping.external_field}</TableTd><TableTd>{directionLabel(mapping.sync_direction)}</TableTd></TableTr>)}</TableTbody></Table>
+              <Table><TableThead><TableTr><TableTh>Object</TableTh><TableTh>Bizcraw field</TableTh><TableTh>{selectedProvider.name} field</TableTh><TableTh>Direction</TableTh></TableTr></TableThead><TableTbody>{selectedMappings.map((mapping) => <TableTr key={mapping.id}><TableTd>{mapping.object_type}</TableTd><TableTd>{mapping.leadely_field}</TableTd><TableTd>{mapping.external_field}</TableTd><TableTd>{directionLabel(mapping.sync_direction)}</TableTd></TableTr>)}</TableTbody></Table>
             ) : <Text size="sm" c="dimmed">No custom mappings yet. Standard fields will be suggested automatically after authorization and schema discovery.</Text>}
           </Stack>
         )}
@@ -237,8 +271,8 @@ export default async function CrmIntegrationsPage({
 
       <SectionPanel title="How synchronization works">
         <SimpleGrid cols={{ base: 1, md: 3 }}>
-          <Group wrap="nowrap" align="flex-start"><ArrowDownToLine size={20} /><div><Text fw={600} size="sm">Import from CRM</Text><Text size="xs" c="dimmed">Pull existing and changed records into Leadely.</Text></div></Group>
-          <Group wrap="nowrap" align="flex-start"><ArrowUpFromLine size={20} /><div><Text fw={600} size="sm">Export to CRM</Text><Text size="xs" c="dimmed">Push Leadely records to the connected CRM.</Text></div></Group>
+          <Group wrap="nowrap" align="flex-start"><ArrowDownToLine size={20} /><div><Text fw={600} size="sm">Import from CRM</Text><Text size="xs" c="dimmed">Pull existing and changed records into Bizcraw.</Text></div></Group>
+          <Group wrap="nowrap" align="flex-start"><ArrowUpFromLine size={20} /><div><Text fw={600} size="sm">Export to CRM</Text><Text size="xs" c="dimmed">Push Bizcraw records to the connected CRM.</Text></div></Group>
           <Group wrap="nowrap" align="flex-start"><ArrowLeftRight size={20} /><div><Text fw={600} size="sm">Resolve conflicts</Text><Text size="xs" c="dimmed">Apply one explicit rule when both systems changed.</Text></div></Group>
         </SimpleGrid>
       </SectionPanel>

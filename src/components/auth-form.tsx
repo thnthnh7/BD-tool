@@ -10,12 +10,15 @@ import classes from "@/styles/leadely-surfaces.module.css";
 export function AuthForm({
   mode,
   invite,
+  inviteKind,
   next,
 }: {
   mode: "login" | "signup" | "forgot";
   invite?: string;
+  inviteKind?: "workspace" | "platform";
   next?: string;
 }) {
+  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -29,8 +32,10 @@ export function AuthForm({
     }
     if (mode === "signup") {
       if (invite) formData.set("invite", invite);
+      if (inviteKind) formData.set("invite_kind", inviteKind);
       const result = await signUpWithPassword(formData);
       if (result?.error) setError(result.error);
+      else if (result?.message) setMessage(result.message);
       return;
     }
     const result = await resetPassword(formData);
@@ -59,7 +64,7 @@ export function AuthForm({
           </Button>
         </Stack>
       </form>
-      {mode !== "forgot" ? (
+      {mode !== "forgot" && googleEnabled ? (
         <Button variant="default" fullWidth mt="sm" onClick={() => signInWithGoogle(invite, next)}>
           Continue with Google
         </Button>

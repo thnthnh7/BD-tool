@@ -89,7 +89,7 @@ export async function createPayPalSubscription(input: {
       plan_id: input.externalPlanId,
       custom_id: [input.workspaceId, input.planId, input.interval, input.invoiceId, input.billingCountry || ""].join("|"),
       application_context: {
-        brand_name: "Leadely",
+        brand_name: "Bizcraw",
         user_action: "SUBSCRIBE_NOW",
         return_url: `${siteUrl()}/app/billing?result=success&provider=paypal`,
         cancel_url: `${siteUrl()}/app/billing?result=cancel&provider=paypal`,
@@ -172,7 +172,7 @@ export async function syncStripeCatalogPrice(input: {
   if (!secret) throw new Error("Stripe chưa được kết nối.");
   let productId = input.existingProductId || "";
   if (!productId) {
-    const productParams = new URLSearchParams({ name: `Leadely ${input.planName}` });
+    const productParams = new URLSearchParams({ name: `Bizcraw ${input.planName}` });
     const productResponse = await fetch("https://api.stripe.com/v1/products", {
       method: "POST",
       headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded" },
@@ -210,7 +210,7 @@ export async function syncPayPalCatalogPlan(input: {
     const productResponse = await fetch(`${base}/v1/catalogs/products`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "PayPal-Request-Id": crypto.randomUUID() },
-      body: JSON.stringify({ name: `Leadely ${input.planName}`, type: "SERVICE", category: "SOFTWARE" }),
+      body: JSON.stringify({ name: `Bizcraw ${input.planName}`, type: "SERVICE", category: "SOFTWARE" }),
     });
     const product = await productResponse.json() as { id?: string; message?: string };
     if (!productResponse.ok || !product.id) throw new Error(product.message || "Không tạo được PayPal Product.");

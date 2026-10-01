@@ -12,7 +12,9 @@ function fakeDatabase(initial: Stored[] = [], failBatch = 0) {
     const chain = {
       select() { return chain; }, eq() { return chain; }, order() { return chain; },
       async maybeSingle() { return { data: { slug: "test/actor", adapter_status: "preview", schema_fetched_at: "2026-09-24" }, error: null }; },
+      async single() { return { data: { id: "collection" }, error: null }; },
       async range(from: number, to: number) { return { data: stored.slice(from, Math.min(to + 1, from + 100)), error: null }; },
+      upsert() { return chain; },
       async insert(rows: Stored[]) {
         inserts++;
         assert.equal(table, "lead_scrape_results");

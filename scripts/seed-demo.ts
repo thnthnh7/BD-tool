@@ -1,5 +1,5 @@
 /**
- * Create (or refresh) the Leadely demo account and fill its workspace with CRM + quote mock data.
+ * Create (or refresh) the Bizcraw demo account and fill its workspace with CRM + quote mock data.
  *
  * Usage from repo root:
  *   npx tsx scripts/seed-demo.ts
@@ -13,7 +13,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const DEMO_EMAIL = "demo@leadely.app";
 let demoPassword = "";
-const DEMO_WORKSPACE = "Leadely Demo";
+const DEMO_WORKSPACE = "Bizcraw Demo";
 
 type Stage = { id: string; name: string; stage_type: string; probability: number; pipeline_id: string };
 
@@ -86,7 +86,7 @@ async function findOrCreateUser(admin: SupabaseClient) {
     email: DEMO_EMAIL,
     password: demoPassword,
     email_confirm: true,
-    user_metadata: { display_name: "Leadely Demo" },
+    user_metadata: { display_name: "Bizcraw Demo" },
   });
   if (created.data.user) return created.data.user.id;
 

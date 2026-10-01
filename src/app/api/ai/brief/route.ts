@@ -188,6 +188,8 @@ function describeUpstreamPayload(payload: unknown, raw: string) {
   ].join("; ");
 }
 
+// Kept for provider fallback experiments; excluded from the active routing path.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function callNineRouter(params: {
   baseUrl: string;
   apiKey: string;

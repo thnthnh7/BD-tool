@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ActionIcon, Box, Button, Group, Paper, Text } from "@mantine/core";
 import { ArrowLeft, ArrowRight, Download, FileSpreadsheet, Presentation } from "lucide-react";
 import { DeckSlideView } from "@/components/bd-tool/decks/render";
@@ -20,15 +20,16 @@ type SlideshowProps = {
 };
 
 export function Slideshow({ settings, quote, client, allowExport = true }: SlideshowProps) {
+  const deck = resolveDeckStyle(quote.deckStyle);
+  return <SlideshowDeck key={deck.id} settings={settings} quote={quote} client={client} allowExport={allowExport} />;
+}
+
+function SlideshowDeck({ settings, quote, client, allowExport = true }: SlideshowProps) {
   const [active, setActive] = useState(0);
   const slides = useMemo(() => buildDeckSlides(settings, quote, client), [client, quote, settings]);
   const deck = resolveDeckStyle(quote.deckStyle);
   const safeActive = Math.min(active, Math.max(0, slides.length - 1));
   const slide = slides[safeActive] || slides[0];
-
-  useEffect(() => {
-    setActive(0);
-  }, [deck.id]);
 
   if (!slide) return null;
 

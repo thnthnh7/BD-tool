@@ -30,7 +30,7 @@ const deckSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "Leadely",
+  title: "Bizcraw",
   description: "AI BD assistant — quotes, slideshows and contracts.",
 };
 

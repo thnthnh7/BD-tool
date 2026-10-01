@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mcpScopes, type McpScope } from "@/features/mcp/scopes";
 import type { Json } from "@/lib/database.types";
+import { retryMcpAuditWrite } from "@/features/mcp/server/audit-retry";
 
 export function hashMcpToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -72,7 +73,7 @@ export async function recordMcpCall(input: {
   resultCount?: number | null;
   errorCode?: string | null;
 }) {
-  await createAdminClient().from("mcp_tool_calls").insert({
+  const row = {
     workspace_id: input.workspaceId,
     connection_id: input.connectionId,
     actor_user_id: input.actorUserId,
@@ -83,5 +84,14 @@ export async function recordMcpCall(input: {
     input_summary: auditSummary(input.inputSummary),
     result_count: input.resultCount ?? null,
     error_code: input.errorCode || null,
-  });
+  };
+  try {
+    await retryMcpAuditWrite(async () => {
+      const { error } = await createAdminClient().from("mcp_tool_calls").insert(row);
+      return { error };
+    });
+  } catch (error) {
+    console.error("mcp audit persistence failed", { toolName: input.toolName, requestId: input.requestId || null, error: error instanceof Error ? error.message : "Unknown error" });
+    throw new Error("MCP audit log could not be persisted.");
+  }
 }

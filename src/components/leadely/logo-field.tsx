@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Avatar, Button, FileButton, Group, Stack, Text } from "@mantine/core";
 import { saveWorkspaceLogoAction } from "@/lib/db/actions";
 import { clientInitials, fileToCompressedDataUrl } from "@/lib/image";
@@ -19,16 +19,14 @@ export function LogoField({
   initialUrl?: string;
   fallbackName?: string;
 }) {
+  return <LogoFieldState key={initialUrl} label={label} initialUrl={initialUrl} fallbackName={fallbackName} />;
+}
+
+function LogoFieldState({ label, initialUrl, fallbackName }: { label: string; initialUrl: string; fallbackName: string }) {
   const [preview, setPreview] = useState(initialUrl);
   const [dataUrl, setDataUrl] = useState("");
   const [cleared, setCleared] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    setPreview(initialUrl);
-    setDataUrl("");
-    setCleared(false);
-  }, [initialUrl]);
 
   return (
     <Stack gap={6}>
@@ -95,13 +93,13 @@ export function WorkspaceLogoField({
   shortName: string;
   onChange: (path: string) => void;
 }) {
+  return <WorkspaceLogoFieldState key={logoPath} logoPath={logoPath} shortName={shortName} onChange={onChange} />;
+}
+
+function WorkspaceLogoFieldState({ logoPath, shortName, onChange }: { logoPath: string; shortName: string; onChange: (path: string) => void }) {
   const [preview, setPreview] = useState(logoPath);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    setPreview(logoPath);
-  }, [logoPath]);
 
   async function persist(dataUrl: string) {
     setBusy(true);

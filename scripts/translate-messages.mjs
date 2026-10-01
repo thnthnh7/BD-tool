@@ -6,7 +6,7 @@ const source = JSON.parse(await readFile(path.join(root, "en.json"), "utf8"));
 const targets = ["zh-CN", "zh-TW", "es", "pt-BR", "fr", "de", "it", "nl", "pl", "tr", "ru", "uk", "ja", "ko", "id", "th", "ar", "hi"];
 const googleCodes = { "zh-CN": "zh-CN", "zh-TW": "zh-TW", "pt-BR": "pt" };
 
-const protectedTerms = ["Leadely", "Apify", "OAuth", "API", "CRM", "RAM", "USD", "PDPA", "JSON", "LinkedIn"];
+const protectedTerms = ["Bizcraw", "Apify", "OAuth", "API", "CRM", "RAM", "USD", "PDPA", "JSON", "LinkedIn"];
 
 function protect(value) {
   const values = [];

@@ -1,20 +1,20 @@
-# Leadely MCP
+# Bizcraw MCP
 
-Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`. Access is controlled by the workspace SaaS plan through the `mcp_access` entitlement; Super Admin can configure it per plan or enable it for a specific workspace override.
+Bizcraw exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`. Access is controlled by the workspace SaaS plan through the `mcp_access` entitlement; Super Admin can configure it per plan or enable it for a specific workspace override.
 
 ## Connect
 
 1. A workspace owner or admin opens **Workspace → MCP**.
 2. Select the minimum scopes required by the AI client.
-3. Create a token and copy it immediately. Leadely stores only its SHA-256 hash.
+3. Create a token and copy it immediately. Bizcraw stores only its SHA-256 hash.
 4. Configure the client with the MCP endpoint and an `Authorization: Bearer <token>` header.
 
 ```json
 {
   "mcpServers": {
-    "leadely": {
+    "bizcraw": {
       "type": "http",
-      "url": "https://your-leadely-host/api/mcp",
+      "url": "https://your-bizcraw-host/api/mcp",
       "headers": {
         "Authorization": "Bearer <YOUR_TOKEN>"
       }
@@ -28,6 +28,7 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | Tool | Scope | Purpose |
 | --- | --- | --- |
 | `get_workspace` | `workspace:read` | Workspace and subscription profile |
+| `get_server_capabilities` | `workspace:read` | Server version, tool-schema version, compatibility policy and deprecations |
 | `search_companies` | `crm:read` | Search CRM companies |
 | `search_contacts` | `crm:read` | Search CRM contacts |
 | `list_leads` | `crm:read` | List recent leads |
@@ -42,6 +43,7 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `get_crm_sync_run` | `crm:read` | Read one synchronization run in the token workspace |
 | `list_crm_field_mappings` | `crm:read` | Inspect field mappings for one CRM connection |
 | `list_crm_sync_issues` | `crm:read` | Read unresolved record conflicts and synchronization errors |
+| `list_crm_record_failures` | `crm:read` | Inspect record-level synchronization failures and retry state |
 | `get_crm_sync_readiness` | `crm:read` | Check authorization, object selection and mapping readiness |
 | `list_lead_lists` | `crm:read` | List workspace lead lists |
 | `get_list` | `crm:read` | Read one lead list with up to 50 memberships |
@@ -71,21 +73,35 @@ Leadely exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 | `request_start_crm_sync` | `crm:write` | Request approval for an asynchronous HubSpot company/contact/deal import |
 | `cancel_crm_sync` | `crm:write` | Cancel a queued run or safely stop a running job after its current page |
 | `retry_crm_sync` | `crm:write` | Requeue a stopped or failed run from its saved cursor |
+| `resolve_crm_sync_issue` | `crm:write` | Resolve a record conflict by keeping Bizcraw data or re-importing the provider version |
+| `retry_crm_record_failure` | `crm:write` | Retry one failed provider record without rerunning the full object collection |
 | `get_action_request` | `workspace:read` | Poll approval and execution status |
 
-Leadely also advertises a workspace profile resource, a CRM schema resource, and reusable prompts for prospect research and sales follow-up. These are scope-aware and only appear when the connection has the required read permission. List responses are paginated, large structured fields are bounded, and detail tools always apply the token workspace filter.
+Bizcraw also advertises a workspace profile resource, a CRM schema resource, and reusable prompts for prospect research and sales follow-up. These are scope-aware and only appear when the connection has the required read permission. List responses are paginated, large structured fields are bounded, and detail tools always apply the token workspace filter.
 
 All queries are restricted to the token's workspace. Every request rechecks the current plan entitlement, subscription status and workspace lock/archive state, so an existing token stops working when access is removed. Each tool call is audited with sensitive input values redacted, and each connection is rate limited. Safe additive writes such as company creation run directly after the MCP client confirms them and require an idempotency key. Externally meaningful actions such as marking a quote as sent, and paid actions such as scrape runs, require an owner or admin to approve the request in **Workspace → MCP** within 30 minutes. Scrape approval uses the existing plan, quota, Apify connection and webhook checks. Rotate a token when moving the connection to another client, and revoke it immediately when a client or device is no longer trusted. Rotation invalidates the old token immediately and issues a new 90-day token.
 
 ## OAuth 2.1 client connection
 
-Remote MCP clients can discover Leadely OAuth from `/.well-known/oauth-protected-resource/api/mcp` and `/.well-known/oauth-authorization-server`. Leadely supports public clients, dynamic client registration, authorization code with PKCE S256, rotating refresh tokens, and RFC 7009 revocation. Access tokens are opaque, stored only as SHA-256 hashes, expire after one hour, and are bound to the `/api/mcp` resource.
+Remote MCP clients can discover Bizcraw OAuth from `/.well-known/oauth-protected-resource/api/mcp` and `/.well-known/oauth-authorization-server`. Bizcraw supports public clients, dynamic client registration, authorization code with PKCE S256, rotating refresh tokens, and RFC 7009 revocation. Access tokens are opaque, stored only as SHA-256 hashes, expire after one hour, and are bound to the `/api/mcp` resource.
 
-Personal access tokens remain available for clients that support static Bearer headers. OAuth is preferred for end-user clients because users approve scopes in Leadely and can revoke the resulting connection without copying a secret.
+Personal access tokens remain available for clients that support static Bearer headers. OAuth is preferred for end-user clients because users approve scopes in Bizcraw and can revoke the resulting connection without copying a secret.
+
+## Versioning and compatibility
+
+Clients can read the `server-capabilities` resource or call `get_server_capabilities`. Additive tools and optional fields may be released within the current major server version. Renaming or removing a tool, changing a required input, or changing response meaning requires a new major server version. Deprecations are announced in the capabilities payload for at least 90 days before removal. CI validates version syntax, schema ordering and deprecation metadata on every change.
+
+Resource URIs use the `bizcraw://` namespace. The previous `leadely://` workspace-profile and CRM-schema URIs remain available as legacy aliases until 2026-12-29 so existing clients can migrate without downtime.
 
 ## Operations
 
 Call `GET /api/mcp/cron` on a daily schedule with `Authorization: Bearer <CRON_SECRET>`. It expires pending approvals and removes expired OAuth codes, old revoked tokens, unused registered clients, audit rows older than 90 days, and idempotency records older than 30 days. When `MCP_ALERT_WEBHOOK_URL` is configured, the same run sends a provider-neutral JSON alert for elevated hourly error rate, P95 latency or failed approvals. Quote lifecycle approvals are executed atomically with a database row lock and require the reviewer to remain an Owner or Admin. Super Admin can inspect 24-hour call volume, error count, P50/P95 latency and approval failures from **Platform → MCP**. The same screen provides a paginated and searchable tool-call log, redacted request details, filtered CSV export, identifies OAuth and personal-token connections, shows token expiry, and lets Super Admin revoke a connection together with its active OAuth tokens.
+
+Audit writes retry three times and fail the tool response if the audit record cannot be persisted. Health alerts use a fingerprint and a configurable cooldown (`MCP_ALERT_COOLDOWN_MINUTES`, 60 minutes by default) to avoid repeating the same incident notification. Staging tests use temporary workspaces and users that are deleted after every run; they cover scope isolation, workspace boundaries, rollout gates, token expiry/revocation, OAuth replay protection, database concurrency, write idempotency and rate limiting.
+
+Operational incident, revocation, rollback, recovery and legacy-namespace procedures are documented in [`docs/mcp-operations-runbook.md`](./mcp-operations-runbook.md).
+
+Work that requires the production domain, hosted infrastructure or third-party platforms is tracked in [`docs/mcp-production-backlog.md`](./mcp-production-backlog.md).
 
 ## Current boundary
 

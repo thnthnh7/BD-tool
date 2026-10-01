@@ -3,6 +3,7 @@ import "server-only";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod/v4";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { MCP_SERVER_VERSION, mcpCapabilities } from "@/features/mcp/server/version";
 import { recordMcpCall } from "@/features/mcp/server/service";
 import type { McpScope } from "@/features/mcp/scopes";
 import type { Json } from "@/lib/database.types";
@@ -60,36 +61,48 @@ function registerAuditedTool<T extends Record<string, unknown>>(
   });
 }
 
-export function createLeadelyMcpServer(connection: Connection, requestId: string | null, writeToolsEnabled = false) {
-  const server = new McpServer({ name: "Leadely", version: "1.0.0" });
+export function createBizcrawMcpServer(connection: Connection, requestId: string | null, writeToolsEnabled = false) {
+  const server = new McpServer({ name: "Bizcraw", version: MCP_SERVER_VERSION });
   const admin = createAdminClient();
 
   if (connection.scopes.includes("workspace:read")) {
-    const workspaceUri = `leadely://workspace/${connection.workspace_id}/profile`;
-    server.registerResource("workspace-profile", workspaceUri, { title: "Leadely workspace profile", description: "Workspace identity and subscription state for the connected Leadely tenant.", mimeType: "application/json" }, async () => {
+    const workspaceUri = `bizcraw://workspace/${connection.workspace_id}/profile`;
+    const legacyWorkspaceUri = `leadely://workspace/${connection.workspace_id}/profile`;
+    const readWorkspace = async (uri: string) => {
       const { data, error } = await admin.from("workspaces").select("id, name, slug, type, plan_id, plan_status, created_at").eq("id", connection.workspace_id).single();
       if (error) throw error;
-      return { contents: [{ uri: workspaceUri, mimeType: "application/json", text: JSON.stringify(data, null, 2) }] };
-    });
+      return { contents: [{ uri, mimeType: "application/json", text: JSON.stringify(data, null, 2) }] };
+    };
+    server.registerResource("workspace-profile", workspaceUri, { title: "Bizcraw workspace profile", description: "Workspace identity and subscription state for the connected Bizcraw tenant.", mimeType: "application/json" }, async () => readWorkspace(workspaceUri));
+    server.registerResource("workspace-profile-legacy", legacyWorkspaceUri, { title: "Legacy workspace profile URI", description: "Deprecated Leadely URI alias. Migrate to the Bizcraw workspace-profile resource.", mimeType: "application/json" }, async () => readWorkspace(legacyWorkspaceUri));
+    const capabilitiesUri = "bizcraw://server/capabilities";
+    server.registerResource("server-capabilities", capabilitiesUri, { title: "Bizcraw MCP capabilities", description: "Server, tool-schema and compatibility-policy versions for client compatibility checks.", mimeType: "application/json" }, async () => ({ contents: [{ uri: capabilitiesUri, mimeType: "application/json", text: JSON.stringify(mcpCapabilities(), null, 2) }] }));
   }
 
   if (connection.scopes.includes("crm:read")) {
-    const schemaUri = "leadely://schemas/crm";
-    server.registerResource("crm-schema", schemaUri, { title: "Leadely CRM schema", description: "Relationships and writable fields for Leadely CRM records.", mimeType: "application/json" }, async () => ({ contents: [{ uri: schemaUri, mimeType: "application/json", text: JSON.stringify({ company: { links: ["contacts", "leads", "deals", "tasks"] }, contact: { links: ["company", "leads", "deals", "tasks"] }, lead: { statuses: ["new", "working", "connected", "qualified", "unqualified"] }, deal: { requires: ["company", "pipeline", "stage"], priorities: ["low", "medium", "high"] }, writePolicy: "Additive and constrained updates require MCP client confirmation. Paid scrape runs require Leadely owner/admin approval." }, null, 2) }] }));
-    server.registerPrompt("research-prospect", { title: "Research a prospect", description: "Build a sourced prospect brief from Leadely CRM, Data Library and knowledge.", argsSchema: { companyName: z.string().min(1).max(160), objective: z.string().max(500).optional() } }, async ({ companyName, objective }) => ({ messages: [{ role: "user", content: { type: "text", text: `Research ${companyName} using Leadely tools. Check CRM records, Data Library evidence, scrape history and knowledge documents. ${objective ? `Objective: ${objective}. ` : ""}Separate verified facts from assumptions, cite record IDs or URLs, identify missing data, and recommend the next sales action.` } }] }));
-    server.registerPrompt("prepare-sales-follow-up", { title: "Prepare sales follow-up", description: "Prepare a grounded follow-up plan for a lead or deal.", argsSchema: { recordId: z.string().uuid(), recordType: z.enum(["lead", "deal"]) } }, async ({ recordId, recordType }) => ({ messages: [{ role: "user", content: { type: "text", text: `Prepare a concise follow-up plan for Leadely ${recordType} ${recordId}. Review related company, contact, tasks and available evidence. Do not invent facts. Recommend message angle, next action, owner task and timing.` } }] }));
+    const schemaUri = "bizcraw://schemas/crm";
+    const legacySchemaUri = "leadely://schemas/crm";
+    const schemaText = JSON.stringify({ company: { links: ["contacts", "leads", "deals", "tasks"] }, contact: { links: ["company", "leads", "deals", "tasks"] }, lead: { statuses: ["new", "working", "connected", "qualified", "unqualified"] }, deal: { requires: ["company", "pipeline", "stage"], priorities: ["low", "medium", "high"] }, writePolicy: "Additive and constrained updates require MCP client confirmation. Paid scrape runs require Bizcraw owner/admin approval." }, null, 2);
+    server.registerResource("crm-schema", schemaUri, { title: "Bizcraw CRM schema", description: "Relationships and writable fields for Bizcraw CRM records.", mimeType: "application/json" }, async () => ({ contents: [{ uri: schemaUri, mimeType: "application/json", text: schemaText }] }));
+    server.registerResource("crm-schema-legacy", legacySchemaUri, { title: "Legacy CRM schema URI", description: "Deprecated Leadely URI alias. Migrate to the Bizcraw CRM schema resource.", mimeType: "application/json" }, async () => ({ contents: [{ uri: legacySchemaUri, mimeType: "application/json", text: schemaText }] }));
+    server.registerPrompt("research-prospect", { title: "Research a prospect", description: "Build a sourced prospect brief from Bizcraw CRM, Data Library and knowledge.", argsSchema: { companyName: z.string().min(1).max(160), objective: z.string().max(500).optional() } }, async ({ companyName, objective }) => ({ messages: [{ role: "user", content: { type: "text", text: `Research ${companyName} using Bizcraw tools. Check CRM records, Data Library evidence, scrape history and knowledge documents. ${objective ? `Objective: ${objective}. ` : ""}Separate verified facts from assumptions, cite record IDs or URLs, identify missing data, and recommend the next sales action.` } }] }));
+    server.registerPrompt("prepare-sales-follow-up", { title: "Prepare sales follow-up", description: "Prepare a grounded follow-up plan for a lead or deal.", argsSchema: { recordId: z.string().uuid(), recordType: z.enum(["lead", "deal"]) } }, async ({ recordId, recordType }) => ({ messages: [{ role: "user", content: { type: "text", text: `Prepare a concise follow-up plan for Bizcraw ${recordType} ${recordId}. Review related company, contact, tasks and available evidence. Do not invent facts. Recommend message angle, next action, owner task and timing.` } }] }));
   }
 
   registerAuditedTool(server, connection, requestId, {
-    name: "get_workspace", title: "Get workspace", description: "Return the current Leadely workspace profile and subscription state.", scope: "workspace:read", inputSchema: {},
+    name: "get_workspace", title: "Get workspace", description: "Return the current Bizcraw workspace profile and subscription state.", scope: "workspace:read", inputSchema: {},
   }, async () => {
     const { data, error } = await admin.from("workspaces").select("id, name, slug, type, plan_id, plan_status, created_at").eq("id", connection.workspace_id).single();
     if (error) throw error;
     return { data, count: 1 };
   });
 
+  registerAuditedTool(server, connection, requestId, {
+    name: "get_server_capabilities", title: "Get MCP server capabilities", description: "Return the MCP server version, tool-schema version, compatibility policy and announced deprecations.", scope: "workspace:read", inputSchema: {},
+  }, async () => ({ data: mcpCapabilities(), count: 1 }));
+
   registerAuditedTool<{ query?: string; limit?: number; cursor?: string }>(server, connection, requestId, {
-    name: "search_companies", title: "Search companies", description: "Search companies in this Leadely workspace.", scope: "crm:read",
+    name: "search_companies", title: "Search companies", description: "Search companies in this Bizcraw workspace.", scope: "crm:read",
     inputSchema: { query: z.string().max(120).optional(), limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
   }, async ({ query = "", limit = 20, cursor }) => {
     const offset = cursorOffset(cursor);
@@ -102,7 +115,7 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
   });
 
   registerAuditedTool<{ query?: string; limit?: number; cursor?: string }>(server, connection, requestId, {
-    name: "search_contacts", title: "Search contacts", description: "Search contacts in this Leadely workspace.", scope: "crm:read",
+    name: "search_contacts", title: "Search contacts", description: "Search contacts in this Bizcraw workspace.", scope: "crm:read",
     inputSchema: { query: z.string().max(120).optional(), limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
   }, async ({ query = "", limit = 20, cursor }) => {
     const offset = cursorOffset(cursor);
@@ -168,7 +181,7 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
   });
 
   registerAuditedTool<Record<string, never>>(server, connection, requestId, {
-    name: "list_scrape_sources", title: "List installed scrape sources", description: "Return scrape sources installed in this Leadely workspace.", scope: "sources:read", inputSchema: {},
+    name: "list_scrape_sources", title: "List installed scrape sources", description: "Return scrape sources installed in this Bizcraw workspace.", scope: "sources:read", inputSchema: {},
   }, async () => {
     const { data: installed, error } = await admin.from("workspace_scrape_sources").select("source_id, installed_at").eq("workspace_id", connection.workspace_id).order("installed_at", { ascending: false });
     if (error) throw error;
@@ -309,8 +322,23 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     inputSchema: { connectionId: z.string().uuid().optional(), status: z.enum(["conflict", "error"]).optional(), objectType: z.string().min(1).max(80).optional(), limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
   }, async ({ connectionId, status, objectType, limit = 20, cursor }) => {
     const offset = cursorOffset(cursor);
-    let request = admin.from("crm_record_links").select("id, connection_id, object_type, leadely_record_id, external_record_id, leadely_updated_at, external_updated_at, last_synced_at, sync_status, last_error, updated_at").eq("workspace_id", connection.workspace_id).in("sync_status", status ? [status] : ["conflict", "error"]).order("updated_at", { ascending: false }).range(offset, offset + limit);
+    let request = admin.from("crm_record_links").select("id, connection_id, object_type, leadely_record_id, external_record_id, leadely_updated_at, external_updated_at, last_synced_at, sync_status, conflict_resolution, last_error, updated_at").eq("workspace_id", connection.workspace_id).in("sync_status", status ? [status] : ["conflict", "error"]).order("updated_at", { ascending: false }).range(offset, offset + limit);
     if (connectionId) request = request.eq("connection_id", connectionId);
+    if (objectType) request = request.eq("object_type", objectType);
+    const { data, error } = await request;
+    if (error) throw error;
+    const result = page(data, offset, limit);
+    return { data: result, count: result.items.length };
+  });
+
+  registerAuditedTool<{ connectionId?: string; status?: string; objectType?: string; limit?: number; cursor?: string }>(server, connection, requestId, {
+    name: "list_crm_record_failures", title: "List CRM record failures", description: "Return record-level CRM synchronization failures and retry state without exposing stored provider payloads.", scope: "crm:read",
+    inputSchema: { connectionId: z.string().uuid().optional(), status: z.enum(["open", "retrying", "resolved"]).optional(), objectType: z.string().min(1).max(80).optional(), limit: z.number().int().min(1).max(50).default(20), cursor: z.string().regex(/^\d+$/).optional() },
+  }, async ({ connectionId, status, objectType, limit = 20, cursor }) => {
+    const offset = cursorOffset(cursor);
+    let request = admin.from("crm_sync_record_failures").select("id, connection_id, run_id, object_type, external_record_id, error_message, status, attempt_count, last_attempt_at, resolved_at, updated_at").eq("workspace_id", connection.workspace_id).order("updated_at", { ascending: false }).range(offset, offset + limit);
+    if (connectionId) request = request.eq("connection_id", connectionId);
+    if (status) request = request.eq("status", status);
     if (objectType) request = request.eq("object_type", objectType);
     const { data, error } = await request;
     if (error) throw error;
@@ -330,12 +358,13 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     if (mappingError) throw mappingError;
     if (!crmConnection) return { data: null, count: 0 };
     const mappedObjects = [...new Set(mappings.map((mapping) => mapping.object_type))];
-    const missingMappings = crmConnection.sync_objects.filter((objectType) => !mappedObjects.includes(objectType));
     const blockers: string[] = [];
     if (crmConnection.status !== "connected") blockers.push(`Connection status is ${crmConnection.status}.`);
     if (crmConnection.token_expires_at && new Date(crmConnection.token_expires_at).getTime() <= Date.now()) blockers.push("Provider authorization has expired.");
     if (!crmConnection.sync_objects.length) blockers.push("No CRM objects are selected for synchronization.");
-    if (missingMappings.length) blockers.push(`Missing field mappings for: ${missingMappings.join(", ")}.`);
+    if (crmConnection.provider !== "hubspot") blockers.push(`The ${crmConnection.provider} synchronization executor is not available yet.`);
+    const unsupportedObjects = crmConnection.provider === "hubspot" ? crmConnection.sync_objects.filter((objectType) => !["companies", "contacts", "deals"].includes(objectType)) : [];
+    if (unsupportedObjects.length) blockers.push(`This provider executor does not support: ${unsupportedObjects.join(", ")}.`);
     return { data: { connectionId, provider: crmConnection.provider, ready: blockers.length === 0, blockers, syncDirection: crmConnection.sync_direction, syncObjects: crmConnection.sync_objects, mappedObjects, setupStep: crmConnection.setup_step, webhookStatus: crmConnection.webhook_status, lastError: crmConnection.last_error }, count: 1 };
   });
 
@@ -362,6 +391,24 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
   });
 
   if (writeToolsEnabled) {
+    registerAuditedTool<{ issueId: string; resolution: "keep_local" | "use_external" }>(server, connection, requestId, {
+      name: "resolve_crm_sync_issue", title: "Resolve CRM sync conflict", description: "Resolve one CRM record conflict by keeping the Bizcraw record or importing the latest provider version on the next queued run.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      inputSchema: { issueId: z.string().uuid(), resolution: z.enum(["keep_local", "use_external"]) },
+    }, async ({ issueId, resolution }) => {
+      const { data, error } = await admin.rpc("resolve_crm_sync_conflict", { p_workspace_id: connection.workspace_id, p_issue_id: issueId, p_resolution: resolution, p_requested_by: connection.created_by });
+      if (error) throw error;
+      return { data, count: 1 };
+    });
+
+    registerAuditedTool<{ failureId: string }>(server, connection, requestId, {
+      name: "retry_crm_record_failure", title: "Retry CRM record", description: "Queue a targeted retry for one failed provider record without rerunning the whole object collection.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      inputSchema: { failureId: z.string().uuid() },
+    }, async ({ failureId }) => {
+      const { data, error } = await admin.rpc("retry_crm_sync_record_failure", { p_workspace_id: connection.workspace_id, p_failure_id: failureId, p_requested_by: connection.created_by });
+      if (error) throw error;
+      return { data, count: 1 };
+    });
+
     registerAuditedTool<{ idempotencyKey: string; name: string; website?: string; industry?: string; email?: string; phone?: string; notes?: string }>(server, connection, requestId, {
       name: "create_company", title: "Create company", description: "Create a company immediately after the MCP client confirms this additive CRM change. Reuse the same idempotencyKey when retrying.", scope: "crm:write",
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -464,7 +511,7 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
     }, async ({ idempotencyKey, dealId, ...payload }) => mutateCrmRecord("update_deal", idempotencyKey, dealId, payload));
 
     registerAuditedTool<{ idempotencyKey: string; listId: string; companyId: string; leadId?: string; contactId?: string }>(server, connection, requestId, {
-      name: "add_company_to_list", title: "Add company to list", description: "Add a workspace company and its optional lead/contact context to a Leadely list.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      name: "add_company_to_list", title: "Add company to list", description: "Add a workspace company and its optional lead/contact context to a Bizcraw list.", scope: "crm:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       inputSchema: { idempotencyKey: z.string().min(8).max(120), listId: z.string().uuid(), companyId: z.string().uuid(), leadId: z.string().uuid().optional(), contactId: z.string().uuid().optional() },
     }, async ({ idempotencyKey, ...payload }) => {
       const { data, error } = await admin.rpc("mcp_create_sales_artifact", { p_workspace_id: connection.workspace_id, p_connection_id: connection.id, p_actor_user_id: connection.created_by, p_tool_name: "add_company_to_list", p_idempotency_key: idempotencyKey, p_payload: payload as Json });
@@ -498,7 +545,7 @@ export function createLeadelyMcpServer(connection: Connection, requestId: string
 
   if (writeToolsEnabled) {
     registerAuditedTool<{ idempotencyKey: string; title: string; projectType?: string; currency?: string; items?: Json[]; discount?: number; vatRate?: number; validUntil?: string; projectOverview?: string; timeline?: string; nextSteps?: string; dealId?: string }>(server, connection, requestId, {
-      name: "create_quote_draft", title: "Create quote draft", description: "Create a draft quote for review in Leadely. This tool never sends or publishes the quote.", scope: "quotes:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      name: "create_quote_draft", title: "Create quote draft", description: "Create a draft quote for review in Bizcraw. This tool never sends or publishes the quote.", scope: "quotes:write", annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       inputSchema: { idempotencyKey: z.string().min(8).max(120), title: z.string().min(1).max(200), projectType: z.string().max(120).default("Custom project"), currency: z.string().length(3).default("USD"), items: z.array(z.record(z.string(), z.unknown())).max(100).default([]), discount: z.number().min(0).max(100).default(0), vatRate: z.number().min(0).max(100).default(0), validUntil: z.string().date().optional(), projectOverview: z.string().max(5000).optional(), timeline: z.string().max(2000).optional(), nextSteps: z.string().max(2000).optional(), dealId: z.string().uuid().optional() },
     }, async ({ idempotencyKey, ...payload }) => {
       const { data, error } = await admin.rpc("mcp_create_sales_artifact", { p_workspace_id: connection.workspace_id, p_connection_id: connection.id, p_actor_user_id: connection.created_by, p_tool_name: "create_quote_draft", p_idempotency_key: idempotencyKey, p_payload: payload as Json });

@@ -24,8 +24,8 @@ export type Database = {
         Relationships: Rel;
       };
       mcp_settings: {
-        Row: { id: number; enabled: boolean; read_tools_enabled: boolean; write_tools_enabled: boolean; updated_by: string | null; updated_at: string };
-        Insert: { id?: number; enabled?: boolean; read_tools_enabled?: boolean; write_tools_enabled?: boolean; updated_by?: string | null; updated_at?: string };
+        Row: { id: number; enabled: boolean; read_tools_enabled: boolean; write_tools_enabled: boolean; last_alert_fingerprint: string | null; last_alert_sent_at: string | null; last_alert_resolved_at: string | null; updated_by: string | null; updated_at: string };
+        Insert: { id?: number; enabled?: boolean; read_tools_enabled?: boolean; write_tools_enabled?: boolean; last_alert_fingerprint?: string | null; last_alert_sent_at?: string | null; last_alert_resolved_at?: string | null; updated_by?: string | null; updated_at?: string };
         Update: Partial<Database["public"]["Tables"]["mcp_settings"]["Insert"]>;
         Relationships: Rel;
       };
@@ -1483,6 +1483,8 @@ export type Database = {
           sync_status: string;
           content_hash: string | null;
           last_error: string | null;
+          conflict_resolution: string | null;
+          external_snapshot: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -1525,6 +1527,12 @@ export type Database = {
           direction: string;
         };
         Update: Partial<Database["public"]["Tables"]["crm_sync_runs"]["Row"]>;
+        Relationships: Rel;
+      };
+      crm_sync_record_failures: {
+        Row: { id: string; workspace_id: string; connection_id: string; run_id: string | null; object_type: string; external_record_id: string; error_message: string; record_snapshot: Json; status: string; attempt_count: number; last_attempt_at: string; resolved_at: string | null; created_at: string; updated_at: string };
+        Insert: Partial<Database["public"]["Tables"]["crm_sync_record_failures"]["Row"]> & { workspace_id: string; connection_id: string; object_type: string; external_record_id: string; error_message: string };
+        Update: Partial<Database["public"]["Tables"]["crm_sync_record_failures"]["Row"]>;
         Relationships: Rel;
       };
       communications: {
@@ -1855,6 +1863,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      claim_mcp_alert_delivery: {
+        Args: { p_fingerprint: string; p_sent_at: string; p_cooldown_minutes: number };
+        Returns: boolean;
+      };
       mcp_create_company: {
         Args: { p_workspace_id: string; p_connection_id: string; p_actor_user_id: string | null; p_idempotency_key: string; p_company: Json };
         Returns: Json;
@@ -1878,6 +1890,8 @@ export type Database = {
       cleanup_mcp_data: { Args: Record<string, never>; Returns: Json };
       expire_mcp_action_requests: { Args: { p_workspace_id?: string | null }; Returns: number };
       claim_next_crm_sync_run: { Args: Record<string, never>; Returns: Database["public"]["Tables"]["crm_sync_runs"]["Row"][] };
+      resolve_crm_sync_conflict: { Args: { p_workspace_id: string; p_issue_id: string; p_resolution: string; p_requested_by: string | null }; Returns: Json };
+      retry_crm_sync_record_failure: { Args: { p_workspace_id: string; p_failure_id: string; p_requested_by: string | null }; Returns: Json };
       crm_provider_availability: {
         Args: Record<string, never>;
         Returns: { provider: string; enabled: boolean; rollout_status: string; credentials_configured: boolean }[];

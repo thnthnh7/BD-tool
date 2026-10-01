@@ -11,10 +11,10 @@ export function AppLogo({ compact = false, platform = false, tagline = false }: 
   if (compact) {
     return (
       <Image
-        src="/brand/leadely-mark.png"
-        alt="Leadely"
-        width={136}
-        height={108}
+        src="/brand/bizcraw-mark.png"
+        alt="Bizcraw"
+        width={512}
+        height={411}
         className={`${classes.img} ${classes.compact}`}
         quality={100}
         unoptimized
@@ -26,10 +26,10 @@ export function AppLogo({ compact = false, platform = false, tagline = false }: 
   if (tagline) {
     return (
       <Image
-        src="/brand/leadely-logo.png"
-        alt="Leadely — Your AI BD assistant"
-        width={576}
-        height={144}
+        src="/brand/bizcraw-logo.png"
+        alt="Bizcraw"
+        width={1600}
+        height={384}
         className={`${classes.img} ${classes.lockup}`}
         quality={100}
         unoptimized
@@ -39,12 +39,12 @@ export function AppLogo({ compact = false, platform = false, tagline = false }: 
   }
 
   return (
-    <div className={classes.wrap} title={platform ? "Leadely Platform" : undefined}>
+    <div className={classes.wrap} title={platform ? "Bizcraw Platform" : undefined}>
       <Image
-        src="/brand/leadely-wordmark.png"
-        alt={platform ? "Leadely Platform" : "Leadely"}
-        width={491}
-        height={132}
+        src="/brand/bizcraw-logo.png"
+        alt={platform ? "Bizcraw Platform" : "Bizcraw"}
+        width={1600}
+        height={384}
         className={`${classes.img} ${classes.navbar}`}
         quality={100}
         unoptimized

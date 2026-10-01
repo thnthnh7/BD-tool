@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Plus, Save } from "lucide-react";
 import { Button, Grid, GridCol, Group, Paper, SimpleGrid, Stack, Table, Tabs, Text, Textarea, TextInput } from "@mantine/core";
 import { AiBriefAssistant } from "@/components/bd-tool/ai-brief-assistant";
@@ -87,6 +88,7 @@ export function QuoteEditor({
   initialQuote?: Partial<Quote> | null;
   mode?: "quote" | "upload";
 }) {
+  const router = useRouter();
   const [step, setStep] = useState(mode === "upload" ? "4" : "1");
   const [quote, setQuote] = useState<Quote>(() => emptyQuote(settings, initialQuote || undefined));
   const [copied, setCopied] = useState(false);
@@ -175,7 +177,7 @@ export function QuoteEditor({
                   const form = new FormData();
                   form.set("quote_id", quote.id);
                   const result = await createQuoteRevisionAction(form);
-                  if (result.id) window.location.assign(`/app/quotes/${result.id}`);
+                  if (result.id) router.push(`/app/quotes/${result.id}`);
                   else setMessage(result.error || "Không tạo revision.");
                 }}
               >

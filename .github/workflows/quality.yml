@@ -23,4 +23,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run i18n:check
+      - run: npm run test:core
+      - run: npm run test:crm-sync-logic
+      - run: npm run test:mcp:contract
+      - run: npm run test:mcp:reliability
       - run: npm run build

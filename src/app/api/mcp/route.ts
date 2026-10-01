@@ -1,6 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { authenticateMcpToken } from "@/features/mcp/server/service";
-import { createLeadelyMcpServer } from "@/features/mcp/server/mcp-server";
+import { createBizcrawMcpServer } from "@/features/mcp/server/mcp-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { admit } from "@/lib/admission";
 import { appOrigin, mcpResource } from "@/features/mcp/server/oauth";
@@ -39,7 +39,7 @@ async function handle(request: Request) {
   if (!("ok" in gate)) return Response.json({ error: gate.error }, { status: gate.status });
 
   const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true, maxRequestBodySize: 256 * 1024 });
-  const server = createLeadelyMcpServer(connection, request.headers.get("x-request-id"), settings.write_tools_enabled);
+  const server = createBizcrawMcpServer(connection, request.headers.get("x-request-id"), settings.write_tools_enabled);
   await server.connect(transport);
   return transport.handleRequest(request);
 }

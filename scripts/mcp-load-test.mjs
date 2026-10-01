@@ -1,14 +1,15 @@
 import nextEnv from "@next/env";
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { createMcpTestWorkspace } from "./mcp-test-fixture.mjs";
 
 nextEnv.loadEnvConfig(process.cwd());
 const baseUrl = process.env.MCP_TEST_BASE_URL || "http://localhost:3000";
 const requestCount = Math.max(121, Number(process.env.MCP_LOAD_REQUESTS || 130));
 const concurrency = Math.max(1, Math.min(40, Number(process.env.MCP_LOAD_CONCURRENCY || 20)));
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-const { data: workspace, error: workspaceError } = await admin.from("workspaces").select("id").order("created_at").limit(1).single();
-if (workspaceError) throw workspaceError;
+const fixture = await createMcpTestWorkspace(admin);
+const workspace = fixture.workspace;
 const token = `ldmcp_${randomBytes(32).toString("base64url")}`;
 const { data: connection, error: connectionError } = await admin.from("mcp_connections").insert({ workspace_id: workspace.id, name: "MCP load test", token_hash: createHash("sha256").update(token).digest("hex"), token_prefix: `${token.slice(0, 13)}…`, scopes: ["workspace:read"], expires_at: new Date(Date.now() + 300_000).toISOString() }).select("id").single();
 if (connectionError) throw connectionError;
@@ -39,4 +40,5 @@ try {
   await admin.from("mcp_tool_calls").delete().eq("connection_id", connection.id);
   await admin.from("admission_windows").delete().eq("subject", connection.id).eq("bucket", "mcp_request");
   await admin.from("mcp_connections").delete().eq("id", connection.id);
+  await fixture.cleanup();
 }
