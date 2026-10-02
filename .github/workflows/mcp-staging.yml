@@ -11,8 +11,7 @@ on:
       - "scripts/mcp-*.mjs"
       - "scripts/mcp-*.ts"
       - "scripts/crm-sync-logic-test.ts"
-      - "supabase/migrations/*mcp*.sql"
-      - "supabase/migrations/*crm*.sql"
+      - "supabase/migrations/*.sql"
       - ".github/workflows/mcp-staging.yml"
 
 jobs:
