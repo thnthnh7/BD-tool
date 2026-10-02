@@ -18,6 +18,7 @@
     "test:mcp:access": "node scripts/mcp-access-control-test.mjs",
     "test:mcp:reliability": "npx tsx scripts/mcp-reliability-test.ts",
     "test:crm-sync-logic": "npx tsx scripts/crm-sync-logic-test.ts",
+    "test:beta:production": "node scripts/beta-production-smoke-test.mjs",
     "start": "next start",
     "lint": "eslint",
     "seed:demo": "npx tsx scripts/seed-demo.ts"
