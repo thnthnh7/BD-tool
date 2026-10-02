@@ -16,54 +16,6 @@ begin
 end;
 $$;
 
-create or replace function public.current_workspace_id()
-returns uuid
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select workspace_id
-  from public.workspace_members
-  where user_id = auth.uid()
-  limit 1;
-$$;
-
-create or replace function public.current_member_role()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select role
-  from public.workspace_members
-  where user_id = auth.uid()
-  limit 1;
-$$;
-
-create or replace function public.is_platform_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1 from public.platform_admins where user_id = auth.uid()
-  );
-$$;
-
-create or replace function public.platform_role()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select role from public.platform_admins where user_id = auth.uid() limit 1;
-$$;
-
 -- ---------------------------------------------------------------------------
 -- Plans (exactly 4 configurable slots)
 -- ---------------------------------------------------------------------------
@@ -194,6 +146,56 @@ create table public.platform_admins (
   created_at timestamptz not null default now(),
   created_by uuid references auth.users (id)
 );
+
+-- These helpers depend on workspace_members and platform_admins, so they must
+-- be created after both tables when bootstrapping a fresh database.
+create or replace function public.current_workspace_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select workspace_id
+  from public.workspace_members
+  where user_id = auth.uid()
+  limit 1;
+$$;
+
+create or replace function public.current_member_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role
+  from public.workspace_members
+  where user_id = auth.uid()
+  limit 1;
+$$;
+
+create or replace function public.is_platform_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.platform_admins where user_id = auth.uid()
+  );
+$$;
+
+create or replace function public.platform_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.platform_admins where user_id = auth.uid() limit 1;
+$$;
 
 create or replace function public.enforce_single_account_role()
 returns trigger
