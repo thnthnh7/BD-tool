@@ -1,4 +1,4 @@
-import { Avatar, Badge, Box, Divider, Group, Paper, Progress, Stack, Text, TextInput } from "@mantine/core";
+import { Anchor, Avatar, Badge, Box, Divider, Group, List, Paper, Progress, Stack, Text, TextInput } from "@mantine/core";
 import { LinkButton } from "@/components/mantine-link";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { saveApifyTokenAction } from "@/features/leads/server/apify-actions";
@@ -40,6 +40,7 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
         <Stack gap="xs">
           <Text fw={700} size="sm">{t("tokenConnect")}</Text>
           <Text size="xs" c="dimmed">{t("tokenHelp")}</Text>
+          <ApifyTokenTutorial />
           <ActionForm action={saveApifyTokenAction} submitLabel={t("connect")}>
             <TextInput name="token_label" label={t("tokenName")} defaultValue="Bizcraw" placeholder="Bizcraw" />
             <TextInput name="api_token" type="password" label="API token" placeholder={t("tokenPlaceholder")} autoComplete="new-password" required />
@@ -113,7 +114,7 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
     {showSetup && canManage && <>
       <Divider my="sm" />
       <Group justify="space-between" align="flex-start" gap="sm" wrap="wrap">
-        <Box component="details" className={classes.tokenDetails}><Text component="summary" size="sm" fw={600} style={{ cursor: "pointer" }}>{connection.auth_method === "api_token" ? t("replaceToken") : t("switchToken")}</Text><Box pt="sm" maw={520}><ActionForm action={saveApifyTokenAction} submitLabel={t("updateToken")}><TextInput name="token_label" label={t("tokenName")} defaultValue={connection.token_label || "Bizcraw"} /><TextInput name="api_token" type="password" label={t("newToken")} placeholder={t("newTokenPlaceholder")} autoComplete="new-password" required /></ActionForm></Box></Box>
+        <Box component="details" className={classes.tokenDetails}><Text component="summary" size="sm" fw={600} style={{ cursor: "pointer" }}>{connection.auth_method === "api_token" ? t("replaceToken") : t("switchToken")}</Text><Box pt="sm" maw={620}><ApifyTokenTutorial /><Box mt="md"><ActionForm action={saveApifyTokenAction} submitLabel={t("updateToken")}><TextInput name="token_label" label={t("tokenName")} defaultValue={connection.token_label || "Bizcraw"} /><TextInput name="api_token" type="password" label={t("newToken")} placeholder={t("newTokenPlaceholder")} autoComplete="new-password" required /></ActionForm></Box></Box></Box>
         <Group gap={4}>
           {oauthReady && <LinkButton href="/api/integrations/apify/connect" variant="subtle" size="compact-sm">{t("reconnect")}</LinkButton>}
           <ApifyUnlinkButton />
@@ -121,6 +122,24 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
       </Group>
     </>}
   </Paper>;
+}
+function ApifyTokenTutorial() {
+  const t = useTranslations("Apify");
+  return <Box component="details" className={classes.tutorial}>
+    <Text component="summary" size="sm" fw={650}>{t("tutorialTitle")}</Text>
+    <Stack gap="sm" mt="sm">
+      <Text size="xs" c="dimmed">{t("tutorialIntro")}</Text>
+      <List type="ordered" spacing="xs" size="sm" className={classes.tutorialList}>
+        <List.Item><Text span fw={650}>{t("tutorialAccountTitle")}</Text> {t("tutorialAccountBody")} <Anchor href="https://console.apify.com/sign-up" target="_blank" rel="noreferrer">{t("tutorialSignUp")}</Anchor></List.Item>
+        <List.Item><Text span fw={650}>{t("tutorialVerifyTitle")}</Text> {t("tutorialVerifyBody")}</List.Item>
+        <List.Item><Text span fw={650}>{t("tutorialSettingsTitle")}</Text> {t("tutorialSettingsBody")} <Anchor href="https://console.apify.com/account#/integrations" target="_blank" rel="noreferrer">{t("tutorialOpenSettings")}</Anchor></List.Item>
+        <List.Item><Text span fw={650}>{t("tutorialCreateTitle")}</Text> {t("tutorialCreateBody")}</List.Item>
+        <List.Item><Text span fw={650}>{t("tutorialCopyTitle")}</Text> {t("tutorialCopyBody")}</List.Item>
+        <List.Item><Text span fw={650}>{t("tutorialConnectTitle")}</Text> {t("tutorialConnectBody")}</List.Item>
+      </List>
+      <Text size="xs" c="orange.8">{t("tutorialSecurity")}</Text>
+    </Stack>
+  </Box>;
 }
 function CompactMetric({ label, value, percent, color }: { label: string; value: string; percent: number; color: string }) {
   return <Box className={classes.metric}><Group justify="space-between" gap="sm" wrap="nowrap"><Text size="xs" c="dimmed">{label}</Text><Text size="xs" fw={700}>{value}</Text></Group><Progress value={percent} color={color} size={4} mt={4} radius="xl" /></Box>;

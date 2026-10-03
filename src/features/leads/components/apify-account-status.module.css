@@ -36,6 +36,22 @@
   flex: 1 1 420px;
 }
 
+.tutorial {
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-md);
+  padding: 10px 12px;
+  background: var(--mantine-color-gray-0);
+}
+
+.tutorial > summary {
+  cursor: pointer;
+  color: var(--mantine-color-teal-8);
+}
+
+.tutorialList {
+  padding-left: 8px;
+}
+
 .statusDot,
 .statusWarning {
   width: 7px;
