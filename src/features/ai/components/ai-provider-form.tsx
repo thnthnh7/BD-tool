@@ -20,7 +20,7 @@ export function AiProviderForm({ current, submitLabel, labels }: {
   labels: { provider: string; model: string; apiKeyPlaceholder: string };
 }) {
   const currentProvider = current?.provider;
-  const initialProvider = currentProvider && currentProvider in PROVIDERS ? (currentProvider as ProviderName) : "custom";
+  const initialProvider = currentProvider && currentProvider in PROVIDERS ? (currentProvider as ProviderName) : "openai";
   const [provider, setProvider] = useState<ProviderName>(initialProvider);
   const [baseUrl, setBaseUrl] = useState(current?.base_url || PROVIDERS[initialProvider].baseUrl);
   const preset = useMemo(() => PROVIDERS[provider], [provider]);
