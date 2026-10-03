@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { getBillingProviderConfig } from "@/lib/billing/config";
 
 export type BillingProvider = "stripe" | "paypal" | "sepay";
 
@@ -17,8 +18,9 @@ export async function createStripeSubscriptionCheckout(input: {
   locale?: string;
   billingCountry?: string;
 }) {
-  const secret = process.env.STRIPE_SECRET_KEY;
-  if (!secret) throw new Error("Stripe chưa được cấu hình.");
+  const config = await getBillingProviderConfig("stripe");
+  const secret = config.credentials.secretKey;
+  if (!config.enabled || !secret) throw new Error("Stripe chưa được cấu hình.");
 
   const params = new URLSearchParams();
   params.set("mode", "subscription");
@@ -56,10 +58,13 @@ export async function createStripeSubscriptionCheckout(input: {
 }
 
 async function paypalAccessToken() {
-  const clientId = process.env.PAYPAL_CLIENT_ID;
-  const secret = process.env.PAYPAL_CLIENT_SECRET;
-  if (!clientId || !secret) throw new Error("PayPal chưa được cấu hình.");
-  const base = process.env.PAYPAL_API_BASE_URL || "https://api-m.sandbox.paypal.com";
+  const config = await getBillingProviderConfig("paypal");
+  const clientId = config.credentials.clientId;
+  const secret = config.credentials.clientSecret;
+  if (!config.enabled || !clientId || !secret) throw new Error("PayPal chưa được cấu hình.");
+  const base = config.source === "database"
+    ? (config.mode === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com")
+    : config.public.apiBaseUrl || "https://api-m.sandbox.paypal.com";
   const response = await fetch(`${base}/v1/oauth2/token`, {
     method: "POST",
     headers: {
@@ -70,7 +75,7 @@ async function paypalAccessToken() {
   });
   const json = (await response.json()) as { access_token?: string; error_description?: string };
   if (!response.ok || !json.access_token) throw new Error(json.error_description || "Không xác thực được PayPal.");
-  return { token: json.access_token, base };
+  return { token: json.access_token, base, config };
 }
 
 export async function createPayPalSubscription(input: {
@@ -109,9 +114,10 @@ export async function createPayPalSubscription(input: {
   return { id: json.id, url: approvalUrl };
 }
 
-export function verifyStripeWebhook(rawBody: string, signature: string | null) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret || !signature) return false;
+export async function verifyStripeWebhook(rawBody: string, signature: string | null) {
+  const config = await getBillingProviderConfig("stripe");
+  const secret = config.credentials.webhookSecret;
+  if (!config.enabled || !secret || !signature) return false;
   const parts = Object.fromEntries(signature.split(",").map((part) => part.split("=", 2)));
   const timestamp = parts.t;
   const supplied = parts.v1;
@@ -123,9 +129,9 @@ export function verifyStripeWebhook(rawBody: string, signature: string | null) {
 }
 
 export async function verifyPayPalWebhook(headers: Headers, event: unknown) {
-  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+  const { token, base, config } = await paypalAccessToken();
+  const webhookId = config.credentials.webhookId;
   if (!webhookId) return false;
-  const { token, base } = await paypalAccessToken();
   const response = await fetch(`${base}/v1/notifications/verify-webhook-signature`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -144,8 +150,9 @@ export async function verifyPayPalWebhook(headers: Headers, event: unknown) {
 }
 
 export async function loadStripeSubscription(id: string) {
-  const secret = process.env.STRIPE_SECRET_KEY;
-  if (!secret) throw new Error("Stripe chưa được cấu hình.");
+  const config = await getBillingProviderConfig("stripe");
+  const secret = config.credentials.secretKey;
+  if (!config.enabled || !secret) throw new Error("Stripe chưa được cấu hình.");
   const response = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${secret}` },
   });
@@ -168,8 +175,9 @@ export async function syncStripeCatalogPrice(input: {
   amount: number;
   existingProductId?: string | null;
 }) {
-  const secret = process.env.STRIPE_SECRET_KEY;
-  if (!secret) throw new Error("Stripe chưa được kết nối.");
+  const config = await getBillingProviderConfig("stripe");
+  const secret = config.credentials.secretKey;
+  if (!config.enabled || !secret) throw new Error("Stripe chưa được kết nối.");
   let productId = input.existingProductId || "";
   if (!productId) {
     const productParams = new URLSearchParams({ name: `Bizcraw ${input.planName}` });

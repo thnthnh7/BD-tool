@@ -8,6 +8,7 @@ import { parsePlan } from "@/lib/entitlements";
 import { syncLeadGenerationStore } from "@/features/leads/server/sync-store";
 import { recordPlatformAudit } from "@/lib/platform/audit";
 import { syncPayPalCatalogPlan, syncStripeCatalogPrice } from "@/lib/billing/providers";
+import { billingProviderReady, getAllBillingProviderConfigs } from "@/lib/billing/config";
 
 export async function updatePlanAction(formData: FormData) {
   await requirePlatform("super_admin");
@@ -91,10 +92,10 @@ export async function updateProviderPricesAction(formData: FormData) {
   ]);
   if (!plan) return { error: "Gói không tồn tại." };
 
-  const configuredProviders = [
-    process.env.STRIPE_SECRET_KEY ? "stripe" as const : null,
-    process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET ? "paypal" as const : null,
-  ].filter((provider): provider is "stripe" | "paypal" => provider !== null);
+  const configs = await getAllBillingProviderConfigs();
+  const configuredProviders = configs
+    .filter((config) => (config.provider === "stripe" || config.provider === "paypal") && billingProviderReady(config))
+    .map((config) => config.provider as "stripe" | "paypal");
   if (configuredProviders.length === 0) return { error: "Chưa kết nối Stripe hoặc PayPal." };
 
   try {

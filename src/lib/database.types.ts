@@ -11,6 +11,12 @@ type Rel = [];
 export type Database = {
   public: {
     Tables: {
+      billing_provider_configs: {
+        Row: { provider: string; enabled: boolean; mode: string; account_label: string; public_config: Json; encrypted_credentials: Json; updated_by: string | null; created_at: string; updated_at: string };
+        Insert: { provider: string; enabled?: boolean; mode?: string; account_label?: string; public_config?: Json; encrypted_credentials?: Json; updated_by?: string | null; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["billing_provider_configs"]["Insert"]>;
+        Relationships: Rel;
+      };
       mcp_connections: {
         Row: { id: string; workspace_id: string; created_by: string | null; name: string; token_hash: string; token_prefix: string; scopes: string[]; status: string; last_used_at: string | null; expires_at: string | null; created_at: string; updated_at: string };
         Insert: { id?: string; workspace_id: string; created_by?: string | null; name: string; token_hash: string; token_prefix: string; scopes?: string[]; status?: string; last_used_at?: string | null; expires_at?: string | null; created_at?: string; updated_at?: string };

@@ -32,7 +32,7 @@ async function syncStripeSubscription(object: StripeObject) {
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-  if (!verifyStripeWebhook(rawBody, request.headers.get("stripe-signature"))) {
+  if (!(await verifyStripeWebhook(rawBody, request.headers.get("stripe-signature")))) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
   const event = JSON.parse(rawBody) as { id: string; type: string; data: { object: StripeObject } };

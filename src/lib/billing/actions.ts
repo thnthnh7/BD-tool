@@ -9,6 +9,7 @@ import { gatewaySignature } from "@/lib/billing/sepay";
 import { recordHeartbeat } from "@/lib/platform/heartbeat";
 import { createPayPalSubscription, createStripeSubscriptionCheckout, type BillingProvider } from "@/lib/billing/providers";
 import { convertUsdCents, loadUsdRates, marketForLocale } from "@/lib/billing/localization";
+import { getBillingProviderConfig } from "@/lib/billing/config";
 
 export async function createCheckoutInvoice(formData: FormData) {
   const context = await requireOwner();
@@ -80,10 +81,13 @@ export async function initGatewayCheckout(invoiceId: string) {
   const { data: invoice } = await supabase.from("invoices").select("*").eq("id", invoiceId).single();
   if (!invoice) return { error: "Invoice không tồn tại." };
 
-  const merchantId = process.env.SEPAY_MERCHANT_ID;
-  const secret = process.env.SEPAY_SECRET_KEY;
-  const base = process.env.SEPAY_GATEWAY_BASE_URL || "https://pgapi-sandbox.sepay.vn";
-  if (!merchantId || !secret) return { error: "Chưa cấu hình SePay Gateway." };
+  const config = await getBillingProviderConfig("sepay");
+  const merchantId = config.credentials.merchantId;
+  const secret = config.credentials.secretKey;
+  const base = config.source === "database"
+    ? (config.mode === "live" ? "https://pgapi.sepay.vn" : "https://pgapi-sandbox.sepay.vn")
+    : config.public.gatewayBaseUrl || "https://pgapi-sandbox.sepay.vn";
+  if (!config.enabled || !merchantId || !secret) return { error: "Chưa cấu hình SePay Gateway." };
 
   const payload = {
     merchant_id: merchantId,

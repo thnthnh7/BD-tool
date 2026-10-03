@@ -4,14 +4,15 @@ import { PlanSettingsTabs } from "@/components/platform/plan-settings-tabs";
 import { createPlanAction, deletePlanAction, loadPlatformPlans, updatePlanConfigurationAction } from "@/lib/platform/actions";
 import { requirePlatform } from "@/lib/auth/session";
 import classes from "@/styles/platform-plans.module.css";
+import { billingProviderReady, getAllBillingProviderConfigs } from "@/lib/billing/config";
 
 export default async function PlatformPlansPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
   const context = await requirePlatform();
-  const plans = await loadPlatformPlans();
+  const [plans, providerConfigs] = await Promise.all([loadPlatformPlans(), getAllBillingProviderConfigs()]);
   const requestedPlan = (await searchParams).plan;
   const activePlan = plans.some(({ plan }) => plan.id === requestedPlan) ? requestedPlan! : plans[0]?.plan.id || "new";
-  const stripeConnected = Boolean(process.env.STRIPE_SECRET_KEY);
-  const paypalConnected = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+  const stripeConnected = providerConfigs.some((config) => config.provider === "stripe" && billingProviderReady(config));
+  const paypalConnected = providerConfigs.some((config) => config.provider === "paypal" && billingProviderReady(config));
   return (
     <Stack gap="md">
       <PageHeader title="Plan settings" subtitle="Create plans and manage their features, limits and pricing." />

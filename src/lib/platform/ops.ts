@@ -11,6 +11,7 @@ import { currentPeriod } from "@/lib/crypto-utils";
 import { applyPlanOverrides, parsePlan, type PlanQuotas } from "@/lib/entitlements";
 import { setLoginBan } from "@/lib/platform/access";
 import { recordPlatformAudit } from "@/lib/platform/audit";
+import { getBillingProviderConfig } from "@/lib/billing/config";
 
 const QUOTA_KEYS: (keyof PlanQuotas)[] = [
   "seats",
@@ -651,9 +652,10 @@ export async function revokeShareAction(formData: FormData) {
 export async function loadPlatformHealth() {
   await requirePlatform();
   const supabase = await createClient();
-  const [{ data: flags }, { data: beats }] = await Promise.all([
+  const [{ data: flags }, { data: beats }, sepayConfig] = await Promise.all([
     supabase.from("platform_flags").select("*").eq("id", 1).maybeSingle(),
     supabase.from("integration_heartbeats").select("kind, ok, detail, ran_at").order("ran_at", { ascending: false }).limit(40),
+    getBillingProviderConfig("sepay"),
   ]);
   const latest = new Map<string, { kind: string; ok: boolean; detail: string; ran_at: string }>();
   for (const beat of beats || []) {
@@ -664,7 +666,7 @@ export async function loadPlatformHealth() {
     heartbeats: ["billing_cron", "sepay_webhook", "apify_webhook"].map((kind) => latest.get(kind) || null),
     config: {
       cron: Boolean(process.env.CRON_SECRET),
-      sepayWebhook: Boolean(process.env.SEPAY_WEBHOOK_SECRET),
+      sepayWebhook: Boolean(sepayConfig.enabled && sepayConfig.credentials.webhookSecret),
       apifyOauth: Boolean(process.env.APIFY_OAUTH_CLIENT_ID && process.env.APIFY_OAUTH_CLIENT_SECRET && process.env.APIFY_OAUTH_AUTHORIZATION_URL && process.env.APIFY_OAUTH_TOKEN_URL),
       platformAi: Boolean(process.env.NINE_ROUTER_API_KEY && process.env.NINE_ROUTER_BASE_URL && process.env.NINE_ROUTER_MODEL),
     },
