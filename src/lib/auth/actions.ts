@@ -72,12 +72,17 @@ export async function signInWithPassword(formData: FormData) {
   redirect("/app");
 }
 
-export async function signInWithGoogle(inviteToken?: string, requestedNext?: string) {
+export async function signInWithGoogle(inviteToken?: string, inviteKind?: "workspace" | "platform", requestedNext?: string) {
   const supabase = await createClient();
-  const next = inviteToken ? `/invite/${inviteToken}` : safeInternalNext(requestedNext) || "/app";
+  const next = inviteToken
+    ? `/invite/${encodeURIComponent(inviteToken)}${inviteKind === "platform" ? "?kind=platform" : ""}`
+    : safeInternalNext(requestedNext) || "/app";
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}` },
+    options: {
+      redirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
+      queryParams: { prompt: "select_account" },
+    },
   });
   if (error || !data.url) return { error: error?.message || "Không khởi tạo được Google login." };
   redirect(data.url);
