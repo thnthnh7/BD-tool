@@ -79,7 +79,7 @@ export function AiBriefAssistant({ catalog, onApply }: AiBriefAssistantProps) {
         </Text>
       </Group>
       <Button mt="md" onClick={generateBrief} disabled={!requirements.trim() || loading} leftSection={<Sparkles size={16} />} loading={loading}>
-        {loading ? "Calling 9Router..." : "Generate brief"}
+        {loading ? "Generating with AI..." : "Generate brief"}
       </Button>
       {error ? (
         <Alert mt="md" color="red" icon={<AlertCircle size={18} />}>

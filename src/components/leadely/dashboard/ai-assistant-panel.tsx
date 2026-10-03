@@ -29,7 +29,7 @@ export function AiAssistantPanel() {
           <ThemeIcon size={28} radius="md" color="leadely" variant="light">
             <Sparkles size={15} />
           </ThemeIcon>
-          <Text className={classes.panelTitle}>AI Assistant</Text>
+          <Text className={classes.panelTitle}>Quick actions</Text>
           <Badge size="xs" color="leadely">
             BETA
           </Badge>

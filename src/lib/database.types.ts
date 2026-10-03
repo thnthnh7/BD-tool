@@ -1869,6 +1869,16 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      replace_workspace_ai_provider: {
+        Args: {
+          target_workspace_id: string;
+          provider_name: string;
+          provider_base_url: string;
+          provider_model: string;
+          provider_encrypted_api_key: string;
+        };
+        Returns: string;
+      };
       claim_mcp_alert_delivery: {
         Args: { p_fingerprint: string; p_sent_at: string; p_cooldown_minutes: number };
         Returns: boolean;

@@ -410,8 +410,8 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(
     {
       error: timedOut
-        ? "9Router phản hồi quá thời gian cho phép (giới hạn ~60s trên Vercel). Thử lại hoặc kiểm tra ngrok/VPS."
-        : "Không thể lấy brief hợp lệ từ 9Router sau nhiều lần thử.",
+        ? "Nhà cung cấp AI phản hồi quá thời gian cho phép. Vui lòng thử lại."
+        : "Không thể lấy brief hợp lệ từ nhà cung cấp AI sau nhiều lần thử.",
       details: attemptErrors.join(" | ").slice(0, 1200),
     },
     { status: 502 },

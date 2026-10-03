@@ -7,6 +7,7 @@ import { canUsePaidFeatures } from "@/lib/entitlements";
 import { requireWorkspace } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { incrementUsage } from "@/lib/usage";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -128,8 +129,7 @@ export async function callOpenAiCompatible(params: {
 
 export async function resolveWorkspaceAiProvider(workspaceId: string, byokEnabled: boolean) {
   if (!byokEnabled) return null;
-  const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await createAdminClient()
     .from("workspace_ai_providers")
     .select("*")
     .eq("workspace_id", workspaceId)
@@ -212,6 +212,11 @@ async function completeChatUnlocked(
       console.info("ai.complete", { source: "byok", provider: byok.provider, model: byok.model, usage });
       return { data: { content, source: "byok", model: byok.model, raw: result.raw, usage } };
     }
+    await createAdminClient()
+      .from("workspace_ai_providers")
+      .update({ status: "invalid", last_tested_at: new Date().toISOString() })
+      .eq("id", byok.id)
+      .eq("workspace_id", context.workspaceId);
     console.warn("ai.complete byok failed, falling back", result.raw.slice(0, 120));
   }
 
@@ -234,7 +239,7 @@ async function completeChatUnlocked(
   const apiKey = process.env.NINE_ROUTER_API_KEY;
   const model = process.env.NINE_ROUTER_MODEL;
   if (!baseUrl || !apiKey || !model) {
-    return { error: "Server chưa cấu hình 9Router.", status: 503 };
+    return { error: "AI nền tảng chưa được cấu hình.", status: 503 };
   }
 
   const result = await callOpenAiCompatible({
@@ -247,7 +252,7 @@ async function completeChatUnlocked(
     responseFormat: input.responseFormat,
     timeoutMs: input.timeoutMs,
   });
-  if (!result.ok) return { error: `9Router lỗi: ${result.raw.slice(0, 180)}`, status: 502 };
+  if (!result.ok) return { error: `Nhà cung cấp AI lỗi: ${result.raw.slice(0, 180)}`, status: 502 };
   let parsed: unknown = {};
   try {
     parsed = JSON.parse(result.raw) as unknown;

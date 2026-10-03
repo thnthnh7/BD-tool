@@ -1,14 +1,15 @@
 import { loadWorkspaceAppData } from "@/lib/db/actions";
 import { SettingsPanel } from "@/components/bd-tool/settings-panel";
 import { defaultSettings } from "@/lib/default-data";
-import { NativeSelect, Text, TextInput } from "@mantine/core";
+import { Text } from "@mantine/core";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { ActionForm } from "@/features/crm/components/action-form";
-import { deleteAiProviderAction, getDefaultAiProvider, saveAiProviderAction } from "@/features/ai/server/providers";
+import { deleteAiProviderAction, getDefaultAiProvider } from "@/features/ai/server/providers";
 import { ApifyAccountStatus } from "@/features/leads/components/apify-account-status";
 import { getCurrentWorkspaceApifyStatus } from "@/features/leads/server/apify-connection";
 import { LocaleSettings } from "@/features/settings/components/locale-settings";
 import { getTranslations } from "next-intl/server";
+import { AiProviderForm } from "@/features/ai/components/ai-provider-form";
 
 export default async function SettingsPage() {
   const t = await getTranslations("Settings");
@@ -27,6 +28,12 @@ export default async function SettingsPage() {
       <SectionPanel title={t("aiTitle")}>
         <Text size="sm" mb="md">{t("aiSharedHelp")}</Text>
         <Text size="xs" c="dimmed" mb="md">{t("aiFallbackHelp")}</Text>
+        <Text size="xs" c={ai.platformConfigured ? "teal" : "orange"} mb="xs">
+          Platform AI: {ai.platformConfigured ? "Ready" : "Not configured"}
+        </Text>
+        <Text size="xs" c="dimmed" mb="md">
+          Shared AI usage this month: {ai.usage}/{ai.quota < 0 ? "Unlimited" : ai.quota}
+        </Text>
         {ai.canByok ? (
           canManage ? (
             <>
@@ -39,17 +46,11 @@ export default async function SettingsPage() {
                   {t("noAiKey")}
                 </Text>
               )}
-              <ActionForm action={saveAiProviderAction} submitLabel={t("testSaveKey")}>
-                <NativeSelect
-                  name="provider"
-                  label={t("provider")}
-                  defaultValue={ai.provider?.provider || "openai"}
-                  data={["openai", "openrouter", "groq", "azure", "custom"].map((item) => ({ value: item, label: item }))}
-                />
-                <TextInput name="base_url" label="Base URL" placeholder="https://api.openai.com/v1" defaultValue={ai.provider?.base_url || ""} />
-                <TextInput name="model" label={t("model")} placeholder={t("modelPlaceholder")} autoComplete="off" defaultValue={ai.provider?.model || ""} />
-                <TextInput name="api_key" type="password" label="API key" placeholder={t("apiKeyPlaceholder")} autoComplete="new-password" />
-              </ActionForm>
+              <AiProviderForm
+                current={ai.provider}
+                submitLabel={t("testSaveKey")}
+                labels={{ provider: t("provider"), model: t("model"), apiKeyPlaceholder: t("apiKeyPlaceholder") }}
+              />
               {ai.provider ? (
                 <ActionForm action={deleteAiProviderAction} submitLabel={t("removeKey")}>
                   <input type="hidden" name="confirm" value="1" />
