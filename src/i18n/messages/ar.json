@@ -155,6 +155,8 @@
     "oauthHelp": "لا حاجة لإدارة الرمز المميز.",
     "signIn": "قم بتسجيل الدخول باستخدام Apify",
     "oauthUnavailable": "لم يتم تكوين OAuth بعد؛ يمكنك استخدام الرمز المميز API الآن.",
+    "comingSoon": "قريباً",
+    "oauthComingSoonHelp": "يتم الآن إعداد تسجيل الدخول إلى Apify بنقرة واحدة. استخدم الرمز المميز API للاتصال اليوم.",
     "connected": "متصل",
     "reconnectRequired": "إعادة الاتصال مطلوبة",
     "replaceToken": "استبدل الرمز المميز API",

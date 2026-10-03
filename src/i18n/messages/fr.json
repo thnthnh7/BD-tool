@@ -155,6 +155,8 @@
     "oauthHelp": "Aucune gestion de jetons requise.",
     "signIn": "Connectez-vous avec Apify",
     "oauthUnavailable": "OAuth n'est pas encore configuré ; vous pouvez maintenant utiliser un jeton API.",
+    "comingSoon": "À venir",
+    "oauthComingSoonHelp": "La connexion Apify en un clic est en cours de préparation. Utilisez un jeton API pour vous connecter aujourd'hui.",
     "connected": "Connecté",
     "reconnectRequired": "Reconnexion requise",
     "replaceToken": "Remplacer le jeton API",

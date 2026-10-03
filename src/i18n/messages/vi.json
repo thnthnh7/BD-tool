@@ -155,6 +155,8 @@
     "oauthHelp": "Không cần quản lý token thủ công.",
     "signIn": "Đăng nhập với Apify",
     "oauthUnavailable": "OAuth chưa được cấu hình; bạn vẫn có thể dùng API token ngay.",
+    "comingSoon": "Sắp ra mắt",
+    "oauthComingSoonHelp": "Tính năng đăng nhập Apify bằng một lần nhấp đang được hoàn thiện. Hiện tại bạn có thể kết nối bằng API token.",
     "connected": "Đã kết nối",
     "reconnectRequired": "Cần kết nối lại",
     "replaceToken": "Thay API token",

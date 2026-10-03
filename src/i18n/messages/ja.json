@@ -155,6 +155,8 @@
     "oauthHelp": "トークン管理は必要ありません。",
     "signIn": "Apify でサインイン",
     "oauthUnavailable": "OAuth はまだ構成されていません。 API トークンを使用できるようになりました。",
+    "comingSoon": "近日公開",
+    "oauthComingSoonHelp": "ワンクリック Apify サインインが準備中です。 API トークンを使用して今すぐ接続してください。",
     "connected": "接続済み",
     "reconnectRequired": "再接続が必要です",
     "replaceToken": "API トークンを置き換えます",

@@ -155,6 +155,8 @@
     "oauthHelp": "ไม่จำเป็นต้องมีการจัดการโทเค็น",
     "signIn": "เข้าสู่ระบบด้วย Apify",
     "oauthUnavailable": "OAuth ยังไม่ได้กำหนดค่า คุณสามารถใช้โทเค็น API ได้แล้ว",
+    "comingSoon": "เร็วๆ นี้",
+    "oauthComingSoonHelp": "กำลังเตรียมการลงชื่อเข้าใช้ Apify เพียงคลิกเดียว ใช้โทเค็น API เพื่อเชื่อมต่อวันนี้",
     "connected": "เชื่อมต่อแล้ว",
     "reconnectRequired": "จำเป็นต้องเชื่อมต่อใหม่",
     "replaceToken": "แทนที่โทเค็น API",

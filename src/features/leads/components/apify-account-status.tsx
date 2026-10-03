@@ -47,11 +47,18 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
           </ActionForm>
         </Stack>
         <Divider label={t("or")} labelPosition="center" />
-        <Group justify="space-between" wrap="wrap">
+        {oauthReady ? <Group justify="space-between" wrap="wrap">
           <Box><Text fw={700} size="sm">{t("oauthConnect")}</Text><Text size="xs" c="dimmed">{t("oauthHelp")}</Text></Box>
-          <LinkButton href="/api/integrations/apify/connect" disabled={!oauthReady}>{t("signIn")}</LinkButton>
-        </Group>
-        {!oauthReady && <Text size="xs" c="orange.7">{t("oauthUnavailable")}</Text>}
+          <LinkButton href="/api/integrations/apify/connect">{t("signIn")}</LinkButton>
+        </Group> : <Box className={classes.comingSoon}>
+          <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
+            <Box>
+              <Text fw={700} size="sm">{t("oauthConnect")}</Text>
+              <Text size="xs" c="dimmed" mt={2}>{t("oauthComingSoonHelp")}</Text>
+            </Box>
+            <Badge color="gray" variant="light" size="sm">{t("comingSoon")}</Badge>
+          </Group>
+        </Box>}
       </>}
     </Stack></Paper>;
   }

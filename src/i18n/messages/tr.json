@@ -155,6 +155,8 @@
     "oauthHelp": "Jeton yönetimi gerekmez.",
     "signIn": "Apify ile oturum açın",
     "oauthUnavailable": "OAuth henüz yapılandırılmadı; artık bir API jetonunu kullanabilirsiniz.",
+    "comingSoon": "Yakında gelecek",
+    "oauthComingSoonHelp": "Tek tıklamayla Apify oturum açma işlemi hazırlanıyor. Bugün bağlanmak için bir API jetonu kullanın.",
     "connected": "Bağlı",
     "reconnectRequired": "Yeniden bağlanma gerekli",
     "replaceToken": "API jetonunu değiştirin",

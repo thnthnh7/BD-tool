@@ -155,6 +155,8 @@
     "oauthHelp": "Geen tokenbeheer vereist.",
     "signIn": "Meld u aan met Apify",
     "oauthUnavailable": "OAuth is nog niet geconfigureerd; u kunt nu een API-token gebruiken.",
+    "comingSoon": "Binnenkort beschikbaar",
+    "oauthComingSoonHelp": "Aanmelden met één klik op Apify wordt voorbereid. Gebruik vandaag nog een API-token om verbinding te maken.",
     "connected": "Aangesloten",
     "reconnectRequired": "Opnieuw verbinden vereist",
     "replaceToken": "Vervang het API-token",

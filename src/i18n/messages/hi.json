@@ -155,6 +155,8 @@
     "oauthHelp": "कोई टोकन प्रबंधन की आवश्यकता नहीं है.",
     "signIn": "Apify के साथ साइन इन करें",
     "oauthUnavailable": "OAuth अभी तक कॉन्फ़िगर नहीं किया गया है; अब आप API टोकन का उपयोग कर सकते हैं।",
+    "comingSoon": "जल्द आ रहा है",
+    "oauthComingSoonHelp": "एक-क्लिक Apify साइन-इन तैयार किया जा रहा है। आज ही कनेक्ट करने के लिए API टोकन का उपयोग करें।",
     "connected": "जुड़े हुए",
     "reconnectRequired": "पुनः कनेक्ट करना आवश्यक है",
     "replaceToken": "API टोकन बदलें",

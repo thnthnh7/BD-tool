@@ -52,6 +52,13 @@
   padding-left: 8px;
 }
 
+.comingSoon {
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-md);
+  padding: 12px;
+  background: var(--mantine-color-gray-0);
+}
+
 .statusDot,
 .statusWarning {
   width: 7px;

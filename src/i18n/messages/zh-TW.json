@@ -155,6 +155,8 @@
     "oauthHelp": "無需代幣管理。",
     "signIn": "使用 Apify 登入",
     "oauthUnavailable": "OAuth 尚未設定；您現在可以使用 API 代幣。",
+    "comingSoon": "即將推出",
+    "oauthComingSoonHelp": "一鍵Apify登入正在準備中。立即使用 API 令牌進行連線。",
     "connected": "已連接",
     "reconnectRequired": "需要重新連接",
     "replaceToken": "替換 API 代幣",

@@ -155,6 +155,8 @@
     "oauthHelp": "토큰 관리가 필요하지 않습니다.",
     "signIn": "Apify로 로그인",
     "oauthUnavailable": "OAuth는 아직 구성되지 않았습니다. 이제 API 토큰을 사용할 수 있습니다.",
+    "comingSoon": "곧 출시 예정",
+    "oauthComingSoonHelp": "원클릭 Apify 로그인을 준비중입니다. 지금 연결하려면 API 토큰을 사용하세요.",
     "connected": "연결됨",
     "reconnectRequired": "다시 연결해야 함",
     "replaceToken": "API 토큰 교체",

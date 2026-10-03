@@ -155,6 +155,8 @@
     "oauthHelp": "Tidak diperlukan manajemen token.",
     "signIn": "Masuk dengan Apify",
     "oauthUnavailable": "OAuth belum dikonfigurasi; Anda dapat menggunakan token API sekarang.",
+    "comingSoon": "Segera hadir",
+    "oauthComingSoonHelp": "Proses masuk Apify sekali klik sedang disiapkan. Gunakan token API untuk terhubung hari ini.",
     "connected": "Terhubung",
     "reconnectRequired": "Diperlukan sambungan ulang",
     "replaceToken": "Ganti token API",

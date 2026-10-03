@@ -155,6 +155,8 @@
     "oauthHelp": "No token management required.",
     "signIn": "Sign in with Apify",
     "oauthUnavailable": "OAuth is not configured yet; you can use an API token now.",
+    "comingSoon": "Coming soon",
+    "oauthComingSoonHelp": "One-click Apify sign-in is being prepared. Use an API token to connect today.",
     "connected": "Connected",
     "reconnectRequired": "Reconnect required",
     "replaceToken": "Replace API token",
