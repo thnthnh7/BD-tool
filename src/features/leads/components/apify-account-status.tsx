@@ -1,4 +1,4 @@
-import { Anchor, Avatar, Badge, Box, Divider, Group, List, Paper, Progress, Stack, Text, TextInput } from "@mantine/core";
+import { Anchor, Avatar, Badge, Box, Divider, Group, Paper, Progress, Stack, Text, TextInput } from "@mantine/core";
 import { LinkButton } from "@/components/mantine-link";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { saveApifyTokenAction } from "@/features/leads/server/apify-actions";
@@ -129,14 +129,14 @@ function ApifyTokenTutorial() {
     <Text component="summary" size="sm" fw={650}>{t("tutorialTitle")}</Text>
     <Stack gap="sm" mt="sm">
       <Text size="xs" c="dimmed">{t("tutorialIntro")}</Text>
-      <List type="ordered" spacing="xs" size="sm" className={classes.tutorialList}>
-        <List.Item><Text span fw={650}>{t("tutorialAccountTitle")}</Text> {t("tutorialAccountBody")} <Anchor href="https://console.apify.com/sign-up" target="_blank" rel="noreferrer">{t("tutorialSignUp")}</Anchor></List.Item>
-        <List.Item><Text span fw={650}>{t("tutorialVerifyTitle")}</Text> {t("tutorialVerifyBody")}</List.Item>
-        <List.Item><Text span fw={650}>{t("tutorialSettingsTitle")}</Text> {t("tutorialSettingsBody")} <Anchor href="https://console.apify.com/account#/integrations" target="_blank" rel="noreferrer">{t("tutorialOpenSettings")}</Anchor></List.Item>
-        <List.Item><Text span fw={650}>{t("tutorialCreateTitle")}</Text> {t("tutorialCreateBody")}</List.Item>
-        <List.Item><Text span fw={650}>{t("tutorialCopyTitle")}</Text> {t("tutorialCopyBody")}</List.Item>
-        <List.Item><Text span fw={650}>{t("tutorialConnectTitle")}</Text> {t("tutorialConnectBody")}</List.Item>
-      </List>
+      <ol className={classes.tutorialList}>
+        <li><Text span fw={650}>{t("tutorialAccountTitle")}</Text> {t("tutorialAccountBody")} <Anchor href="https://console.apify.com/sign-up" target="_blank" rel="noreferrer">{t("tutorialSignUp")}</Anchor></li>
+        <li><Text span fw={650}>{t("tutorialVerifyTitle")}</Text> {t("tutorialVerifyBody")}</li>
+        <li><Text span fw={650}>{t("tutorialSettingsTitle")}</Text> {t("tutorialSettingsBody")} <Anchor href="https://console.apify.com/account#/integrations" target="_blank" rel="noreferrer">{t("tutorialOpenSettings")}</Anchor></li>
+        <li><Text span fw={650}>{t("tutorialCreateTitle")}</Text> {t("tutorialCreateBody")}</li>
+        <li><Text span fw={650}>{t("tutorialCopyTitle")}</Text> {t("tutorialCopyBody")}</li>
+        <li><Text span fw={650}>{t("tutorialConnectTitle")}</Text> {t("tutorialConnectBody")}</li>
+      </ol>
       <Text size="xs" c="orange.8">{t("tutorialSecurity")}</Text>
     </Stack>
   </Box>;
