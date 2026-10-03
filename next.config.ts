@@ -13,7 +13,7 @@ const securityHeaders = [
     "object-src 'none'",
     `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://eewoirdimfpfborwdbzx.supabase.co https://*.stripe.com https://*.paypalobjects.com",
+    "img-src 'self' data: blob: https://eewoirdimfpfborwdbzx.supabase.co https://images.apifyusercontent.com https://*.stripe.com https://*.paypalobjects.com",
     "font-src 'self' data:",
     "connect-src 'self' https://eewoirdimfpfborwdbzx.supabase.co wss://eewoirdimfpfborwdbzx.supabase.co https://*.stripe.com https://*.paypal.com",
     "upgrade-insecure-requests",
@@ -36,6 +36,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "eewoirdimfpfborwdbzx.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "images.apifyusercontent.com",
       },
     ],
   },
