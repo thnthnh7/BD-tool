@@ -18,7 +18,7 @@ export function AuthForm({
   inviteKind?: "workspace" | "platform";
   next?: string;
 }) {
-  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
+  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED !== "false";
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [googlePending, startGoogleTransition] = useTransition();
