@@ -4,16 +4,20 @@ import { useState } from "react";
 import { Alert, Anchor, Badge, Button, Group, NativeSelect, Stack, Table, Text, TextInput } from "@mantine/core";
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
-import { createInviteAction, removeMemberAction, setMemberRoleAction, transferOwnerAction } from "@/lib/auth/actions";
+import { convertToCompanyAction, createInviteAction, removeMemberAction, setMemberRoleAction, transferOwnerAction } from "@/lib/auth/actions";
 import { EntityRow } from "@/components/leadely/entity-row";
 import classes from "@/styles/leadely-surfaces.module.css";
 
 export function TeamPanel({
   members,
   viewerRole,
+  workspaceType,
+  seatLimit,
 }: {
   members: Array<{ userId: string; email: string; role: string; displayName: string }>;
   viewerRole: "owner" | "admin";
+  workspaceType: "personal" | "company";
+  seatLimit: number;
 }) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
@@ -23,6 +27,32 @@ export function TeamPanel({
     const result = await createInviteAction(formData);
     if (result.error) setError(result.error);
     if (result.url) setUrl(result.url);
+  }
+
+  async function enableTeam() {
+    setError("");
+    const result = await convertToCompanyAction();
+    if (result?.error) setError(result.error);
+  }
+
+  if (workspaceType === "personal") {
+    return (
+      <Stack gap="md">
+        <PageHeader title="Team" subtitle="Invite teammates and manage their workspace roles." />
+        <SectionPanel title="Enable team collaboration">
+          <Stack gap="md" maw={620}>
+            <Text size="sm" c="dimmed">
+              This is currently a personal workspace. Convert it to a company workspace to invite members. Your data and current plan will stay unchanged.
+            </Text>
+            <Text size="sm">
+              Your plan supports {seatLimit < 0 ? "unlimited seats" : `${seatLimit} seats in total, including the owner`}.
+            </Text>
+            {error ? <Alert color="red">{error}</Alert> : null}
+            <Button onClick={enableTeam} w="fit-content">Enable Team</Button>
+          </Stack>
+        </SectionPanel>
+      </Stack>
+    );
   }
 
   return (

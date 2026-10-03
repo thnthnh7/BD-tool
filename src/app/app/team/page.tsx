@@ -1,11 +1,12 @@
-import { redirect } from "next/navigation";
 import { requireOwnerOrAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { TeamPanel } from "@/components/team-panel";
 
 export default async function TeamPage() {
   const context = await requireOwnerOrAdmin();
-  if (context.workspaceType !== "company") redirect("/app/settings");
+  if (context.workspaceType !== "company") {
+    return <TeamPanel members={[]} viewerRole="owner" workspaceType="personal" seatLimit={context.plan.quotas.seats} />;
+  }
   const supabase = await createClient();
   const { data: members } = await supabase
     .from("workspace_members")
@@ -17,5 +18,12 @@ export default async function TeamPage() {
     const profile = profiles?.find((item) => item.id === row.user_id);
     return { userId: row.user_id, email: profile?.email || "", displayName: profile?.display_name || "", role: row.role };
   });
-  return <TeamPanel members={view} viewerRole={context.memberRole === "owner" ? "owner" : "admin"} />;
+  return (
+    <TeamPanel
+      members={view}
+      viewerRole={context.memberRole === "owner" ? "owner" : "admin"}
+      workspaceType="company"
+      seatLimit={context.plan.quotas.seats}
+    />
+  );
 }
