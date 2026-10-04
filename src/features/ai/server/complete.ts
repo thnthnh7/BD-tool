@@ -167,6 +167,85 @@ export async function callOpenAiCompatible(params: {
   }
 }
 
+async function callAnthropic(params: {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  messages: ChatMessage[];
+  temperature?: number;
+  maxTokens?: number;
+  timeoutMs?: number;
+}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), params.timeoutMs ?? 45_000);
+  const started = Date.now();
+  try {
+    const baseUrl = await validateAiBaseUrl(params.baseUrl);
+    const system = params.messages
+      .filter((message) => message.role === "system")
+      .map((message) => message.content)
+      .join("\n\n");
+    const body = {
+      model: params.model,
+      messages: params.messages.filter((message) => message.role !== "system"),
+      ...(system ? { system } : {}),
+      temperature: params.temperature ?? 0.2,
+      max_tokens: params.maxTokens ?? 2_000,
+    };
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const upstream = await fetch(`${baseUrl}/messages`, {
+        method: "POST",
+        headers: {
+          "x-api-key": params.apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        cache: "no-store",
+        redirect: "manual",
+        signal: controller.signal,
+      });
+      const raw = await upstream.text();
+      const retryable = upstream.status === 429 || upstream.status >= 500;
+      if (retryable && attempt === 0) {
+        const retryAfter = Number(upstream.headers.get("retry-after") || 0) * 1_000;
+        await new Promise((resolve) => setTimeout(resolve, Math.min(Math.max(retryAfter, 250), 1_000)));
+        continue;
+      }
+      if (!upstream.ok) {
+        return { ok: false, status: upstream.status, raw, elapsedMs: Date.now() - started, aborted: false };
+      }
+      const payload = JSON.parse(raw) as {
+        content?: Array<{ type?: string; text?: string }>;
+        usage?: { input_tokens?: number; output_tokens?: number };
+      };
+      const content = (payload.content || []).filter((part) => part.type === "text").map((part) => part.text || "").join("");
+      const promptTokens = payload.usage?.input_tokens;
+      const completionTokens = payload.usage?.output_tokens;
+      const normalized = JSON.stringify({
+        choices: [{ message: { content } }],
+        usage: {
+          prompt_tokens: promptTokens,
+          completion_tokens: completionTokens,
+          total_tokens: (promptTokens ?? 0) + (completionTokens ?? 0),
+        },
+      });
+      return { ok: true, status: upstream.status, raw: normalized, elapsedMs: Date.now() - started, aborted: false };
+    }
+    return { ok: false, status: 502, raw: "AI provider retry failed.", elapsedMs: Date.now() - started, aborted: false };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return { ok: false, status: 0, raw: message, elapsedMs: Date.now() - started, aborted: message.toLowerCase().includes("abort") };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function callAiProvider(params: Parameters<typeof callOpenAiCompatible>[0] & { provider: string }) {
+  if (params.provider === "anthropic") return callAnthropic(params);
+  return callOpenAiCompatible(params);
+}
+
 export async function resolveWorkspaceAiProvider(workspaceId: string, byokEnabled: boolean) {
   if (!byokEnabled) return null;
   const { data } = await createAdminClient()
@@ -230,7 +309,8 @@ async function completeChatUnlocked(
   const byok = await resolveWorkspaceAiProvider(context.workspaceId, context.plan.features.byok_ai);
   const operation = input.operation || "completion";
   if (byok?.apiKey) {
-    const result = await callOpenAiCompatible({
+    const result = await callAiProvider({
+      provider: byok.provider,
       baseUrl: byok.base_url,
       apiKey: byok.apiKey,
       model: byok.model,

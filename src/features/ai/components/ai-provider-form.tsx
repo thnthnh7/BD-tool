@@ -7,6 +7,11 @@ import { saveAiProviderAction } from "@/features/ai/server/providers";
 
 const PROVIDERS = {
   openai: { label: "OpenAI", baseUrl: "https://api.openai.com/v1", modelPlaceholder: "gpt-4.1-mini", help: "Use an API key created in the OpenAI platform." },
+  anthropic: { label: "Anthropic Claude", baseUrl: "https://api.anthropic.com/v1", modelPlaceholder: "Claude model ID", help: "Use an API key and exact Claude model ID from the Anthropic Console." },
+  google: { label: "Google Gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", modelPlaceholder: "Gemini model ID", help: "Use an API key from Google AI Studio. Bizcraw connects through Google's OpenAI-compatible endpoint." },
+  deepseek: { label: "DeepSeek", baseUrl: "https://api.deepseek.com", modelPlaceholder: "deepseek-flash", help: "Use an API key from the DeepSeek platform and an active model ID." },
+  mistral: { label: "Mistral AI", baseUrl: "https://api.mistral.ai/v1", modelPlaceholder: "mistral-large-latest", help: "Use an API key and active model ID from La Plateforme." },
+  xai: { label: "xAI Grok", baseUrl: "https://api.x.ai/v1", modelPlaceholder: "Grok model ID", help: "Use an API key and exact model ID from the xAI Console." },
   openrouter: { label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", modelPlaceholder: "Provider model ID", help: "Use the exact model ID shown in your OpenRouter account." },
   groq: { label: "Groq", baseUrl: "https://api.groq.com/openai/v1", modelPlaceholder: "Provider model ID", help: "Use an active model ID from the Groq console." },
   custom: {

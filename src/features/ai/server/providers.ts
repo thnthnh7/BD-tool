@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { requireOwnerOrAdmin } from "@/lib/auth/session";
 import { encryptSecret } from "@/lib/crypto-utils";
 import { formText } from "@/lib/crm";
-import { callOpenAiCompatible } from "@/features/ai/server/complete";
+import { callAiProvider } from "@/features/ai/server/complete";
 import { withWorkspace } from "@/lib/events";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const SUPPORTED_PROVIDERS = new Set(["openai", "openrouter", "groq", "custom"]);
+const SUPPORTED_PROVIDERS = new Set([
+  "openai", "anthropic", "google", "deepseek", "mistral", "xai", "openrouter", "groq", "custom",
+]);
 
 export async function getDefaultAiProvider() {
   const { context, supabase } = await withWorkspace();
@@ -72,7 +74,8 @@ export async function saveAiProviderAction(formData: FormData) {
   if (!baseUrl || !model || !apiKey) return { error: "Cần base URL, model và API key." };
   if (!SUPPORTED_PROVIDERS.has(provider)) return { error: "Nhà cung cấp AI không được hỗ trợ." };
 
-  const test = await callOpenAiCompatible({
+  const test = await callAiProvider({
+    provider,
     baseUrl,
     apiKey,
     model,
