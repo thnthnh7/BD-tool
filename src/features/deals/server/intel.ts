@@ -121,6 +121,7 @@ Engagement: ${JSON.stringify(engagement || [])}`,
     responseFormat: { type: "json_object" },
     maxTokens: 700,
     consumePlatformQuota: true,
+    operation: "deal_analysis",
   });
   if ("error" in result) return { error: result.error };
   await recordActivity({

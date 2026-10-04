@@ -13,8 +13,10 @@ const SUPPORTED_PROVIDERS = new Set(["openai", "openrouter", "groq", "custom"]);
 export async function getDefaultAiProvider() {
   const { context, supabase } = await withWorkspace();
   const period = new Date().toISOString().slice(0, 7);
-  const [{ data }, { data: usage }] = await Promise.all([
-    createAdminClient()
+  const canManage = context.memberRole === "owner" || context.memberRole === "admin";
+  const admin = createAdminClient();
+  const [{ data }, { data: usage }, { count: readyKnowledge }, { data: events }] = await Promise.all([
+    admin
       .from("workspace_ai_providers")
       .select("id, provider, base_url, model, is_default, status, last_tested_at, created_at")
       .eq("workspace_id", context.workspaceId)
@@ -26,7 +28,25 @@ export async function getDefaultAiProvider() {
       .eq("workspace_id", context.workspaceId)
       .eq("period", period)
       .maybeSingle(),
+    admin
+      .from("knowledge_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", context.workspaceId)
+      .eq("status", "ready"),
+    canManage
+      ? admin
+          .from("ai_usage_events")
+          .select("actor_user_id, operation, source, provider, model, status, latency_ms, total_tokens, error_message, created_at")
+          .eq("workspace_id", context.workspaceId)
+          .order("created_at", { ascending: false })
+          .limit(8)
+      : Promise.resolve({ data: [] }),
   ]);
+  const actorIds = [...new Set((events || []).map((event) => event.actor_user_id).filter((id): id is string => Boolean(id)))];
+  const { data: actors } = actorIds.length
+    ? await admin.from("profiles").select("id, display_name, email").in("id", actorIds)
+    : { data: [] };
+  const actorMap = new Map((actors || []).map((actor) => [actor.id, actor.display_name || actor.email]));
   return {
     provider: data,
     canByok: context.plan.features.byok_ai,
@@ -34,6 +54,8 @@ export async function getDefaultAiProvider() {
     platformConfigured: Boolean(process.env.NINE_ROUTER_BASE_URL && process.env.NINE_ROUTER_API_KEY && process.env.NINE_ROUTER_MODEL),
     usage: Number(usage?.ai_briefs || 0),
     quota: context.plan.quotas.ai_briefs_per_month,
+    readyKnowledge: readyKnowledge || 0,
+    recentActivity: (events || []).map((event) => ({ ...event, actor: event.actor_user_id ? actorMap.get(event.actor_user_id) || "Unknown user" : "System" })),
   };
 }
 

@@ -359,6 +359,7 @@ export async function POST(request: NextRequest) {
       responseFormat: attempt.useJsonObjectFormat ? { type: "json_object" } : { type: "text" },
       timeoutMs: Math.min(48_000, remaining - 2_000),
       consumePlatformQuota: index === 0,
+      operation: "brief",
     });
 
     if ("error" in completion) {

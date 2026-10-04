@@ -1276,6 +1276,42 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["lead_list_members"]["Row"]>;
         Relationships: Rel;
       };
+      ai_usage_events: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          actor_user_id: string | null;
+          operation: string;
+          source: "byok" | "platform";
+          provider: string;
+          model: string;
+          status: "success" | "error";
+          latency_ms: number;
+          prompt_tokens: number | null;
+          completion_tokens: number | null;
+          total_tokens: number | null;
+          error_message: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          actor_user_id?: string | null;
+          operation: string;
+          source: "byok" | "platform";
+          provider: string;
+          model?: string;
+          status: "success" | "error";
+          latency_ms?: number;
+          prompt_tokens?: number | null;
+          completion_tokens?: number | null;
+          total_tokens?: number | null;
+          error_message?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_usage_events"]["Insert"]>;
+        Relationships: [];
+      };
       workspace_ai_providers: {
         Row: {
           id: string;
