@@ -9,7 +9,12 @@ const PROVIDERS = {
   openai: { label: "OpenAI", baseUrl: "https://api.openai.com/v1", modelPlaceholder: "gpt-4.1-mini", help: "Use an API key created in the OpenAI platform." },
   openrouter: { label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", modelPlaceholder: "Provider model ID", help: "Use the exact model ID shown in your OpenRouter account." },
   groq: { label: "Groq", baseUrl: "https://api.groq.com/openai/v1", modelPlaceholder: "Provider model ID", help: "Use an active model ID from the Groq console." },
-  custom: { label: "OpenAI-compatible", baseUrl: "", modelPlaceholder: "Provider model name", help: "The endpoint must support the OpenAI-compatible /chat/completions API over HTTPS." },
+  custom: {
+    label: "Custom LLM",
+    baseUrl: "",
+    modelPlaceholder: "e.g. provider/model-name",
+    help: "Connect any LLM provider that supports the OpenAI-compatible Chat Completions format. Enter its Base URL, exact model ID and API key below.",
+  },
 } as const;
 
 type ProviderName = keyof typeof PROVIDERS;
