@@ -1,7 +1,7 @@
 import { loadWorkspaceAppData } from "@/lib/db/actions";
 import { SettingsPanel } from "@/components/bd-tool/settings-panel";
 import { defaultSettings } from "@/lib/default-data";
-import { Anchor, Table, Text } from "@mantine/core";
+import { Table, Text } from "@mantine/core";
 import Link from "next/link";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { ActionForm } from "@/features/crm/components/action-form";
@@ -36,7 +36,7 @@ export default async function SettingsPage() {
           Shared AI usage this month: {ai.usage}/{ai.quota < 0 ? "Unlimited" : ai.quota}
         </Text>
         <Text size="xs" c={ai.readyKnowledge > 0 ? "teal" : "orange"} mb="md">
-          Knowledge sources: {ai.readyKnowledge} ready · <Anchor component={Link} href="/app/modules">Manage knowledge</Anchor>
+          Knowledge sources: {ai.readyKnowledge} ready · <Link href="/app/modules">Manage knowledge</Link>
         </Text>
         {ai.canByok ? (
           canManage ? (
