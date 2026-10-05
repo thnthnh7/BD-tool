@@ -21,6 +21,7 @@ const faqs = [
   ["Can the AI agent change workspace data?", "The agent can prepare supported actions such as creating contacts, deals, tasks and quotes. Sensitive or high-impact changes require review before they are applied."],
   ["Does Bizcraw replace a CRM?", "Bizcraw includes connected CRM workflows for small sales teams and can also synchronize with external CRM platforms as connectors become available."],
   ["Is there a free plan?", "Available public plans are shown on this page. You can create an account and choose the plan that fits your current workflow."],
+  ["How does scraping pricing work?", "Scraping costs depend on the selected data source, actor events and run options. Bizcraw shows estimated usage before a run and keeps the resulting data connected to your workspace."],
 ] as const;
 const featuredCrmIds = new Set(["hubspot", "salesforce", "dynamics_365", "monday", "pipedrive", "zoho"]);
 const featuredCrmProviders = crmProviders.filter((provider) => featuredCrmIds.has(provider.id));
@@ -86,7 +87,25 @@ export default async function LandingPage() {
 
     <section id="pricing" className={`${classes.section} ${classes.pricingSection}`}><Heading label="PRICING" title="Start with the workflow you need today." text="Choose a public plan below. You can review plan limits inside the product before upgrading."/><div className={classes.pricingGrid}>{plans.length ? plans.map((plan)=>{ const featured = plan.badge.trim().length > 0; const planHref = isAuthenticated ? `/app/billing?plan=${encodeURIComponent(plan.id)}` : `/signup?plan=${encodeURIComponent(plan.id)}`; return <article key={plan.id} className={featured?classes.featuredPlan:classes.planCard}>{featured&&<span className={classes.planBadge}>{plan.badge}</span>}<span className={classes.planType}>{plan.isFree?"Free forever":"For growing teams"}</span><h3>{plan.name}</h3><div className={classes.price}>{plan.isFree?"Free":plan.usdMonthlyCents==null?"—":formatUsdFromCents(plan.usdMonthlyCents)}{!plan.isFree&&plan.usdMonthlyCents!=null&&<small>/ month</small>}</div><p>{plan.quotas.seats < 0 ? "Unlimited seats" : `${plan.quotas.seats} workspace seat${plan.quotas.seats===1?"":"s"} included.`}</p><ul>{planHighlights(plan).map((line)=><li key={line}><Check size={16}/> {line}</li>)}</ul><Link href={planHref} className={featured?classes.primaryButtonWide:classes.secondaryButtonWide}>Choose {plan.name}</Link></article>}) : <article className={classes.pricingFallback}><span className={classes.planType}>PLANS TEMPORARILY UNAVAILABLE</span><h3>Start with a Bizcraw workspace</h3><p>Current plan details could not be loaded. Create an account to review availability when the connection returns.</p><Link href={startHref} className={classes.primaryButtonWide}>{isAuthenticated ? "Open workspace" : "Create account"}</Link></article>}</div></section>
 
-    <section className={classes.faqSection}><div className={classes.faqHeading}><span className={classes.sectionLabel}>FREQUENTLY ASKED QUESTIONS</span><h2>What teams ask before getting started.</h2></div><div className={classes.faqList}>{faqs.map(([q,a])=><details key={q}><summary>{q}<span>+</span></summary><p>{a}</p></details>)}</div></section>
+    <section className={classes.faqSection}>
+      <div className={classes.faqHeading}>
+        <span className={classes.sectionLabel}>FREQUENTLY ASKED QUESTIONS</span>
+        <h2>What teams ask before getting started.</h2>
+        <p>Clear answers about scraping, CRM workflows, AI actions and pricing.</p>
+      </div>
+      <div className={classes.faqColumns}>
+        {[faqs.slice(0, 4), faqs.slice(4)].map((column, columnIndex) => (
+          <div className={classes.faqList} key={columnIndex === 0 ? "faq-left" : "faq-right"}>
+            {column.map(([question, answer]) => (
+              <details key={question}>
+                <summary>{question}<span aria-hidden="true">+</span></summary>
+                <p>{answer}</p>
+              </details>
+            ))}
+          </div>
+        ))}
+      </div>
+    </section>
     <section className={classes.finalCta}><div><span><Sparkles size={16}/> Your sales workspace is ready</span><h2>Give your team one place to find, understand and act on every opportunity.</h2><p>Create a workspace and start organizing your sales process today.</p><Link href={startHref} className={classes.lightButtonLarge}>{isAuthenticated ? "Open workspace" : "Start free"} <ArrowRight size={18}/></Link></div></section>
     <footer className={classes.footer}><div className={classes.footerBrand}><AppLogo tagline/><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div><div><b>Product</b><a href="#platform">Platform</a><a href="#agent">AI agent</a><a href="#pricing">Pricing</a></div><div><b>Access</b><Link href={isAuthenticated ? "/app" : "/login"}>{isAuthenticated ? "Open app" : "Sign in"}</Link>{!isAuthenticated ? <Link href="/signup">Create account</Link> : null}</div><div className={classes.footerMeta}><span>© {new Date().getFullYear()} Bizcraw</span><span>Built for focused sales teams.</span></div></footer>
   </main></LandingMotion>;
