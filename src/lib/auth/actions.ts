@@ -24,6 +24,7 @@ export async function signUpWithPassword(formData: FormData) {
   const password = String(formData.get("password") || "");
   const inviteToken = String(formData.get("invite") || "");
   const inviteKind = String(formData.get("invite_kind") || "") === "platform" ? "platform" : "workspace";
+  const requestedNext = safeInternalNext(formData.get("next"));
   if (!email || password.length < 8) {
     return { error: "Email và mật khẩu (tối thiểu 8 ký tự) là bắt buộc." };
   }
@@ -31,7 +32,7 @@ export async function signUpWithPassword(formData: FormData) {
   const supabase = await createClient();
   const confirmationNext = inviteToken
     ? `/invite/${encodeURIComponent(inviteToken)}${inviteKind === "platform" ? "?kind=platform" : ""}`
-    : "/onboarding";
+    : requestedNext || "/onboarding";
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -47,7 +48,7 @@ export async function signUpWithPassword(formData: FormData) {
       if (accepted.error) return accepted;
       redirect(inviteKind === "platform" ? "/app/platform/plans" : "/app");
     }
-    redirect("/onboarding");
+    redirect(requestedNext || "/onboarding");
   }
 
   return { ok: true as const, message: "Hãy kiểm tra email để xác nhận tài khoản, rồi đăng nhập." };

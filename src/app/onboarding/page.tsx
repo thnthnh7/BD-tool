@@ -7,7 +7,8 @@ import { SectionPanel } from "@/components/leadely/section-panel";
 import { AppLogo } from "@/components/leadely/app-logo";
 import { redirect } from "next/navigation";
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
+  const { plan: requestedPlanId } = await searchParams;
   const context = await requireUser();
   if (context.kind === "workspace") redirect("/app");
   if (context.kind === "platform") redirect("/app/platform/plans");
@@ -33,6 +34,7 @@ export default async function OnboardingPage() {
           Public signup always creates an Owner. Personal or company — one account, one workspace.
         </Text>
         <OnboardingForm
+          initialPlanId={requestedPlanId}
           plans={(plans || []).map((row) => {
             const plan = parsePlan(row);
             return {

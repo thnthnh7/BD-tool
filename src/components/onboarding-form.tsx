@@ -13,11 +13,11 @@ type PlanOption = {
   usdMonthlyCents: number | null;
 };
 
-export function OnboardingForm({ plans }: { plans: PlanOption[] }) {
+export function OnboardingForm({ plans, initialPlanId }: { plans: PlanOption[]; initialPlanId?: string }) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [type, setType] = useState("personal");
-  const [planId, setPlanId] = useState(plans[0]?.id || "");
+  const [planId, setPlanId] = useState(plans.some((plan) => plan.id === initialPlanId) ? initialPlanId! : plans[0]?.id || "");
 
   async function onSubmit(formData: FormData) {
     setError("");

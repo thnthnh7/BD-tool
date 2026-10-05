@@ -4,7 +4,8 @@ import { BillingPanel } from "@/components/billing-panel";
 import { loadUsdRates } from "@/lib/billing/localization";
 import { billingProviderReady, getAllBillingProviderConfigs } from "@/lib/billing/config";
 
-export default async function BillingPage() {
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
+  const { plan: requestedPlanId } = await searchParams;
   const [{ context, invoices, plans, subscription, providerPrices }, usdRates, providerConfigs] = await Promise.all([
     loadBilling(),
     loadUsdRates(),
@@ -30,6 +31,7 @@ export default async function BillingPage() {
         stripe: billingProviderReady(providerById.get("stripe")!),
         paypal: billingProviderReady(providerById.get("paypal")!),
       }}
+      requestedPlanId={requestedPlanId}
     />
   );
 }

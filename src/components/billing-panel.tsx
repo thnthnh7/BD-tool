@@ -28,7 +28,7 @@ function Brand({ name }: { name: PaymentMethod }) {
   return <span className={`${classes.brand} ${classes.sepay}`}><Building2 size={17} />SePay</span>;
 }
 
-export function BillingPanel({ plans, providerPrices, usdRates, locale, invoices, currentPlanId, canPay, qrUrl, subscription, providers }: {
+export function BillingPanel({ plans, providerPrices, usdRates, locale, invoices, currentPlanId, canPay, qrUrl, subscription, providers, requestedPlanId }: {
   plans: ParsedPlan[];
   providerPrices: ProviderPrice[];
   usdRates: Record<string, number>;
@@ -39,13 +39,15 @@ export function BillingPanel({ plans, providerPrices, usdRates, locale, invoices
   qrUrl?: string;
   subscription?: { provider?: string; status: string; current_period_end: string; cancel_at_period_end?: boolean; billing_interval?: string } | null;
   providers: { stripe: boolean; paypal: boolean };
+  requestedPlanId?: string;
 }) {
   const t = useTranslations("Billing");
   const paidPlans = useMemo(() => plans.filter((plan) => !plan.isFree && plan.isPublic), [plans]);
   const initialMarket = marketForLocale(locale);
   const pricedPlanIds = useMemo(() => new Set(providerPrices.filter((price) => price.currency.toUpperCase() === "USD").map((price) => price.plan_id)), [providerPrices]);
-  const initialPlanId = pricedPlanIds.has(currentPlanId) ? currentPlanId : paidPlans.find((plan) => pricedPlanIds.has(plan.id))?.id || paidPlans[0]?.id || "";
-  const [editing, setEditing] = useState(false);
+  const requestedPaidPlanId = paidPlans.some((plan) => plan.id === requestedPlanId) && requestedPlanId && pricedPlanIds.has(requestedPlanId) ? requestedPlanId : "";
+  const initialPlanId = requestedPaidPlanId || (pricedPlanIds.has(currentPlanId) ? currentPlanId : paidPlans.find((plan) => pricedPlanIds.has(plan.id))?.id || paidPlans[0]?.id || "");
+  const [editing, setEditing] = useState(Boolean(requestedPaidPlanId));
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
   const [country, setCountry] = useState(initialMarket.country);
