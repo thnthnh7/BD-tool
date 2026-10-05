@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { bindWorkspace, quoteViewFact, rankNameMatches, METRIC_VERSION } from "@/features/agent/logic";
 import { retrieveKnowledge } from "@/features/knowledge/server/retrieve";
-import { actorInputGuide, readableActorFields, unsupportedActorFields, validateActorInputObject } from "@/features/leads/actor-input";
+import { actorInputGuide, actorSecretFieldNames, readableActorFields, unsupportedActorFields, validateActorInputObject } from "@/features/leads/actor-input";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Dynamic table and projection names are constrained by the tool allowlist below; Supabase's generated client cannot express their shared query shape. */
 
@@ -75,9 +75,13 @@ export async function executeReadTool(ctx: ReadContext, name: string, args: Reco
   if (name === "get_actor_guide") return actorGuide(ctx, text("sourceId"));
   if (name === "get_actor_field_help") return actorFieldHelp(ctx, text("sourceId"), text("fieldName"));
   if (name === "get_actor_pricing") return actorPricing(ctx, text("sourceId"));
+  if (name === "get_actor_run_input") return actorRun(ctx, text("jobId"), "input");
+  if (name === "get_actor_run_status") return actorRun(ctx, text("jobId"), "status");
+  if (name === "get_actor_run_error") return actorRun(ctx, text("jobId"), "error");
+  if (name === "resolve_actor_input_mode") return resolveActorInputMode(ctx, text("sourceId"), text("goal"));
   if (name === "validate_actor_input" || name === "preview_actor_run") {
     const input = args.input && typeof args.input === "object" && !Array.isArray(args.input) ? args.input as Record<string, unknown> : {};
-    return validateActor(ctx, text("sourceId"), input, name === "preview_actor_run");
+    return validateActor(ctx, text("sourceId"), text("contractHash"), input, name === "preview_actor_run");
   }
   if (name === "search_companies") return searchNamed(ctx, "company", text("query"));
   if (name === "search_contacts") return searchNamed(ctx, "contact", text("query"));
@@ -222,9 +226,101 @@ async function actorPricing(ctx: ReadContext, sourceId: string) {
   };
 }
 
-async function validateActor(ctx: ReadContext, sourceId: string, input: Record<string, unknown>, preview: boolean) {
+function redactActorInput(value: unknown, secretNames: Set<string>): unknown {
+  if (Array.isArray(value)) return value.map((item) => redactActorInput(item, secretNames));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => {
+    const looksSecret = secretNames.has(key) || /(?:api[_-]?key|token|password|secret|cookie|authorization)/i.test(key);
+    return [key, looksSecret ? "[REDACTED]" : redactActorInput(item, secretNames)];
+  }));
+}
+
+async function actorRun(ctx: ReadContext, jobId: string, view: "input" | "status" | "error") {
+  if (!jobId) return { found: false };
+  const { data: job, error } = await (ctx.supabase as any)
+    .from("lead_scrape_jobs")
+    .select("id, source_id, apify_actor_id, query, location, language, max_results, filters, status, error_message, places_found, people_found, apify_usage_usd, started_at, finished_at, created_at, updated_at")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("id", jobId)
+    .maybeSingle();
+  if (error) throw new Error("The Actor run query failed.");
+  if (!job) return { found: false };
+  let source: Record<string, any> | null = null;
+  if (job.source_id) {
+    const result = await (ctx.supabase as any).from("scrape_sources")
+      .select("id, title, slug, input_schema, actor_build_id, actor_build_number, contract_hash, actor_store_url")
+      .eq("id", job.source_id)
+      .maybeSingle();
+    source = result.data || null;
+  }
+  const base = {
+    found: true,
+    job: { id: job.id, status: job.status, href: `/app/leads/scrape/${job.id}` },
+    actor: source ? { id: source.id, title: source.title, slug: source.slug, actorUrl: source.actor_store_url || `https://apify.com/${source.slug}` } : { slug: job.apify_actor_id },
+    build: source ? { id: source.actor_build_id, number: source.actor_build_number, contractHash: source.contract_hash } : null,
+  };
+  if (view === "input") {
+    const secrets = new Set(actorSecretFieldNames(source?.input_schema || null));
+    return { ...base, input: redactActorInput(job.filters, secrets), runMetadata: { query: job.query, location: job.location, language: job.language, maxResults: job.max_results } };
+  }
+  if (view === "error") {
+    return { ...base, failed: job.status === "failed", error: job.error_message || null, limitation: job.error_message ? undefined : "No Actor failure message is recorded for this run." };
+  }
+  return {
+    ...base,
+    counts: { records: job.places_found, people: job.people_found },
+    apifyUsageUsd: job.apify_usage_usd,
+    startedAt: job.started_at,
+    finishedAt: job.finished_at,
+    updatedAt: job.updated_at,
+  };
+}
+
+function guidanceRules(textValue: string) {
+  return textValue
+    .split(/(?<=[.!?])\s+|\r?\n/)
+    .map((item) => item.trim())
+    .filter((item) => /\b(ignore|ignored|override|instead|leave .* empty|only when|either)\b/i.test(item))
+    .slice(0, 6)
+    .map((item) => item.slice(0, 500));
+}
+
+async function resolveActorInputMode(ctx: ReadContext, sourceId: string, goal: string) {
+  const actor = await installedActor(ctx, sourceId);
+  if (!actor) return { found: false, limitation: "This Actor is not installed in the current workspace." };
+  const fields = readableActorFields(actor.input_schema, actor.example_input);
+  const urls = goal.match(/https?:\/\/[^\s)]+/g) || [];
+  const urlFields = fields.filter((field) => field.kind === "urlList" || /(?:^|_)(?:url|urls|starturls)(?:$|_)/i.test(field.name));
+  const urlField = urlFields[0];
+  const selectedMode = urls.length && urlField ? "url" : "fields";
+  const rootGuide = actorInputGuide(actor.input_schema);
+  const rules = guidanceRules(`${rootGuide.description}\n${fields.map((field) => field.description).join("\n")}\n${String(actor.readme_markdown || "").slice(0, 20_000)}`);
+  return {
+    found: true,
+    actor: { id: actor.id, title: actor.title, slug: actor.slug },
+    selectedMode,
+    reason: selectedMode === "url" ? "The goal contains a URL and the Actor publishes a URL-list input." : "No runnable URL was supplied; use the Actor's documented fields and filters.",
+    draftInput: selectedMode === "url" && urlField ? { [urlField.name]: urls.map((url) => ({ url })) } : {},
+    urlFields: urlFields.map((field) => ({ name: field.name, label: field.label, description: field.description, required: field.required })),
+    filterFields: safeActorFields(actor).filter((field) => !urlFields.some((url) => url.name === field.name)),
+    overrideRules: rules,
+    sourceType: rules.length ? "schema-and-default-build-readme" : "schema",
+    contractHash: actor.contract_hash,
+    build: { id: actor.actor_build_id, number: actor.actor_build_number },
+    limitation: selectedMode === "fields" ? "This tool selects an input mode but does not infer location IDs, credentials, enums or undocumented field dependencies." : undefined,
+  };
+}
+
+async function validateActor(ctx: ReadContext, sourceId: string, expectedContractHash: string, input: Record<string, unknown>, preview: boolean) {
   const actor = await installedActor(ctx, sourceId);
   if (!actor) return { valid: false, limitation: "This Actor is not installed in the current workspace." };
+  if (!actor.contract_hash) return { valid: false, limitation: "Refresh the Actor definition before validating a draft." };
+  if (actor.contract_hash !== expectedContractHash) return {
+    valid: false,
+    staleContract: true,
+    currentContractHash: actor.contract_hash,
+    limitation: "The Actor definition changed. Reload its contract and rebuild the draft before previewing a run.",
+  };
   const fields = readableActorFields(actor.input_schema, actor.example_input);
   const unsupportedRequired = unsupportedActorFields(actor.input_schema).filter((field) => field.required);
   if (unsupportedRequired.length) return { valid: false, unsupportedRequired, limitation: "Bizcraw cannot safely prepare this Actor until these required controls are supported." };
@@ -240,6 +336,8 @@ async function validateActor(ctx: ReadContext, sourceId: string, input: Record<s
     preview,
     startsRun: false,
     pricingModel: actor.pricing_model,
+    contractHash: actor.contract_hash,
+    build: { id: actor.actor_build_id, number: actor.actor_build_number },
     warning: preview ? "This is a non-billable preview. Review the input and Actor pricing before starting a run from the scrape page." : undefined,
     href: `/app/leads/scrape/new?source=${actor.id}`,
   };

@@ -117,6 +117,11 @@ export function unsupportedActorFields(schema: Json | null): UnsupportedActorFie
   return unsupported;
 }
 
+export function actorSecretFieldNames(schema: Json | null) {
+  const properties = asRecord(asRecord(schema).properties);
+  return Object.entries(properties).filter(([, raw]) => asRecord(raw).isSecret === true).map(([name]) => name);
+}
+
 function fieldKind(property: SchemaProperty, editor: string): ActorFieldKind | null {
   const type = text(property.type);
   if (type === "boolean") return "boolean";
