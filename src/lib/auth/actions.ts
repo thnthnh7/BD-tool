@@ -151,13 +151,30 @@ export async function createWorkspaceAction(formData: FormData) {
 
   const type = String(formData.get("type") || "") === "company" ? "company" : "personal";
   const name = String(formData.get("name") || "").trim();
-  const planId = String(formData.get("planId") || "");
+  const requestedPlanId = String(formData.get("requestedPlanId") || "");
   if (!name) return { error: "Tên workspace là bắt buộc." };
 
   const supabase = await createClient();
-  const { data: planRow } = await supabase.from("plans").select("*").eq("id", planId).maybeSingle();
-  if (!planRow) return { error: "Gói không hợp lệ." };
+  const { data: planRow } = await supabase
+    .from("plans")
+    .select("*")
+    .eq("is_public", true)
+    .eq("is_free", true)
+    .order("sort_order")
+    .limit(1)
+    .maybeSingle();
+  if (!planRow) return { error: "Gói Free mặc định chưa được cấu hình." };
   const plan = parsePlan(planRow);
+
+  let requestedPaidPlanId = "";
+  if (requestedPlanId) {
+    const { data: requestedPlan } = await supabase
+      .from("plans")
+      .select("id, is_public, is_free")
+      .eq("id", requestedPlanId)
+      .maybeSingle();
+    if (requestedPlan?.is_public && !requestedPlan.is_free) requestedPaidPlanId = requestedPlan.id;
+  }
 
   const workspaceId = crypto.randomUUID();
   const slug = slugify(name);
@@ -242,7 +259,7 @@ export async function createWorkspaceAction(formData: FormData) {
     current_period_end: periodEnd.toISOString(),
   });
 
-  if (!plan.isFree) redirect("/app/billing");
+  if (requestedPaidPlanId) redirect(`/app/billing?plan=${encodeURIComponent(requestedPaidPlanId)}`);
   redirect("/app");
 }
 
