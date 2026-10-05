@@ -1,7 +1,8 @@
 import { Badge, Button, Checkbox, Group, SimpleGrid, Stack, Switch, Text, TextInput } from "@mantine/core";
 import { PageHeader } from "@/components/leadely/page-header";
 import { PlanSettingsTabs } from "@/components/platform/plan-settings-tabs";
-import { createPlanAction, deletePlanAction, loadPlatformPlans, updatePlanConfigurationAction } from "@/lib/platform/actions";
+import { PlanConfigurationForm, PlanSaveButton } from "@/components/platform/plan-configuration-form";
+import { createPlanAction, deletePlanAction, loadPlatformPlans } from "@/lib/platform/actions";
 import { requirePlatform } from "@/lib/auth/session";
 import classes from "@/styles/platform-plans.module.css";
 import { billingProviderReady, getAllBillingProviderConfigs } from "@/lib/billing/config";
@@ -48,12 +49,7 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                 </div>
                 <Badge variant="light" color={plan.isPublic ? "leadely" : "gray"}>{plan.isPublic ? "Public" : "Hidden"}</Badge>
               </Group>
-            <form
-              action={async (formData) => {
-                "use server";
-                await updatePlanConfigurationAction(formData);
-              }}
-            >
+            <PlanConfigurationForm>
             <input type="hidden" name="id" value={plan.id} />
             <input type="hidden" name="planId" value={plan.id} />
             <input type="hidden" name="isFree" value={String(plan.isFree)} />
@@ -160,9 +156,9 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                   </Button>
                 ) : null}
               </div>
-              <Button type="submit">Save plan</Button>
+              <PlanSaveButton />
             </Group>
-            </form>
+            </PlanConfigurationForm>
           </div>
         ))}
       </PlanSettingsTabs>

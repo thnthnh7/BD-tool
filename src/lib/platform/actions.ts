@@ -150,8 +150,17 @@ export async function updateProviderPricesAction(formData: FormData) {
 export async function updatePlanConfigurationAction(formData: FormData) {
   const detailsResult = await updatePlanAction(formData);
   if (detailsResult?.error) return detailsResult;
-  if (String(formData.get("isFree") || "") === "true") return detailsResult;
-  return updateProviderPricesAction(formData);
+  if (String(formData.get("isFree") || "") === "true") {
+    return { ok: true as const, message: "Plan settings were saved successfully." };
+  }
+  const pricingResult = await updateProviderPricesAction(formData);
+  if (pricingResult?.error) {
+    return {
+      error: `Plan details were saved, but pricing synchronization failed: ${pricingResult.error}`,
+      partial: true as const,
+    };
+  }
+  return { ok: true as const, message: "Plan settings and provider pricing were saved successfully." };
 }
 
 function planSlug(value: string) {
