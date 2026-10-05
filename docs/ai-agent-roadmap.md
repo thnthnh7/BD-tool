@@ -26,6 +26,7 @@ The Agent must use scoped tools to retrieve only the data needed for each reques
 - Conversational access to workspace data.
 - Workspace analytics and grounded recommendations.
 - Authorized CRM, sales, quote, task, scrape, and synchronization operations.
+- Detailed, source-grounded Apify Actor guidance and validated Actor input preparation as defined in [Apify Actor Guidance Roadmap](./apify-actor-guidance-roadmap.md).
 - CSV/XLSX import workflows.
 - Persistent conversations, attachments, approvals, audit, and background execution.
 
@@ -147,6 +148,22 @@ The UI must not expose hidden chain-of-thought. It may show concise status messa
 - `get_scrape_status`
 - `get_current_user_and_permissions`
 - `get_workspace_schema_capabilities`
+
+### Apify Actor guidance tools
+
+The detailed contract, UX, safety rules, delivery phases, and evaluations live in [Apify Actor Guidance Roadmap](./apify-actor-guidance-roadmap.md).
+
+- `search_actors`
+- `get_actor_contract`
+- `get_actor_guide`
+- `get_actor_field_help`
+- `get_actor_pricing`
+- `get_actor_run_input`
+- `get_actor_run_error`
+- `validate_actor_input`
+- `preview_actor_run`
+
+The Agent may explain an Actor and prepare a validated draft in read-only mode. Applying a draft must never start the Actor. Starting a paid scrape remains a strongly confirmed write action bound to the exact Actor, build contract, input payload, workspace, user, and available pricing basis.
 
 ### Company 360
 

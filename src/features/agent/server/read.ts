@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { bindWorkspace, quoteViewFact, rankNameMatches, METRIC_VERSION } from "@/features/agent/logic";
 import { retrieveKnowledge } from "@/features/knowledge/server/retrieve";
+import { actorInputGuide, readableActorFields, unsupportedActorFields, validateActorInputObject } from "@/features/leads/actor-input";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Dynamic table and projection names are constrained by the tool allowlist below; Supabase's generated client cannot express their shared query shape. */
 
@@ -69,6 +70,14 @@ async function searchNamed(ctx: ReadContext, kind: "company" | "contact" | "deal
 
 export async function executeReadTool(ctx: ReadContext, name: string, args: Record<string, unknown>) {
   const text = (key: string) => (typeof args[key] === "string" ? args[key] : "");
+  if (name === "search_actors") return searchActors(ctx, text("query"));
+  if (name === "get_actor_contract") return actorContract(ctx, text("sourceId"));
+  if (name === "get_actor_field_help") return actorFieldHelp(ctx, text("sourceId"), text("fieldName"));
+  if (name === "get_actor_pricing") return actorPricing(ctx, text("sourceId"));
+  if (name === "validate_actor_input" || name === "preview_actor_run") {
+    const input = args.input && typeof args.input === "object" && !Array.isArray(args.input) ? args.input as Record<string, unknown> : {};
+    return validateActor(ctx, text("sourceId"), input, name === "preview_actor_run");
+  }
   if (name === "search_companies") return searchNamed(ctx, "company", text("query"));
   if (name === "search_contacts") return searchNamed(ctx, "contact", text("query"));
   if (name === "search_deals") return searchNamed(ctx, "deal", text("query"));
@@ -98,6 +107,119 @@ export async function executeReadTool(ctx: ReadContext, name: string, args: Reco
   if (name === "get_unviewed_sent_quotes") return unviewedQuotes(ctx);
   if (name === "get_monthly_forecast") return forecast(ctx);
   return { unsupported: true, limitation: "This assistant cannot answer that from workspace tools." };
+}
+
+async function installedActor(ctx: ReadContext, sourceId: string) {
+  if (!sourceId) return null;
+  const { data: installed, error: installedError } = await (ctx.supabase as any)
+    .from("workspace_scrape_sources")
+    .select("source_id")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("source_id", sourceId)
+    .limit(1)
+    .maybeSingle();
+  if (installedError) throw new Error("The workspace query failed.");
+  if (!installed) return null;
+  const { data, error } = await (ctx.supabase as any)
+    .from("scrape_sources")
+    .select("id, title, slug, description, pricing_model, pricing_info, input_schema, example_input, schema_fetched_at, archived_at")
+    .eq("id", sourceId)
+    .is("archived_at", null)
+    .maybeSingle();
+  if (error) throw new Error("The Actor contract query failed.");
+  return data as Record<string, any> | null;
+}
+
+async function searchActors(ctx: ReadContext, query: string) {
+  const { data: installed, error } = await (ctx.supabase as any)
+    .from("workspace_scrape_sources")
+    .select("source_id")
+    .eq("workspace_id", ctx.workspaceId)
+    .limit(200);
+  if (error) throw new Error("The workspace query failed.");
+  const ids = (installed || []).map((row: { source_id: string }) => row.source_id);
+  if (!ids.length) return { match: "none", items: [], partial: false };
+  const { data: sources, error: sourceError } = await (ctx.supabase as any)
+    .from("scrape_sources")
+    .select("id, title, slug, description, pricing_model, schema_fetched_at")
+    .in("id", ids)
+    .is("archived_at", null)
+    .limit(200);
+  if (sourceError) throw new Error("The Actor search failed.");
+  const needle = query.trim().toLocaleLowerCase();
+  const matches = (sources || []).filter((row: Record<string, any>) => !needle || `${row.title} ${row.slug} ${row.description || ""}`.toLocaleLowerCase().includes(needle));
+  return {
+    match: matches.length ? "list" : "none",
+    items: matches.slice(0, LIMIT).map((row: Record<string, any>) => ({
+      id: row.id, title: row.title, slug: row.slug, description: row.description, pricingModel: row.pricing_model,
+      schemaFetchedAt: row.schema_fetched_at, href: `/app/leads/scrape/new?source=${row.id}`, actorUrl: `https://console.apify.com/actors/${row.slug.replace("/", "~")}/input`,
+    })),
+    partial: matches.length > LIMIT,
+  };
+}
+
+function safeActorFields(row: Record<string, any>) {
+  return readableActorFields(row.input_schema, row.example_input).map((field) => ({
+    name: field.name, label: field.label, description: field.description, kind: field.kind, required: field.required,
+    example: field.secret ? "" : field.exampleValue, options: field.options, suggestions: field.suggestions,
+    section: field.sectionCaption, sectionDescription: field.sectionDescription, minimum: field.minimum, maximum: field.maximum,
+    minLength: field.minLength, maxLength: field.maxLength, minItems: field.minItems, maxItems: field.maxItems,
+    pattern: field.pattern, unit: field.unit, secret: field.secret,
+  }));
+}
+
+async function actorContract(ctx: ReadContext, sourceId: string) {
+  const actor = await installedActor(ctx, sourceId);
+  if (!actor) return { found: false, limitation: "This Actor is not installed in the current workspace." };
+  return {
+    found: true,
+    actor: { id: actor.id, title: actor.title, slug: actor.slug, description: actor.description, href: `/app/leads/scrape/new?source=${actor.id}` },
+    guide: actorInputGuide(actor.input_schema),
+    fields: safeActorFields(actor),
+    unsupportedFields: unsupportedActorFields(actor.input_schema),
+    schemaFetchedAt: actor.schema_fetched_at,
+    actorUrl: `https://console.apify.com/actors/${actor.slug.replace("/", "~")}/input`,
+  };
+}
+
+async function actorFieldHelp(ctx: ReadContext, sourceId: string, fieldName: string) {
+  const contract = await actorContract(ctx, sourceId);
+  if (!contract.found || !("fields" in contract) || !contract.fields) return contract;
+  const field = contract.fields.find((item) => item.name === fieldName || item.label.toLocaleLowerCase() === fieldName.toLocaleLowerCase());
+  return field ? { found: true, actor: contract.actor, field, schemaFetchedAt: contract.schemaFetchedAt } : { found: false, limitation: "That field is not present in the Actor's current input schema." };
+}
+
+async function actorPricing(ctx: ReadContext, sourceId: string) {
+  const actor = await installedActor(ctx, sourceId);
+  if (!actor) return { found: false, limitation: "This Actor is not installed in the current workspace." };
+  return {
+    found: true, actor: { id: actor.id, title: actor.title, slug: actor.slug }, pricingModel: actor.pricing_model,
+    pricingInfo: actor.pricing_info || null,
+    limitation: "Final cost is determined by Apify, the Actor's current pricing, events and run input. No run has been started.",
+  };
+}
+
+async function validateActor(ctx: ReadContext, sourceId: string, input: Record<string, unknown>, preview: boolean) {
+  const actor = await installedActor(ctx, sourceId);
+  if (!actor) return { valid: false, limitation: "This Actor is not installed in the current workspace." };
+  const fields = readableActorFields(actor.input_schema, actor.example_input);
+  const unsupportedRequired = unsupportedActorFields(actor.input_schema).filter((field) => field.required);
+  if (unsupportedRequired.length) return { valid: false, unsupportedRequired, limitation: "Bizcraw cannot safely prepare this Actor until these required controls are supported." };
+  const secretNames = fields.filter((field) => field.secret).map((field) => field.name);
+  if (secretNames.some((name) => input[name] != null && input[name] !== "")) {
+    return { valid: false, limitation: "Enter secret fields directly in the secure Actor form; the AI Agent does not accept or retain secret values.", secretFields: secretNames };
+  }
+  const result = validateActorInputObject(fields, input);
+  if ("error" in result) return { valid: false, error: result.error, field: result.field };
+  return {
+    valid: true,
+    normalizedInput: result.body,
+    preview,
+    startsRun: false,
+    pricingModel: actor.pricing_model,
+    warning: preview ? "This is a non-billable preview. Review the input and Actor pricing before starting a run from the scrape page." : undefined,
+    href: `/app/leads/scrape/new?source=${actor.id}`,
+  };
 }
 
 async function one(ctx: ReadContext, table: "leads", type: "lead", id: string, columns: string) {

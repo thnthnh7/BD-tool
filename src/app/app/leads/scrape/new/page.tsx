@@ -71,6 +71,6 @@ async function SelectedActor({ selected, reuse, workspaceId, enabled, connected 
         <Checkbox name="enrich_people" label={t("enrich")} defaultChecked={reuse?.enrich_people ?? true} />
         <Checkbox name="verify_emails" label={t("verify")} defaultChecked={reuse?.verify_emails ?? false} />
         <Checkbox name="pdpa_confirmed" label={t("pdpa")} required />
-      </ActionForm> : enabled && canUseConnection && contract?.inputSchema ? <ActorInputForm key={`${selected.id}-${reuse?.id || "new"}`} sourceId={selected.id} schema={contract.inputSchema} example={reuse?.filters || contract.exampleInput} /> : <Text size="sm" c="dimmed">{!canUseConnection ? t("connectFirst") : contract?.error || t("notReady")}</Text>}
+      </ActionForm> : enabled && canUseConnection && contract?.inputSchema ? <ActorInputForm key={`${selected.id}-${reuse?.id || "new"}`} sourceId={selected.id} sourceSlug={selected.slug} schema={contract.inputSchema} example={reuse?.filters || contract.exampleInput} /> : <Text size="sm" c="dimmed">{!canUseConnection ? t("connectFirst") : contract?.error || t("notReady")}</Text>}
     </SectionPanel>;
 }

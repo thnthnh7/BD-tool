@@ -9,6 +9,8 @@ type Contract = {
   schemaFetchedAt: string;
 };
 
+const CONTRACT_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
@@ -46,8 +48,8 @@ function outputSummary(definition: unknown): Json | null {
 export async function fetchActorContract(slug: string, token?: string): Promise<Contract | { error: string }> {
   const actorPath = slug.replaceAll("/", "~");
   try {
-    const actor = await readJson(`https://api.apify.com/v2/acts/${actorPath}`, token);
-    const build = await readJson(`https://api.apify.com/v2/acts/${actorPath}/builds/default`, token);
+    const actor = await readJson(`https://api.apify.com/v2/actors/${actorPath}`, token);
+    const build = await readJson(`https://api.apify.com/v2/actors/${actorPath}/builds/default`, token);
     const inputSchema = parseJsonValue(build.inputSchema);
     const properties = asRecord(inputSchema?.properties);
     if (!inputSchema || !Object.keys(properties).length) {
@@ -72,6 +74,7 @@ export async function ensureSourceContract(sourceId: string, token?: string): Pr
   error: string | null;
   inputSchema: Json | null;
   exampleInput: Json | null;
+  stale?: boolean;
 }> {
   const empty = { inputSchema: null, exampleInput: null };
   const admin = createAdminClient();
@@ -83,11 +86,18 @@ export async function ensureSourceContract(sourceId: string, token?: string): Pr
   if (error) return { error: error.message, ...empty };
   if (!data) return { error: "Không thấy nguồn.", ...empty };
   if (isMapsActor(data.slug)) return { error: null, ...empty };
-  if (data.schema_fetched_at && data.input_schema) {
+  const fetchedAt = data.schema_fetched_at ? Date.parse(data.schema_fetched_at) : Number.NaN;
+  const isFresh = data.input_schema && Number.isFinite(fetchedAt) && Date.now() - fetchedAt < CONTRACT_MAX_AGE_MS;
+  if (isFresh) {
     return { error: null, inputSchema: data.input_schema, exampleInput: data.example_input };
   }
   const contract = await fetchActorContract(data.slug, token);
-  if ("error" in contract) return { error: contract.error, ...empty };
+  if ("error" in contract) {
+    if (data.input_schema) {
+      return { error: null, inputSchema: data.input_schema, exampleInput: data.example_input, stale: true };
+    }
+    return { error: contract.error, ...empty };
+  }
   const { error: updateError } = await admin
     .from("scrape_sources")
     .update({

@@ -7,7 +7,7 @@ import { requireOwnerOrAdmin } from "@/lib/auth/session";
 import { contactDisplayName, formInt, formOptionalId, formText } from "@/lib/crm";
 import { recordActivity, withWorkspace } from "@/lib/events";
 import { incrementUsage } from "@/lib/usage";
-import { buildActorInput, readableActorFields } from "@/features/leads/actor-input";
+import { buildActorInput, readableActorFields, unsupportedActorFields } from "@/features/leads/actor-input";
 import { isMapsActor, MAPS_SLUG } from "@/features/leads/maps-source";
 import { claimScrapeIngest, fetchApifyRun, runScrapeIngest, startApifyActorRun, startApifyMapsRun } from "@/features/leads/server/apify";
 import { readAllPages } from "@/features/leads/server/read-pages";
@@ -211,6 +211,10 @@ export async function startActorScrapeAction(formData: FormData) {
     .maybeSingle();
   if (!installed) return { error: "Hãy cài nguồn này trước." };
 
+  const unsupportedRequired = unsupportedActorFields(source.input_schema).filter((field) => field.required);
+  if (unsupportedRequired.length) {
+    return { error: `Actor này có trường bắt buộc chưa được hỗ trợ: ${unsupportedRequired.map((field) => field.label).join(", ")}.` };
+  }
   const fields = readableActorFields(source.input_schema, source.example_input);
   if (!fields.length) return { error: "Input schema của actor không có trường nào chạy được." };
   const values = Object.fromEntries(fields.map((field) => [field.name, formText(formData, `in_${field.name}`)]));
