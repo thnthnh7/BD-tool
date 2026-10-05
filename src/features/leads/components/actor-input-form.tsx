@@ -1,4 +1,4 @@
-import { Alert, Anchor, Badge, Box, Checkbox, Group, NativeSelect, SimpleGrid, Stack, Text, Textarea, TextInput } from "@mantine/core";
+import { Alert, Anchor, Badge, Box, Checkbox, Group, MultiSelect, NativeSelect, SimpleGrid, Stack, TagsInput, Text, Textarea, TextInput } from "@mantine/core";
 import { BookOpen, ExternalLink, Info, TriangleAlert } from "lucide-react";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { actorInputGuide, readableActorFields, unsupportedActorFields, type ActorField } from "@/features/leads/actor-input";
@@ -29,6 +29,7 @@ function fieldHelp(field: ActorField, listHint: string) {
   const notes = [plainText(field.description)];
   if (field.kind === "stringList" || field.kind === "urlList") notes.push(listHint);
   if (field.unit) notes.push(`Unit: ${field.unit}`);
+  if (field.editor === "schemaBased") notes.push("Enter this structured value as JSON. Bizcraw validates the published top-level schema before the run.");
   if (field.minimum != null && field.maximum != null) notes.push(`Allowed range: ${field.minimum}–${field.maximum}`);
   else if (field.minimum != null) notes.push(`Minimum: ${field.minimum}`);
   else if (field.maximum != null) notes.push(`Maximum: ${field.maximum}`);
@@ -43,12 +44,37 @@ function FieldControl({ field }: { field: ActorField }) {
   const label = <Group gap={6} wrap="nowrap"><Text component="span" size="sm" fw={600}>{field.label}</Text>{field.required ? <Badge size="xs" color="red" variant="light">Required</Badge> : null}</Group>;
   if (field.kind === "boolean") return <Checkbox name={name} label={field.label} description={description || undefined} defaultChecked={field.defaultValue === "on"} />;
   if (field.kind === "enum") return <NativeSelect name={name} label={label} description={description || undefined} data={[{ value: "", label: t("choose") }, ...field.options]} defaultValue={field.defaultValue} required={field.required} />;
+  if (field.kind === "multiEnum") return <MultiSelect
+    name={name}
+    label={label}
+    description={description || undefined}
+    data={field.options}
+    defaultValue={field.defaultValue.split("\n").filter(Boolean)}
+    hiddenInputValuesDivider="\n"
+    searchable
+    clearable
+    required={field.required}
+    maxValues={field.maxItems ?? undefined}
+  />;
+  if (field.kind === "stringTags") return <TagsInput
+    name={name}
+    label={label}
+    description={description || undefined}
+    data={field.suggestions}
+    defaultValue={field.defaultValue.split("\n").filter(Boolean)}
+    hiddenInputValuesDivider="\n"
+    clearable
+    required={field.required}
+    maxTags={field.maxItems ?? undefined}
+  />;
   if (field.kind === "text" || field.kind === "stringList" || field.kind === "urlList" || field.kind === "json") {
     return <Textarea name={name} label={label} description={description || undefined} defaultValue={field.defaultValue} required={field.required} minRows={field.kind === "json" ? 5 : 2} maxRows={field.kind === "json" ? 12 : 6} autosize />;
   }
-  return <TextInput
+  const suggestionsId = field.suggestions.length ? `actor-suggestions-${field.name.replace(/[^a-zA-Z0-9_-]/g, "-")}` : undefined;
+  return <>
+    <TextInput
     name={name}
-    type={field.secret ? "password" : field.kind === "number" ? "number" : "text"}
+    type={field.secret ? "password" : field.kind === "number" ? "number" : field.kind === "date" && field.dateType === "absolute" ? "date" : "text"}
     label={label}
     description={description || undefined}
     placeholder={field.exampleValue && !field.defaultValue ? field.exampleValue.slice(0, 180) : undefined}
@@ -59,7 +85,10 @@ function FieldControl({ field }: { field: ActorField }) {
     minLength={field.minLength ?? undefined}
     maxLength={field.maxLength ?? undefined}
     pattern={field.pattern || undefined}
-  />;
+    list={suggestionsId}
+  />
+    {suggestionsId ? <datalist id={suggestionsId}>{field.suggestions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</datalist> : null}
+  </>;
 }
 
 function FieldGrid({ fields }: { fields: ActorField[] }) {

@@ -21,6 +21,11 @@ const schema = {
     },
     distance: { title: "Distance", description: "Radius in miles.", type: "integer", minimum: 0, maximum: 100, unit: "miles" },
     keyword: { title: "Keyword", type: "string", minLength: 2, maxLength: 50, example: "sales manager" },
+    country: { title: "Country", type: "string", editor: "select", enumSuggestedValues: ["Singapore", "Vietnam"] },
+    postedAt: { title: "Posted at", type: "string", editor: "datepicker", dateType: "absolute", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+    jobTypes: { title: "Job types", type: "array", editor: "select", uniqueItems: true, items: { type: "string", enum: ["full-time", "part-time"] } },
+    tags: { title: "Tags", type: "array", editor: "select", items: { type: "string", enumSuggestedValues: ["remote", "hybrid"] } },
+    config: { title: "Configuration", type: "object", editor: "schemaBased", required: ["locale"], properties: { locale: { type: "string" }, timeout: { type: "integer" } } },
     authorized: { title: "Authorization", type: "boolean", default: true },
     proxy: { title: "Proxy", type: "object", editor: "proxy" },
   },
@@ -32,11 +37,55 @@ test("reads Actor guidance, keeps schema order and preserves section metadata", 
     description: "Provide a search URL or keywords and a location.",
   });
   const fields = readableActorFields(schema, null);
-  assert.deepEqual(fields.map((field) => field.name), ["urls", "distance", "keyword", "authorized"]);
+  assert.deepEqual(fields.map((field) => field.name), ["urls", "distance", "keyword", "country", "postedAt", "jobTypes", "tags", "config", "authorized"]);
   assert.equal(fields[0].sectionCaption, "Search input");
   assert.equal(fields[0].description, "Paste one LinkedIn jobs search URL per line.");
   assert.equal(fields[1].unit, "miles");
   assert.equal(fields[2].exampleValue, "sales manager");
+});
+
+test("supports suggested strings, date pickers and strict or custom multi-select arrays", () => {
+  const fields = readableActorFields(schema, null);
+  assert.equal(fields.find((field) => field.name === "postedAt")?.kind, "date");
+  assert.equal(fields.find((field) => field.name === "country")?.suggestions.length, 2);
+  assert.equal(fields.find((field) => field.name === "jobTypes")?.kind, "multiEnum");
+  assert.equal(fields.find((field) => field.name === "tags")?.kind, "stringTags");
+  const result = validateActorInputObject(fields, {
+    urls: [{ url: "https://www.linkedin.com/jobs/search/" }],
+    postedAt: "2026-10-06",
+    jobTypes: ["full-time", "part-time"],
+    tags: ["remote", "sales"],
+  });
+  assert.ok(!("error" in result));
+  assert.deepEqual(result.body.jobTypes, ["full-time", "part-time"]);
+  assert.deepEqual(result.body.tags, ["remote", "sales"]);
+  assert.equal(result.body.authorized, true);
+});
+
+test("rejects unsupported and duplicate strict multi-select values", () => {
+  const fields = readableActorFields(schema, null);
+  const duplicate = validateActorInputObject(fields, {
+    urls: [{ url: "https://www.linkedin.com/jobs/search/" }],
+    jobTypes: ["full-time", "full-time"],
+  });
+  assert.equal("error" in duplicate && duplicate.field, "jobTypes");
+  const unsupported = validateActorInputObject(fields, {
+    urls: [{ url: "https://www.linkedin.com/jobs/search/" }],
+    jobTypes: ["contract"],
+  });
+  assert.equal("error" in unsupported && unsupported.field, "jobTypes");
+});
+
+test("uses a validated JSON fallback for schemaBased objects", () => {
+  const fields = readableActorFields(schema, null);
+  const config = fields.find((field) => field.name === "config");
+  assert.equal(config?.kind, "json");
+  const valid = validateActorInputObject(fields, { urls: [{ url: "https://example.com" }], config: { locale: "en-US", timeout: 30 } });
+  assert.ok(!("error" in valid));
+  const missing = validateActorInputObject(fields, { urls: [{ url: "https://example.com" }], config: { timeout: 30 } });
+  assert.equal("error" in missing && missing.field, "config");
+  const wrongType = validateActorInputObject(fields, { urls: [{ url: "https://example.com" }], config: { locale: "en-US", timeout: "fast" } });
+  assert.equal("error" in wrongType && wrongType.field, "config");
 });
 
 test("normalizes URL lists and lets users turn a default-true boolean off", () => {

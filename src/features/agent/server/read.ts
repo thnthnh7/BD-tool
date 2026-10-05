@@ -166,7 +166,8 @@ function safeActorFields(row: Record<string, any>) {
     example: field.secret ? "" : field.exampleValue, options: field.options, suggestions: field.suggestions,
     section: field.sectionCaption, sectionDescription: field.sectionDescription, minimum: field.minimum, maximum: field.maximum,
     minLength: field.minLength, maxLength: field.maxLength, minItems: field.minItems, maxItems: field.maxItems,
-    pattern: field.pattern, unit: field.unit, secret: field.secret,
+    pattern: field.pattern, unit: field.unit, dateType: field.dateType, uniqueItems: field.uniqueItems,
+    inputFormat: field.editor === "schemaBased" ? "json-fallback" : field.kind, secret: field.secret,
   }));
 }
 

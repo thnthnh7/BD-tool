@@ -1,6 +1,6 @@
 import type { Json } from "@/lib/database.types";
 
-export type ActorFieldKind = "string" | "text" | "number" | "boolean" | "enum" | "stringList" | "urlList" | "json";
+export type ActorFieldKind = "string" | "text" | "date" | "number" | "boolean" | "enum" | "multiEnum" | "stringTags" | "stringList" | "urlList" | "json";
 
 export type ActorField = {
   name: string;
@@ -24,6 +24,9 @@ export type ActorField = {
   pattern: string;
   unit: string;
   secret: boolean;
+  dateType: string;
+  uniqueItems: boolean;
+  rawSchema: Json;
 };
 
 export type UnsupportedActorField = { name: string; label: string; editor: string; type: string; required: boolean; reason: string };
@@ -31,14 +34,14 @@ export type UnsupportedActorField = { name: string; label: string; editor: strin
 type SchemaProperty = {
   title?: string; description?: string; type?: string; editor?: string; default?: unknown; prefill?: unknown; example?: unknown;
   enum?: unknown[]; enumTitles?: unknown[]; enumSuggestedValues?: unknown[];
-  items?: { type?: string; enum?: unknown[]; enumTitles?: unknown[] };
+  items?: { type?: string; enum?: unknown[]; enumTitles?: unknown[]; enumSuggestedValues?: unknown[] };
   sectionCaption?: string; sectionDescription?: string; groupCaption?: string; groupDescription?: string;
   minimum?: number; maximum?: number; minLength?: number; maxLength?: number; minItems?: number; maxItems?: number;
-  pattern?: string; unit?: string; isSecret?: boolean;
+  pattern?: string; unit?: string; isSecret?: boolean; dateType?: string; uniqueItems?: boolean;
 };
 
 const MAX_FIELDS = 80;
-const UNSUPPORTED_EDITORS = new Set(["proxy", "hidden", "javascript", "python", "schemaBased", "resourcePicker", "fileupload"]);
+const UNSUPPORTED_EDITORS = new Set(["proxy", "hidden", "javascript", "python", "resourcePicker", "fileupload"]);
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
@@ -79,16 +82,18 @@ export function readableActorFields(schema: Json | null, example: Json | null): 
     if (/add-on/i.test(title) || title.includes("$") || property.isSecret === true || UNSUPPORTED_EDITORS.has(editor)) continue;
     const kind = fieldKind(property, editor);
     if (!kind) continue;
-    const options = kind === "enum" ? enumOptions(property.enum, property.enumTitles) : [];
+    const options = kind === "enum" ? enumOptions(property.enum, property.enumTitles) : kind === "multiEnum" ? enumOptions(property.items?.enum, property.items?.enumTitles) : [];
     if (kind === "enum" && options.length === 0) continue;
     fields.push({
       name, label: title, description: text(property.description).slice(0, 1600), kind, editor,
       required: required.has(name), defaultValue: defaultFor(property, sample[name], kind), exampleValue: exampleFor(property, kind), options,
-      suggestions: enumOptions(property.enumSuggestedValues || property.items?.enum, property.enumTitles || property.items?.enumTitles),
+      suggestions: enumOptions(property.enumSuggestedValues || property.items?.enumSuggestedValues, property.enumTitles || property.items?.enumTitles),
       sectionCaption: text(property.sectionCaption || property.groupCaption),
       sectionDescription: text(property.sectionDescription || property.groupDescription).slice(0, 1200),
       minimum: finite(property.minimum), maximum: finite(property.maximum), minLength: finite(property.minLength), maxLength: finite(property.maxLength),
       minItems: finite(property.minItems), maxItems: finite(property.maxItems), pattern: text(property.pattern), unit: text(property.unit), secret: false,
+      dateType: text(property.dateType) || "absolute", uniqueItems: property.uniqueItems === true,
+      rawSchema: JSON.parse(JSON.stringify(property)) as Json,
     });
   }
   return fields;
@@ -117,11 +122,14 @@ function fieldKind(property: SchemaProperty, editor: string): ActorFieldKind | n
   if (type === "boolean") return "boolean";
   if (type === "integer" || type === "number") return "number";
   if (type === "string" && Array.isArray(property.enum)) return "enum";
+  if (type === "string" && editor === "datepicker") return "date";
   if (type === "string" && editor === "textarea") return "text";
   if (type === "string") return "string";
   if (type === "array" && editor === "requestListSources") return "urlList";
+  if (type === "array" && editor === "select" && Array.isArray(property.items?.enum)) return "multiEnum";
+  if (type === "array" && editor === "select" && Array.isArray(property.items?.enumSuggestedValues)) return "stringTags";
   if (editor === "stringList" || (type === "array" && property.items?.type === "string")) return "stringList";
-  if ((type === "array" || type === "object") && editor === "json") return "json";
+  if ((type === "array" || type === "object") && (editor === "json" || editor === "schemaBased")) return "json";
   return null;
 }
 
@@ -133,7 +141,7 @@ function enumOptions(values: unknown[] | undefined, rawTitles: unknown[] | undef
 
 function formatValue(value: unknown, kind: ActorFieldKind) {
   if (kind === "urlList" && Array.isArray(value)) return value.map((item) => text(asRecord(item).url || item)).filter(Boolean).join("\n");
-  if (kind === "stringList" && Array.isArray(value)) return value.map((item) => text(item)).filter(Boolean).join("\n");
+  if ((kind === "stringList" || kind === "multiEnum" || kind === "stringTags") && Array.isArray(value)) return value.map((item) => text(item)).filter(Boolean).join("\n");
   if (kind === "json" && value != null && typeof value === "object") return JSON.stringify(value, null, 2);
   if (kind === "boolean") return value === true ? "on" : "";
   if (value == null || typeof value === "object") return "";
@@ -163,6 +171,38 @@ function validateText(field: ActorField, raw: string) {
   return null;
 }
 
+function matchesSchemaType(value: unknown, expected: unknown) {
+  if (expected === "array") return Array.isArray(value);
+  if (expected === "object") return value != null && typeof value === "object" && !Array.isArray(value);
+  if (expected === "integer") return typeof value === "number" && Number.isInteger(value);
+  if (expected === "number") return typeof value === "number" && Number.isFinite(value);
+  if (expected === "boolean") return typeof value === "boolean";
+  if (expected === "string") return typeof value === "string";
+  return true;
+}
+
+function validateJsonField(field: ActorField, value: unknown) {
+  const schema = asRecord(field.rawSchema);
+  if (!matchesSchemaType(value, schema.type)) return `${field.label} must be valid ${text(schema.type) || "JSON"}.`;
+  if (Array.isArray(value)) {
+    if (field.minItems != null && value.length < field.minItems) return `${field.label} needs at least ${field.minItems} values.`;
+    if (field.maxItems != null && value.length > field.maxItems) return `${field.label} allows at most ${field.maxItems} values.`;
+    if (field.uniqueItems && new Set(value.map((item) => JSON.stringify(item))).size !== value.length) return `${field.label} cannot contain duplicate values.`;
+    const itemSchema = asRecord(schema.items);
+    if (itemSchema.type && value.some((item) => !matchesSchemaType(item, itemSchema.type))) return `${field.label} contains an item with the wrong type.`;
+  }
+  if (value != null && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const required = Array.isArray(schema.required) ? schema.required.filter((item): item is string => typeof item === "string") : [];
+    const missing = required.find((name) => record[name] == null || record[name] === "");
+    if (missing) return `${field.label} is missing required property ${missing}.`;
+    const properties = asRecord(schema.properties);
+    const invalid = Object.entries(properties).find(([name, child]) => record[name] != null && !matchesSchemaType(record[name], asRecord(child).type));
+    if (invalid) return `${field.label}.${invalid[0]} has the wrong type.`;
+  }
+  return null;
+}
+
 export function buildActorInput(fields: ActorField[], values: Record<string, string>) {
   const body: Record<string, unknown> = {};
   for (const field of fields) {
@@ -179,13 +219,22 @@ export function buildActorInput(fields: ActorField[], values: Record<string, str
       if (field.maximum != null && parsed > field.maximum) return { error: `${field.label} must be at most ${field.maximum}.`, field: field.name };
       body[field.name] = parsed; continue;
     }
-    if (field.kind === "stringList" || field.kind === "urlList") {
+    if (field.kind === "stringList" || field.kind === "urlList" || field.kind === "multiEnum" || field.kind === "stringTags") {
       const items = listValues(raw, field.maxItems);
       if (field.minItems != null && items.length < field.minItems) return { error: `${field.label} needs at least ${field.minItems} values.`, field: field.name };
+      if (field.uniqueItems && new Set(items).size !== items.length) return { error: `${field.label} cannot contain duplicate values.`, field: field.name };
+      if (field.kind === "multiEnum" && items.some((item) => !field.options.some((option) => option.value === item))) {
+        return { error: `${field.label} contains a value not supported by this Actor.`, field: field.name };
+      }
       body[field.name] = field.kind === "urlList" ? items.map((url) => ({ url })) : items; continue;
     }
     if (field.kind === "json") {
-      try { body[field.name] = JSON.parse(raw); }
+      try {
+        const parsed = JSON.parse(raw);
+        const invalid = validateJsonField(field, parsed);
+        if (invalid) return { error: invalid, field: field.name };
+        body[field.name] = parsed;
+      }
       catch { return { error: `${field.label} must contain valid JSON.`, field: field.name }; }
       continue;
     }
