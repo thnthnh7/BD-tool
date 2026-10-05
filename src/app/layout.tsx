@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { Be_Vietnam_Pro, Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import { mantineHtmlProps } from "@mantine/core";
 import { LeadelyProvider } from "@/components/leadely-provider";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "./globals.css";
+import { SOCIAL_IMAGE } from "@/lib/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,17 +37,21 @@ export const metadata: Metadata = {
   authors: [{ name: "Bizcraw" }],
   creator: "Bizcraw",
   publisher: "Bizcraw",
+  openGraph: {
+    siteName: "Bizcraw",
+    type: "website",
+    images: [{ url: SOCIAL_IMAGE, width: 1530, height: 900, alt: "Bizcraw web scraping source library" }],
+  },
+  twitter: { card: "summary_large_image", images: [SOCIAL_IMAGE] },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = (await cookies()).get("leadely-locale")?.value || "en";
-  const direction = locale === "ar" ? "rtl" : "ltr";
   return (
-    <html lang={locale} dir={direction} {...mantineHtmlProps} className={`${geistSans.variable} ${geistMono.variable} ${deckSans.variable} ${deckSerif.variable}`}>
+    <html lang="en" dir="ltr" {...mantineHtmlProps} className={`${geistSans.variable} ${geistMono.variable} ${deckSans.variable} ${deckSerif.variable}`}>
       <body>
         <LeadelyProvider>{children}</LeadelyProvider>
       </body>

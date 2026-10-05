@@ -1,0 +1,36 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { AppLogo } from "@/components/leadely/app-logo";
+import styles from "@/styles/seo-page.module.css";
+
+export function MarketingHeader() {
+  return (
+    <header className={styles.header}>
+      <div className={styles.headerInner}>
+        <Link href="/" aria-label="Bizcraw home" className={styles.logo}><AppLogo tagline /></Link>
+        <nav aria-label="Primary navigation">
+          <Link href="/features/scraping">Scraping</Link>
+          <Link href="/web-scraping-for-lead-generation">Lead generation</Link>
+          <Link href="/integrations/apify">Apify</Link>
+          <Link href="/pricing">Pricing</Link>
+        </nav>
+        <div className={styles.headerActions}>
+          <Link href="/login" className={styles.signIn}>Sign in</Link>
+          <Link href="/signup" className={styles.primaryButton}>Start free <ArrowRight size={16} /></Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export function MarketingFooter() {
+  return (
+    <footer className={styles.footer}>
+      <div className={styles.footerBrand}><AppLogo tagline /><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div>
+      <div><b>Scraping</b><Link href="/web-scraping">Web scraping</Link><Link href="/web-scraping-for-lead-generation">Lead generation</Link><Link href="/google-maps-lead-scraper">Google Maps workflow</Link><Link href="/features/data-library">Data library</Link></div>
+      <div><b>Product</b><Link href="/features/scraping">Scraping runs</Link><Link href="/features/ai-sales-agent">AI sales agent</Link><Link href="/integrations/apify">Apify integration</Link><Link href="/pricing">Pricing</Link></div>
+      <div><b>Resources</b><Link href="/guides/how-to-build-a-prospect-list-with-web-scraping">Prospect list guide</Link><Link href="/guides/web-scraping-vs-data-enrichment">Scraping vs enrichment</Link><Link href="/data-to-crm">Data to CRM</Link><Link href="/login">Sign in</Link></div>
+      <div className={styles.footerMeta}><span>© {new Date().getFullYear()} Bizcraw</span><span>Built for focused sales teams.</span></div>
+    </footer>
+  );
+}

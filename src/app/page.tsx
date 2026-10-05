@@ -5,9 +5,8 @@ import { ArrowRight, Bot, Building2, Check, CircleCheck, FileSignature, Globe2, 
 import { LandingMotion } from "@/components/landing-motion";
 import { AppLogo } from "@/components/leadely/app-logo";
 import { crmProviders } from "@/features/crm-integrations/catalog";
-import { parsePlan, type ParsedPlan } from "@/lib/entitlements";
 import { formatUsdFromCents } from "@/lib/money";
-import { createClient } from "@/lib/supabase/server";
+import { loadPublicPlans, planHighlights } from "@/lib/public-plans";
 import classes from "@/styles/landing.module.css";
 
 const siteUrl = "https://bizcraw.com";
@@ -28,38 +27,33 @@ const featuredCrmProviders = crmProviders.filter((provider) => featuredCrmIds.ha
 
 export const metadata: Metadata = {
   title: { absolute: title }, description, alternates: { canonical: "/" },
-  openGraph: { title, description, url: siteUrl, siteName: "Bizcraw", type: "website" },
-  twitter: { card: "summary_large_image", title, description },
+  openGraph: { title, description, url: siteUrl, siteName: "Bizcraw", type: "website", images: [{ url: "/landing/bizcraw-source-library-hero.png", width: 1530, height: 900, alt: "Bizcraw web scraping source library" }] },
+  twitter: { card: "summary_large_image", title, description, images: ["/landing/bizcraw-source-library-hero.png"] },
 };
 
 const jsonLd = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Bizcraw", url: siteUrl },
+  { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Bizcraw", url: siteUrl, logo: `${siteUrl}/brand/bizcraw-logo.png` },
   { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: siteUrl, name: "Bizcraw", publisher: { "@id": `${siteUrl}/#organization` } },
   { "@type": "SoftwareApplication", name: "Bizcraw", applicationCategory: "BusinessApplication", operatingSystem: "Web", description, url: siteUrl, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
   { "@type": "FAQPage", mainEntity: faqs.map(([question, answer]) => ({ "@type": "Question", name: question, acceptedAnswer: { "@type": "Answer", text: answer } })) },
 ] };
 
 export default async function LandingPage() {
-  const supabase = await createClient();
-  const [{ data: authData }, plans] = await Promise.all([
-    supabase.auth.getClaims(),
-    loadPublicPlans(),
-  ]);
-  const isAuthenticated = Boolean(authData?.claims);
-  const startHref = isAuthenticated ? "/app" : "/signup";
+  const plans = await loadPublicPlans();
+  const startHref = "/signup";
   return <LandingMotion><main className={classes.page}>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
     <header className={classes.header}><div className={classes.navShell}>
       <Link href="/" aria-label="Bizcraw home" className={classes.logoLink}><AppLogo tagline /></Link>
-      <nav className={classes.navLinks} aria-label="Primary navigation"><a href="#platform">Platform</a><a href="#agent">AI agent</a><a href="#integrations">Integrations</a><a href="#pricing">Pricing</a></nav>
-      <div className={classes.navActions}><Link href={isAuthenticated ? "/app" : "/login"} className={classes.textButton}>{isAuthenticated ? "Open app" : "Sign in"}</Link><Link href={startHref} className={classes.primaryButton}>{isAuthenticated ? "Open workspace" : "Start free"} <ArrowRight size={16} /></Link></div>
+      <nav className={classes.navLinks} aria-label="Primary navigation"><Link href="/features/scraping">Scraping</Link><Link href="/web-scraping-for-lead-generation">Lead generation</Link><Link href="/integrations/apify">Apify</Link><Link href="/pricing">Pricing</Link></nav>
+      <div className={classes.navActions}><Link href="/login" className={classes.textButton}>Sign in</Link><Link href={startHref} className={classes.primaryButton}>Start free <ArrowRight size={16} /></Link></div>
     </div></header>
 
     <section className={classes.hero}><div className={classes.heroGlow} /><div className={classes.heroCopy}>
       <span className={classes.eyebrow}><Sparkles size={15} /> Web scraping + AI sales workspace</span>
       <h1>Scrape the web. Turn fresh data into <span>sales opportunities.</span></h1>
       <p>Discover business leads with repeatable web scraping workflows, review structured results, send approved records into your CRM and move every opportunity toward a deal.</p>
-      <div className={classes.heroActions}><Link href={startHref} className={classes.primaryButtonLarge}>{isAuthenticated ? "Open workspace" : "Start free"} <ArrowRight size={18} /></Link><a href="#platform" className={classes.secondaryButton}>See how it works</a></div>
+      <div className={classes.heroActions}><Link href={startHref} className={classes.primaryButtonLarge}>Start free <ArrowRight size={18} /></Link><Link href="/features/scraping" className={classes.secondaryButton}>Explore scraping</Link></div>
       <div className={classes.trustLine}><span><Check size={15} /> No credit card</span><span><Check size={15} /> Guided setup</span><span><Check size={15} /> Workspace-level access</span></div>
     </div><ProductStage /></section>
 
@@ -75,7 +69,7 @@ export default async function LandingPage() {
       <div className={classes.workflowGrid}>{[[Search,"01","Discover","Find and collect relevant prospects from supported data sources."],[Import,"02","Organize","Turn raw results and imports into clean company and contact records."],[Workflow,"03","Sell","Track opportunities, owners, activities and the next best action."],[FileSignature,"04","Close","Create quotes and contracts using connected customer data."]].map(([Icon,n,name,text]) => { const I=Icon as typeof Search; return <article key={String(name)}><span className={classes.stepNumber}>{String(n)}</span><span className={classes.stepIcon}><I size={21}/></span><h3>{String(name)}</h3><p>{String(text)}</p></article> })}</div>
     </section>
 
-    <section id="agent" className={classes.agentSection}><div className={classes.agentSectionInner}><div className={classes.agentCopy}><span className={classes.darkLabel}><Bot size={16}/> BIZCRAW AGENT</span><h2>Ask about your business. Then move the work forward.</h2><p>The agent reads only the workspace data and permissions available to the user. It can answer operational questions, prepare changes and ask for approval before sensitive actions.</p><ul><li><Check size={17}/> Answers link back to workspace records</li><li><Check size={17}/> Changes are previewed before execution</li><li><Check size={17}/> Actions respect roles and audit history</li></ul><Link href={startHref} className={classes.lightButton}>{isAuthenticated ? "Open workspace" : "Try the workspace"} <ArrowRight size={17}/></Link></div><div className={classes.agentDemo}><div className={classes.demoQuestion}><MessageSquareText size={17}/> Which enterprise deals need attention this week?</div><div className={classes.demoAnswer}><div className={classes.answerTitle}><Sparkles size={17}/><strong>3 deals need attention</strong></div><p>Two have no recent activity, and one quote was viewed three times but has not received a follow-up.</p><div className={classes.answerRows}>{[["Northstar Labs","No activity · 16 days"],["Acme APAC","Quote viewed · 3 times"],["Orbit Commerce","Task overdue · 2 days"]].map(([a,b])=><span key={a}><b>{a}</b><small>{b}</small></span>)}</div><div className={classes.answerSources}><span>Sources</span><code>Deals</code><code>Quote events</code><code>Tasks</code></div></div></div></div></section>
+    <section id="agent" className={classes.agentSection}><div className={classes.agentSectionInner}><div className={classes.agentCopy}><span className={classes.darkLabel}><Bot size={16}/> BIZCRAW AGENT</span><h2>Ask about your business. Then move the work forward.</h2><p>The agent reads only the workspace data and permissions available to the user. It can answer operational questions, prepare changes and ask for approval before sensitive actions.</p><ul><li><Check size={17}/> Answers link back to workspace records</li><li><Check size={17}/> Changes are previewed before execution</li><li><Check size={17}/> Actions respect roles and audit history</li></ul><Link href={startHref} className={classes.lightButton}>Try the workspace <ArrowRight size={17}/></Link></div><div className={classes.agentDemo}><div className={classes.demoQuestion}><MessageSquareText size={17}/> Which enterprise deals need attention this week?</div><div className={classes.demoAnswer}><div className={classes.answerTitle}><Sparkles size={17}/><strong>3 deals need attention</strong></div><p>Two have no recent activity, and one quote was viewed three times but has not received a follow-up.</p><div className={classes.answerRows}>{[["Northstar Labs","No activity · 16 days"],["Acme APAC","Quote viewed · 3 times"],["Orbit Commerce","Task overdue · 2 days"]].map(([a,b])=><span key={a}><b>{a}</b><small>{b}</small></span>)}</div><div className={classes.answerSources}><span>Sources</span><code>Deals</code><code>Quote events</code><code>Tasks</code></div></div></div></div></section>
 
     <section className={classes.section}><Heading label="BUILT AROUND REAL SALES WORK" title="Clear workflows for every stage of the deal." />
       <div className={classes.storyStack}><Story icon={Workflow} title="Run repeatable data collection without losing control." text="Launch scraping jobs, monitor progress, records and spend, then review every result before it becomes part of your CRM." bullets={["Run history and live status","Record and cost visibility","Review before CRM import"]}><ScrapeVisual /></Story><Story reverse icon={Building2} title="Keep every customer relationship in context." text="Companies, contacts, deals, tasks and activities stay connected so the team can see what happened and what should happen next." bullets={["Company and contact timelines","Deal stages and ownership","CRM synchronization controls"]}><CrmVisual /></Story><Story icon={Quote} title="Turn approved data into documents that close." text="Create quotes and contracts from current workspace records, then track whether a customer has received and viewed the document." bullets={["Reusable commercial defaults","Share and view tracking","Connected deal history"]}><QuoteVisual /></Story></div>
@@ -85,7 +79,7 @@ export default async function LandingPage() {
 
     <section className={classes.securitySection}><div><span className={classes.securityIcon}><ShieldCheck size={26}/></span><h2>Your workspace stays within its boundaries.</h2><p>Bizcraw uses workspace-scoped access, role checks and server-side secret handling to keep customer data and connected credentials separated.</p></div><div className={classes.securityPoints}><span><LockKeyhole size={19}/><b>Role-aware access</b><small>Users see and act on what their role allows.</small></span><span><Globe2 size={19}/><b>Workspace isolation</b><small>Records remain associated with the correct organization.</small></span><span><ListChecks size={19}/><b>Reviewable actions</b><small>Agent changes can require approval and leave an audit trail.</small></span></div></section>
 
-    <section id="pricing" className={`${classes.section} ${classes.pricingSection}`}><Heading label="PRICING" title="Start with the workflow you need today." text="Choose a public plan below. You can review plan limits inside the product before upgrading."/><div className={classes.pricingGrid}>{plans.length ? plans.map((plan)=>{ const featured = plan.badge.trim().length > 0; const planHref = isAuthenticated ? `/app/billing?plan=${encodeURIComponent(plan.id)}` : `/signup?plan=${encodeURIComponent(plan.id)}`; return <article key={plan.id} className={featured?classes.featuredPlan:classes.planCard}>{featured&&<span className={classes.planBadge}>{plan.badge}</span>}<span className={classes.planType}>{plan.isFree?"Free forever":"For growing teams"}</span><h3>{plan.name}</h3><div className={classes.price}>{plan.isFree?"Free":plan.usdMonthlyCents==null?"—":formatUsdFromCents(plan.usdMonthlyCents)}{!plan.isFree&&plan.usdMonthlyCents!=null&&<small>/ month</small>}</div><p>{plan.quotas.seats < 0 ? "Unlimited seats" : `${plan.quotas.seats} workspace seat${plan.quotas.seats===1?"":"s"} included.`}</p><ul>{planHighlights(plan).map((line)=><li key={line}><Check size={16}/> {line}</li>)}</ul><Link href={planHref} className={featured?classes.primaryButtonWide:classes.secondaryButtonWide}>Choose {plan.name}</Link></article>}) : <article className={classes.pricingFallback}><span className={classes.planType}>PLANS TEMPORARILY UNAVAILABLE</span><h3>Start with a Bizcraw workspace</h3><p>Current plan details could not be loaded. Create an account to review availability when the connection returns.</p><Link href={startHref} className={classes.primaryButtonWide}>{isAuthenticated ? "Open workspace" : "Create account"}</Link></article>}</div></section>
+    <section id="pricing" className={`${classes.section} ${classes.pricingSection}`}><Heading label="PRICING" title="Start with the workflow you need today." text="Choose a public plan below. You can review plan limits inside the product before upgrading."/><div className={classes.pricingGrid}>{plans.length ? plans.map((plan)=>{ const featured = plan.badge.trim().length > 0; const planHref = `/signup?plan=${encodeURIComponent(plan.id)}`; return <article key={plan.id} className={featured?classes.featuredPlan:classes.planCard}>{featured&&<span className={classes.planBadge}>{plan.badge}</span>}<span className={classes.planType}>{plan.isFree?"Free forever":"For growing teams"}</span><h3>{plan.name}</h3><div className={classes.price}>{plan.isFree?"Free":plan.usdMonthlyCents==null?"—":formatUsdFromCents(plan.usdMonthlyCents)}{!plan.isFree&&plan.usdMonthlyCents!=null&&<small>/ month</small>}</div><p>{plan.quotas.seats < 0 ? "Unlimited seats" : `${plan.quotas.seats} workspace seat${plan.quotas.seats===1?"":"s"} included.`}</p><ul>{planHighlights(plan).map((line)=><li key={line}><Check size={16}/> {line}</li>)}</ul><Link href={planHref} className={featured?classes.primaryButtonWide:classes.secondaryButtonWide}>Choose {plan.name}</Link></article>}) : <article className={classes.pricingFallback}><span className={classes.planType}>PLANS TEMPORARILY UNAVAILABLE</span><h3>Start with a Bizcraw workspace</h3><p>Current plan details could not be loaded. Create an account to review availability when the connection returns.</p><Link href={startHref} className={classes.primaryButtonWide}>Create account</Link></article>}</div><p style={{textAlign:"center",marginTop:24}}><Link href="/pricing">Compare full plan details</Link></p></section>
 
     <section className={classes.faqSection}>
       <div className={classes.faqHeading}>
@@ -106,8 +100,8 @@ export default async function LandingPage() {
         ))}
       </div>
     </section>
-    <section className={classes.finalCta}><div><span><Sparkles size={16}/> Your sales workspace is ready</span><h2>Give your team one place to find, understand and act on every opportunity.</h2><p>Create a workspace and start organizing your sales process today.</p><Link href={startHref} className={classes.lightButtonLarge}>{isAuthenticated ? "Open workspace" : "Start free"} <ArrowRight size={18}/></Link></div></section>
-    <footer className={classes.footer}><div className={classes.footerBrand}><AppLogo tagline/><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div><div><b>Product</b><a href="#platform">Platform</a><a href="#agent">AI agent</a><a href="#pricing">Pricing</a></div><div><b>Access</b><Link href={isAuthenticated ? "/app" : "/login"}>{isAuthenticated ? "Open app" : "Sign in"}</Link>{!isAuthenticated ? <Link href="/signup">Create account</Link> : null}</div><div className={classes.footerMeta}><span>© {new Date().getFullYear()} Bizcraw</span><span>Built for focused sales teams.</span></div></footer>
+    <section className={classes.finalCta}><div><span><Sparkles size={16}/> Your sales workspace is ready</span><h2>Give your team one place to find, understand and act on every opportunity.</h2><p>Create a workspace and start organizing your sales process today.</p><Link href={startHref} className={classes.lightButtonLarge}>Start free <ArrowRight size={18}/></Link></div></section>
+    <footer className={classes.footer}><div className={classes.footerBrand}><AppLogo tagline/><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div><div><b>Scraping</b><Link href="/web-scraping">Web scraping</Link><Link href="/web-scraping-for-lead-generation">Lead generation</Link><Link href="/google-maps-lead-scraper">Google Maps workflow</Link><Link href="/features/data-library">Data library</Link></div><div><b>Product</b><Link href="/features/scraping">Scraping runs</Link><Link href="/features/ai-sales-agent">AI agent</Link><Link href="/integrations/apify">Apify integration</Link><Link href="/pricing">Pricing</Link><Link href="/login">Sign in</Link></div><div className={classes.footerMeta}><span>© {new Date().getFullYear()} Bizcraw</span><span>Built for focused sales teams.</span></div></footer>
   </main></LandingMotion>;
 }
 
@@ -118,46 +112,3 @@ function ScrapeVisual(){return <ProductScreenshot src="/landing/bizcraw-scrape-r
 function CrmVisual(){return <ProductScreenshot src="/landing/bizcraw-crm-companies.png" alt="Bizcraw CRM showing real English demo companies, industries and lead sources" label="Connected CRM"/>}
 function QuoteVisual(){return <ProductScreenshot src="/landing/bizcraw-quotes.png" alt="Bizcraw quotes workspace showing real quote statuses, clients and values" label="Quotes workspace"/>}
 function ProductScreenshot({src,alt,label}:{src:string;alt:string;label:string}){return <figure className={classes.productScreenshot}><div className={classes.screenshotBar}><span/><span/><span/><b>{label}</b></div><Image src={src} alt={alt} width={1050} height={650} sizes="(max-width: 900px) 100vw, 650px"/></figure>}
-
-function quotaLabel(limit: number, counted: string, unlimited: string) {
-  return limit < 0 ? unlimited : counted;
-}
-
-function planHighlights(plan: ParsedPlan) {
-  const lines = [
-    quotaLabel(plan.quotas.quotes_per_month, `${plan.quotas.quotes_per_month} quotes per month`, "Unlimited quotes"),
-    quotaLabel(plan.quotas.ai_briefs_per_month, `${plan.quotas.ai_briefs_per_month} AI actions per month`, "Unlimited AI actions"),
-  ];
-  const optionalQuotas: Array<[number, string, string]> = [
-  ];
-  for (const [limit, counted, unlimited] of optionalQuotas) {
-    if (limit !== 0) lines.push(quotaLabel(limit, counted, unlimited));
-  }
-  const features: Array<[boolean, string]> = [
-    [plan.features.lead_scrape, "Lead scraping"],
-    [plan.features.byok_ai, "Bring your own AI key"],
-    [plan.features.export_docx, "Document export"],
-    [plan.features.contracts, "Contracts"],
-    [plan.features.custom_branding, "Custom branding"],
-    [plan.features.mcp_access, "MCP access"],
-  ];
-  for (const [enabled, label] of features) if (enabled) lines.push(label);
-  return lines;
-}
-
-async function loadPublicPlans() {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.from("plans").select("*").eq("is_public", true).order("sort_order");
-    if (error || !data) return [];
-    const ids = data.map((row) => row.id);
-    const { data: prices } = ids.length
-      ? await supabase.from("billing_provider_prices").select("plan_id, amount").in("plan_id", ids).eq("active", true).eq("billing_interval", "monthly").eq("currency", "USD")
-      : { data: [] };
-    const monthlyCents = new Map<string, number>();
-    for (const price of prices || []) if (!monthlyCents.has(price.plan_id)) monthlyCents.set(price.plan_id, price.amount);
-    return data.map((row) => ({ ...parsePlan(row), usdMonthlyCents: monthlyCents.get(row.id) ?? null }));
-  } catch {
-    return [];
-  }
-}
