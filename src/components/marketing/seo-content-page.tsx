@@ -8,6 +8,7 @@ import { SITE_URL } from "@/lib/seo";
 import styles from "@/styles/seo-page.module.css";
 
 export function SeoContentPage({ page }: { page: SeoPageContent }) {
+  const breadcrumbItems = breadcrumbs(page.path);
   const faqSchema = {
     "@type": "FAQPage",
     mainEntity: page.faq.map(([question, answer]) => ({
@@ -20,7 +21,7 @@ export function SeoContentPage({ page }: { page: SeoPageContent }) {
     "@context": "https://schema.org",
     "@graph": [
       { "@type": "WebPage", name: page.title, description: page.description, url: `${SITE_URL}${page.path}`, isPartOf: { "@id": `${SITE_URL}/#website` } },
-      { "@type": "BreadcrumbList", itemListElement: breadcrumbs(page.path).map((item, index) => ({ "@type": "ListItem", position: index + 1, name: item.name, item: `${SITE_URL}${item.path}` })) },
+      { "@type": "BreadcrumbList", itemListElement: breadcrumbItems.map((item, index) => ({ "@type": "ListItem", position: index + 1, name: item.name, item: `${SITE_URL}${item.path}` })) },
       faqSchema,
     ],
   };
@@ -30,6 +31,7 @@ export function SeoContentPage({ page }: { page: SeoPageContent }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} />
       <MarketingHeader />
       <main>
+        <nav className={styles.breadcrumb} aria-label="Breadcrumb">{breadcrumbItems.map((item, index) => index === breadcrumbItems.length - 1 ? <span key={item.path} aria-current="page">{item.name}</span> : <span className={styles.breadcrumbStep} key={item.path}><Link href={item.path}>{item.name}</Link><i aria-hidden="true">/</i></span>)}</nav>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <span className={styles.eyebrow}>{page.eyebrow}</span>
@@ -70,12 +72,13 @@ export function SeoContentPage({ page }: { page: SeoPageContent }) {
 }
 
 function breadcrumbs(path: string) {
+  const labels: Record<string, string> = { features: "Features", guides: "Guides", integrations: "Integrations" };
   const parts = path.split("/").filter(Boolean);
   const items = [{ name: "Home", path: "/" }];
   let current = "";
   for (const part of parts) {
     current += `/${part}`;
-    items.push({ name: part.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" "), path: current });
+    items.push({ name: labels[part] ?? part.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" "), path: current });
   }
   return items;
 }

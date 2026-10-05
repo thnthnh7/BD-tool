@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { MarketingFooter, MarketingHeader } from "@/components/marketing/marketing-shell";
 import { PublicPricingGrid } from "@/components/marketing/public-pricing-grid";
-import { createPublicMetadata } from "@/lib/seo";
+import { createPublicMetadata, SITE_URL } from "@/lib/seo";
 import styles from "@/styles/seo-page.module.css";
 
 export const metadata: Metadata = createPublicMetadata({
@@ -14,8 +14,16 @@ export const metadata: Metadata = createPublicMetadata({
 
 export default function PricingPage() {
   return <div className={styles.page}>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@graph": [
+      { "@type": "WebPage", name: "Bizcraw Pricing", description: metadata.description, url: `${SITE_URL}/pricing`, isPartOf: { "@id": `${SITE_URL}/#website` } },
+      { "@type": "BreadcrumbList", itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+        { "@type": "ListItem", position: 2, name: "Pricing", item: `${SITE_URL}/pricing` },
+      ] },
+    ] }).replace(/</g, "\\u003c") }} />
     <MarketingHeader />
     <main>
+      <nav className={styles.breadcrumb} aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">Pricing</span></nav>
       <section className={styles.hero} style={{ gridTemplateColumns: "1fr", textAlign: "center", paddingBottom: 48 }}>
         <div className={styles.heroCopy} style={{ maxWidth: 820, margin: "auto" }}>
           <span className={styles.eyebrow}>PRICING</span>

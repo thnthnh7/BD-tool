@@ -32,8 +32,8 @@ export const metadata: Metadata = {
 };
 
 const jsonLd = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Bizcraw", url: siteUrl, logo: `${siteUrl}/brand/bizcraw-logo.png` },
-  { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: siteUrl, name: "Bizcraw", publisher: { "@id": `${siteUrl}/#organization` } },
+  { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Bizcraw", url: siteUrl, logo: `${siteUrl}/brand/bizcraw-logo.png`, contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: "support@bizcraw.com", url: `${siteUrl}/contact` } },
+  { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: `${siteUrl}/`, name: "Bizcraw", alternateName: ["Bizcraw", "bizcraw.com"], publisher: { "@id": `${siteUrl}/#organization` } },
   { "@type": "SoftwareApplication", name: "Bizcraw", applicationCategory: "BusinessApplication", operatingSystem: "Web", description, url: siteUrl, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
   { "@type": "FAQPage", mainEntity: faqs.map(([question, answer]) => ({ "@type": "Question", name: question, acceptedAnswer: { "@type": "Answer", text: answer } })) },
 ] };
@@ -45,7 +45,7 @@ export default async function LandingPage() {
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
     <header className={classes.header}><div className={classes.navShell}>
       <Link href="/" aria-label="Bizcraw home" className={classes.logoLink}><AppLogo tagline /></Link>
-      <nav className={classes.navLinks} aria-label="Primary navigation"><Link href="/features/scraping">Scraping</Link><Link href="/web-scraping-for-lead-generation">Lead generation</Link><Link href="/integrations/apify">Apify</Link><Link href="/pricing">Pricing</Link></nav>
+      <nav className={classes.navLinks} aria-label="Primary navigation"><Link href="/features">Product</Link><Link href="/solutions">Solutions</Link><Link href="/guides">Guides</Link><Link href="/integrations">Integrations</Link><Link href="/pricing">Pricing</Link></nav>
       <div className={classes.navActions}><Link href="/login" className={classes.textButton}>Sign in</Link><Link href={startHref} className={classes.primaryButton}>Start free <ArrowRight size={16} /></Link></div>
     </div></header>
 
@@ -101,7 +101,7 @@ export default async function LandingPage() {
       </div>
     </section>
     <section className={classes.finalCta}><div><span><Sparkles size={16}/> Your sales workspace is ready</span><h2>Give your team one place to find, understand and act on every opportunity.</h2><p>Create a workspace and start organizing your sales process today.</p><Link href={startHref} className={classes.lightButtonLarge}>Start free <ArrowRight size={18}/></Link></div></section>
-    <footer className={classes.footer}><div className={classes.footerBrand}><AppLogo tagline/><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div><div><b>Scraping</b><Link href="/web-scraping">Web scraping</Link><Link href="/web-scraping-for-lead-generation">Lead generation</Link><Link href="/google-maps-lead-scraper">Google Maps workflow</Link><Link href="/features/data-library">Data library</Link></div><div><b>Product</b><Link href="/features/scraping">Scraping runs</Link><Link href="/features/ai-sales-agent">AI agent</Link><Link href="/integrations/apify">Apify integration</Link><Link href="/pricing">Pricing</Link><Link href="/login">Sign in</Link></div><div className={classes.footerMeta}><span>© {new Date().getFullYear()} Bizcraw</span><span>Built for focused sales teams.</span></div></footer>
+    <footer className={classes.footer}><div className={classes.footerBrand}><AppLogo tagline/><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div><div><b>Product</b><Link href="/features">All features</Link><Link href="/features/scraping">Scraping runs</Link><Link href="/features/data-library">Data library</Link><Link href="/features/ai-sales-agent">AI sales agent</Link><Link href="/pricing">Pricing</Link></div><div><b>Solutions</b><Link href="/solutions">All solutions</Link><Link href="/web-scraping">Web scraping</Link><Link href="/web-scraping-for-lead-generation">Lead generation</Link><Link href="/google-maps-lead-scraper">Google Maps leads</Link><Link href="/data-to-crm">Data to CRM</Link></div><div><b>Resources</b><Link href="/guides">All guides</Link><Link href="/guides/how-to-build-a-prospect-list-with-web-scraping">Prospect list guide</Link><Link href="/integrations">Integrations</Link><Link href="/integrations/apify">Apify</Link></div><div><b>Company</b><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/security">Security</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div><div className={classes.footerMeta}><span>© {new Date().getFullYear()} Bizcraw</span><span><Link href="/login">Sign in</Link> · Built for focused sales teams.</span></div></footer>
   </main></LandingMotion>;
 }
 
