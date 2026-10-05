@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 const jsonLd = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Bizcraw", url: siteUrl, logo: `${siteUrl}/brand/bizcraw-logo.png`, contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: "support@bizcraw.com", url: `${siteUrl}/contact` } },
+  { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Bizcraw", url: siteUrl, logo: `${siteUrl}/brand/bizcraw-logo.png` },
   { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: `${siteUrl}/`, name: "Bizcraw", alternateName: ["Bizcraw", "bizcraw.com"], publisher: { "@id": `${siteUrl}/#organization` } },
   { "@type": "SoftwareApplication", name: "Bizcraw", applicationCategory: "BusinessApplication", operatingSystem: "Web", description, url: siteUrl, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
   { "@type": "FAQPage", mainEntity: faqs.map(([question, answer]) => ({ "@type": "Question", name: question, acceptedAnswer: { "@type": "Answer", text: answer } })) },

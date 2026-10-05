@@ -111,11 +111,11 @@ export const marketingInfoPages: Record<string, MarketingInfoContent> = {
     eyebrow: "CONTACT",
     title: "Talk to the Bizcraw team.",
     description: "Contact Bizcraw for product questions, workspace support, partnerships, privacy requests or security reports.",
-    intro: "Tell us what you are trying to collect, organize or automate. Include enough workspace context for us to route the request without sending passwords, API keys or sensitive customer data.",
+    intro: "Business email support is being prepared. This page explains what to include once the direct support channel is available; never send passwords, API keys or sensitive customer data.",
     sections: [
       { title: "Product and sales questions", paragraphs: ["Ask about supported scraping workflows, workspace plans, CRM operations or whether Bizcraw fits a specific sales research process."], bullets: ["Use case and target market", "Expected data source", "Team size and workflow"] },
-      { title: "Account and technical support", paragraphs: ["Existing users should include their workspace name, the affected page and the approximate time an issue occurred. Never send account passwords or provider API keys."] },
-      { title: "Privacy and security", paragraphs: ["Use the same contact channel for privacy requests or responsible security reports. Describe the affected area and avoid including live customer data in the first message."] },
+      { title: "Account and technical support", paragraphs: ["When the support channel is available, existing users should include their workspace name, the affected page and the approximate time an issue occurred. Never send account passwords or provider API keys."] },
+      { title: "Privacy and security", paragraphs: ["The direct channel for privacy requests and responsible security reports will be published on this page. Describe the affected area and avoid including live customer data in the first message."] },
     ],
   },
   security: {
@@ -143,8 +143,8 @@ export const marketingInfoPages: Record<string, MarketingInfoContent> = {
       { title: "Information you provide", paragraphs: ["Bizcraw processes account details, workspace settings, business records, uploaded files and content that users choose to create or import. Connected providers may also return data requested by a workspace user."], bullets: ["Account and workspace profile information", "CRM, scraping and document content", "Integration configuration and provider identifiers", "Support requests and operational logs"] },
       { title: "How information is used", paragraphs: ["Information is used to authenticate users, provide workspace features, run requested integrations, secure the service, diagnose failures and administer plans and usage limits."] },
       { title: "Service providers", paragraphs: ["Bizcraw relies on infrastructure, authentication, email, payment, scraping and AI providers where required by the feature a user chooses. A connected provider may process information under its own terms and account configuration."] },
-      { title: "Retention and deletion", paragraphs: ["Information is retained while needed to provide the service, secure operations and meet applicable obligations. Retention periods can vary by data type and feature. Workspace owners may request export or deletion assistance through the contact page."], bullets: ["Remove unneeded provider connections", "Avoid uploading unnecessary personal data", "Contact Bizcraw for access, export or deletion requests"] },
-      { title: "Updates and contact", paragraphs: ["This notice may change as Bizcraw adds features or providers. Material updates will be reflected by the date on this page. Privacy questions can be submitted through the Bizcraw contact page."] },
+      { title: "Retention and deletion", paragraphs: ["Information is retained while needed to provide the service, secure operations and meet applicable obligations. Retention periods can vary by data type and feature. The contact page will list the current request channel when it becomes available."], bullets: ["Remove unneeded provider connections", "Avoid uploading unnecessary personal data", "Review the contact page for access, export or deletion request information"] },
+      { title: "Updates and contact", paragraphs: ["This notice may change as Bizcraw adds features or providers. Material updates will be reflected by the date on this page. The Bizcraw contact page will publish the current privacy request channel."] },
     ],
   },
   terms: {
@@ -159,8 +159,8 @@ export const marketingInfoPages: Record<string, MarketingInfoContent> = {
       { title: "Acceptable use", paragraphs: ["Use Bizcraw only for lawful purposes and only with data you are permitted to collect, upload, process or contact."], bullets: ["Do not bypass access controls or technical restrictions", "Do not collect or use data in violation of applicable law or third-party rights", "Do not upload malware, secrets belonging to others or unlawful content", "Do not use the service to send abusive, deceptive or unsolicited communications"] },
       { title: "Scraping and third-party services", paragraphs: ["You are responsible for selecting data sources and configuring collection in accordance with applicable websites, providers and laws. Third-party services such as scraping, CRM, payment and AI providers are also governed by their own terms and availability."] },
       { title: "Plans, usage and availability", paragraphs: ["Plans can control seats, modules and usage limits. Paid features, billing providers and prices are shown before purchase. Features may change as the product develops, and uninterrupted availability is not guaranteed."] },
-      { title: "Suspension and termination", paragraphs: ["Access may be limited or suspended to protect users, respond to abuse, enforce plan limits or comply with legal obligations. You may stop using Bizcraw and request account assistance through the contact page."] },
-      { title: "Updates and contact", paragraphs: ["These terms may be updated as the service changes. The latest version and effective date will remain available on this page. Questions can be submitted through the Bizcraw contact page."] },
+      { title: "Suspension and termination", paragraphs: ["Access may be limited or suspended to protect users, respond to abuse, enforce plan limits or comply with legal obligations. You may stop using Bizcraw; the contact page will list the current account-assistance channel when it becomes available."] },
+      { title: "Updates and contact", paragraphs: ["These terms may be updated as the service changes. The latest version and effective date will remain available on this page. The Bizcraw contact page will publish the current channel for questions."] },
     ],
   },
 };

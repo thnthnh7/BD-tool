@@ -44,6 +44,7 @@ export function MarketingHubPage({ page }: { page: MarketingHubContent }) {
 }
 
 export function MarketingInfoPage({ page }: { page: MarketingInfoContent }) {
+  const isContactPage = page.path === "/contact";
   const schema = { "@context": "https://schema.org", "@graph": [
     { "@type": "WebPage", name: page.title, description: page.description, url: `${SITE_URL}${page.path}`, isPartOf: { "@id": `${SITE_URL}/#website` } },
     { "@type": "BreadcrumbList", itemListElement: [
@@ -62,7 +63,7 @@ export function MarketingInfoPage({ page }: { page: MarketingInfoContent }) {
         <aside><b>On this page</b>{page.sections.map((section, index) => <a href={`#section-${index + 1}`} key={section.title}>{section.title}</a>)}</aside>
         <article>{page.sections.map((section, index) => <section id={`section-${index + 1}`} key={section.title}><span>{String(index + 1).padStart(2, "0")}</span><h2>{section.title}</h2>{section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}{section.bullets ? <ul>{section.bullets.map((item) => <li key={item}><Check size={17} />{item}</li>)}</ul> : null}</section>)}</article>
       </div>
-      <section className={styles.infoCta}><div><span className={styles.eyebrow}>NEXT STEP</span><h2>{page.path === "/contact" ? "Send your request to the Bizcraw team." : "Need help with a workspace or policy question?"}</h2><p>{page.path === "/contact" ? <>Email <a href="mailto:support@bizcraw.com">support@bizcraw.com</a> with the relevant request details above.</> : <>Open the contact page for support, privacy and security request details.</>}</p></div><Link href={page.path === "/contact" ? "mailto:support@bizcraw.com" : "/contact"} className={styles.primaryButtonLarge}>{page.path === "/contact" ? "Email support" : "Contact Bizcraw"}<ArrowRight size={18} /></Link></section>
+      <section className={styles.infoCta}><div><span className={styles.eyebrow}>NEXT STEP</span><h2>{isContactPage ? "Business email support is being prepared." : "Need help with a workspace or policy question?"}</h2><p>{isContactPage ? "Existing users can sign in and continue working from their workspace. A direct support channel will be published here when it is ready." : "Open the contact page for the latest support, privacy and security request information."}</p></div><Link href={isContactPage ? "/login" : "/contact"} className={styles.primaryButtonLarge}>{isContactPage ? "Sign in" : "Contact Bizcraw"}<ArrowRight size={18} /></Link></section>
     </main>
     <MarketingFooter />
   </div>;
