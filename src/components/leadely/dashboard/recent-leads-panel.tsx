@@ -45,7 +45,7 @@ export function RecentLeadsPanel({ leads, title = "Recent Leads" }: { leads: Das
               <TableTr>
                 <TableTh>Name</TableTh>
                 <TableTh>Company</TableTh>
-                <TableTh>Status</TableTh>
+                <TableTh style={{ whiteSpace: "nowrap" }}>Status</TableTh>
                 <TableTh style={{ whiteSpace: "nowrap" }}>Last activity</TableTh>
                 <TableTh w={36} />
               </TableTr>
@@ -78,7 +78,7 @@ export function RecentLeadsPanel({ leads, title = "Recent Leads" }: { leads: Das
                       </Text>
                     </Group>
                   </TableTd>
-                  <TableTd>
+                  <TableTd style={{ whiteSpace: "nowrap" }}>
                     <Badge color={STATUS_COLOR[lead.status] || "gray"} variant="light" title={titleCase(lead.source || "manual")}>
                       {titleCase(lead.status)}
                     </Badge>

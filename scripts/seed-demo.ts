@@ -82,6 +82,15 @@ function publicId() {
 }
 
 async function findOrCreateUser(admin: SupabaseClient) {
+  const { data: existingProfile } = await admin.from("profiles").select("id").eq("email", DEMO_EMAIL).maybeSingle();
+  if (existingProfile?.id) {
+    await admin.from("profiles").update({ display_name: "Bizcraw Demo" }).eq("id", existingProfile.id);
+    await admin.auth.admin.updateUserById(existingProfile.id, { user_metadata: { display_name: "Bizcraw Demo" } });
+    return existingProfile.id;
+  }
+
+  demoPassword = requireEnv("DEMO_PASSWORD");
+  if (demoPassword.length < 12) throw new Error("DEMO_PASSWORD must contain at least 12 characters.");
   const created = await admin.auth.admin.createUser({
     email: DEMO_EMAIL,
     password: demoPassword,
@@ -90,16 +99,7 @@ async function findOrCreateUser(admin: SupabaseClient) {
   });
   if (created.data.user) return created.data.user.id;
 
-  const { data: profile } = await admin.from("profiles").select("id").eq("email", DEMO_EMAIL).maybeSingle();
-  if (!profile?.id) {
-    throw new Error(created.error?.message || "Could not create or find demo user.");
-  }
-  const updated = await admin.auth.admin.updateUserById(profile.id, {
-    password: demoPassword,
-    email_confirm: true,
-  });
-  if (updated.error) throw new Error(`Reset demo password: ${updated.error.message}`);
-  return profile.id;
+  throw new Error(created.error?.message || "Could not create demo user.");
 }
 
 async function findOrCreateWorkspace(admin: SupabaseClient, userId: string) {
@@ -138,20 +138,20 @@ async function findOrCreateWorkspace(admin: SupabaseClient, userId: string) {
   );
   await admin.from("workspace_settings").insert({
     workspace_id: workspaceId,
-    company_name: "CÔNG TY TNHH CAP SAINT JACQUES TEK",
+    company_name: "Bizcraw Demo Inc.",
     short_name: "CJTEK",
     tax_code: "0319520814",
-    address: "Tầng 1, Số 207A Nguyễn Văn Thủ, Phường Tân Định, TP. Hồ Chí Minh",
+    address: "100 Market Street, San Francisco, CA",
     email: DEMO_EMAIL,
     phone: "02873000000",
-    website: "https://cjtek.vn",
+    website: "https://bizcraw.com",
     logo_path: "/brand/logo.jpg",
     accent_color: "#2FF29E",
     about: "Demo workspace with seeded CRM and quote data.",
-    legal_representative: "TRẦN THIÊN PHƯỚC",
-    legal_representative_title: "Giám đốc",
-    bank_account_name: "CÔNG TY TNHH CAP SAINT JACQUES TEK",
-    contract_number_prefix: "HDDV-DEMO",
+    legal_representative: "Alex Morgan",
+    legal_representative_title: "Director",
+    bank_account_name: "Bizcraw Demo Inc.",
+    contract_number_prefix: "DEMO",
   });
   const templates = await must("Load module templates", admin.from("module_templates").select("*").order("sort_order"));
   if (templates?.length) {
@@ -229,25 +229,25 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
   };
 
   const firms = [
-    { id: crypto.randomUUID(), name: "Nova Retail", industry: "F&B", email: "hello@novaretail.vn", phone: "02871001001", domain: "novaretail.vn", lifecycle: "active_opportunity", source: "maps" },
-    { id: crypto.randomUUID(), name: "Mekong Logistics", industry: "Logistics", email: "bd@mekonglog.vn", phone: "02871001002", domain: "mekonglog.vn", lifecycle: "active_opportunity", source: "referral" },
-    { id: crypto.randomUUID(), name: "An Binh Clinic", industry: "Healthcare", email: "admin@anbinhclinic.vn", phone: "02871001003", domain: "anbinhclinic.vn", lifecycle: "prospect", source: "inbound" },
-    { id: crypto.randomUUID(), name: "Sài Gòn EdTech", industry: "Education", email: "partnerships@saigonedtech.vn", phone: "02871001004", domain: "saigonedtech.vn", lifecycle: "customer", source: "website" },
-    { id: crypto.randomUUID(), name: "Delta Manufacturing", industry: "Manufacturing", email: "it@delta-mfg.vn", phone: "02871001005", domain: "delta-mfg.vn", lifecycle: "prospect", source: "maps" },
-    { id: crypto.randomUUID(), name: "Harbor Hospitality", industry: "Hospitality", email: "gm@harborhotel.vn", phone: "02871001006", domain: "harborhotel.vn", lifecycle: "customer", source: "referral" },
-    { id: crypto.randomUUID(), name: "Phong Vũ Digital", industry: "Retail", email: "digital@phongvu.vn", phone: "02871001007", domain: "phongvu.vn", lifecycle: "inactive", source: "outbound" },
-    { id: crypto.randomUUID(), name: "GreenFarm Market", industry: "Agriculture", email: "ops@greenfarm.vn", phone: "02871001008", domain: "greenfarm.vn", lifecycle: "prospect", source: "maps" },
+    { id: crypto.randomUUID(), name: "Northstar Retail", industry: "F&B", email: "hello@northstar.example", phone: "02871001001", domain: "northstar.example", lifecycle: "active_opportunity", source: "maps" },
+    { id: crypto.randomUUID(), name: "Atlas Logistics", industry: "Logistics", email: "bd@atlaslogistics.example", phone: "02871001002", domain: "atlaslogistics.example", lifecycle: "active_opportunity", source: "referral" },
+    { id: crypto.randomUUID(), name: "BrightCare Health", industry: "Healthcare", email: "admin@brightcare.example", phone: "02871001003", domain: "brightcare.example", lifecycle: "prospect", source: "inbound" },
+    { id: crypto.randomUUID(), name: "Summit Learning", industry: "Education", email: "partnerships@summitlearning.example", phone: "02871001004", domain: "summitlearning.example", lifecycle: "customer", source: "website" },
+    { id: crypto.randomUUID(), name: "Forge Manufacturing", industry: "Manufacturing", email: "it@forge.example", phone: "02871001005", domain: "forge.example", lifecycle: "prospect", source: "maps" },
+    { id: crypto.randomUUID(), name: "Harbor Hotels", industry: "Hospitality", email: "gm@harborhotels.example", phone: "02871001006", domain: "harborhotels.example", lifecycle: "customer", source: "referral" },
+    { id: crypto.randomUUID(), name: "Orbit Commerce", industry: "Retail", email: "digital@orbitcommerce.example", phone: "02871001007", domain: "orbitcommerce.example", lifecycle: "inactive", source: "outbound" },
+    { id: crypto.randomUUID(), name: "Evergreen Foods", industry: "Agriculture", email: "ops@evergreenfoods.example", phone: "02871001008", domain: "evergreenfoods.example", lifecycle: "prospect", source: "maps" },
   ];
 
   const people = [
-    { id: crypto.randomUUID(), company: 0, first: "Lan", last: "Nguyễn", title: "Head of Digital", email: "lan.nguyen@novaretail.vn" },
-    { id: crypto.randomUUID(), company: 1, first: "Minh", last: "Trần", title: "COO", email: "minh.tran@mekonglog.vn" },
-    { id: crypto.randomUUID(), company: 2, first: "Hạnh", last: "Phạm", title: "Clinic Director", email: "hanh.pham@anbinhclinic.vn" },
-    { id: crypto.randomUUID(), company: 3, first: "Khoa", last: "Lê", title: "Founder", email: "khoa.le@saigonedtech.vn" },
-    { id: crypto.randomUUID(), company: 4, first: "Quang", last: "Võ", title: "IT Manager", email: "quang.vo@delta-mfg.vn" },
-    { id: crypto.randomUUID(), company: 5, first: "My", last: "Đặng", title: "General Manager", email: "my.dang@harborhotel.vn" },
-    { id: crypto.randomUUID(), company: 6, first: "Phúc", last: "Hoàng", title: "Marketing Lead", email: "phuc.hoang@phongvu.vn" },
-    { id: crypto.randomUUID(), company: 7, first: "Tâm", last: "Bùi", title: "Operations", email: "tam.bui@greenfarm.vn" },
+    { id: crypto.randomUUID(), company: 0, first: "Emily", last: "Carter", title: "Head of Digital", email: "lan.nguyen@northstar.example" },
+    { id: crypto.randomUUID(), company: 1, first: "Daniel", last: "Brooks", title: "COO", email: "minh.tran@atlaslogistics.example" },
+    { id: crypto.randomUUID(), company: 2, first: "Sophia", last: "Lee", title: "Clinic Director", email: "hanh.pham@brightcare.example" },
+    { id: crypto.randomUUID(), company: 3, first: "James", last: "Wilson", title: "Founder", email: "khoa.le@summitlearning.example" },
+    { id: crypto.randomUUID(), company: 4, first: "Michael", last: "Chen", title: "IT Manager", email: "quang.vo@forge.example" },
+    { id: crypto.randomUUID(), company: 5, first: "Olivia", last: "Martin", title: "General Manager", email: "my.dang@harborhotels.example" },
+    { id: crypto.randomUUID(), company: 6, first: "Ethan", last: "Walker", title: "Marketing Lead", email: "phuc.hoang@orbitcommerce.example" },
+    { id: crypto.randomUUID(), company: 7, first: "Ava", last: "Thompson", title: "Operations", email: "tam.bui@evergreenfoods.example" },
   ];
 
   await must(
@@ -263,7 +263,7 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
         company_size: "51-200",
         phone: firm.phone,
         email: firm.email,
-        address: "TP. Hồ Chí Minh",
+        address: "San Francisco, CA",
         owner_user_id: userId,
         lifecycle_stage: firm.lifecycle,
         lead_source: firm.source,
@@ -329,14 +329,14 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
   await must("Insert leads", admin.from("leads").insert(leads));
 
   const dealPlan = [
-    { key: "nova", company: 0, contact: 0, title: "Nova Retail — POS + loyalty app", stage: "Proposal", amount: 180_000_000, close: 18, lead: 0 },
-    { key: "mekong", company: 1, contact: 1, title: "Mekong Logistics — dispatch portal", stage: "Negotiation", amount: 420_000_000, close: 12, lead: 1 },
-    { key: "anbinh", company: 2, contact: 2, title: "An Binh Clinic — patient CRM", stage: "Qualified", amount: 95_000_000, close: 25, lead: 2 },
-    { key: "edtech", company: 3, contact: 3, title: "Sài Gòn EdTech — LMS rollout", stage: "Won", amount: 260_000_000, close: -20, lead: 3 },
-    { key: "delta", company: 4, contact: 4, title: "Delta Manufacturing — internal MES UI", stage: "Contacted", amount: 70_000_000, close: 40, lead: 4 },
-    { key: "harbor", company: 5, contact: 5, title: "Harbor Hospitality — booking engine", stage: "Won", amount: 310_000_000, close: -8, lead: 5 },
-    { key: "phongvu", company: 6, contact: 6, title: "Phong Vũ — marketplace revamp", stage: "Lost", amount: 150_000_000, close: -5, lead: 6 },
-    { key: "green", company: 7, contact: 7, title: "GreenFarm — wholesale marketplace", stage: "Discovery", amount: 210_000_000, close: 30, lead: 7 },
+    { key: "nova", company: 0, contact: 0, title: "Northstar Retail — POS + loyalty app", stage: "Proposal", amount: 7_200, close: 18, lead: 0 },
+    { key: "mekong", company: 1, contact: 1, title: "Atlas Logistics — dispatch portal", stage: "Negotiation", amount: 16_800, close: 12, lead: 1 },
+    { key: "anbinh", company: 2, contact: 2, title: "BrightCare Health — patient CRM", stage: "Qualified", amount: 3_800, close: 25, lead: 2 },
+    { key: "edtech", company: 3, contact: 3, title: "Summit Learning — LMS rollout", stage: "Won", amount: 10_400, close: -20, lead: 3 },
+    { key: "delta", company: 4, contact: 4, title: "Forge Manufacturing — internal MES UI", stage: "Contacted", amount: 2_800, close: 40, lead: 4 },
+    { key: "harbor", company: 5, contact: 5, title: "Harbor Hotels — booking engine", stage: "Won", amount: 12_400, close: -8, lead: 5 },
+    { key: "phongvu", company: 6, contact: 6, title: "Orbit Commerce — marketplace revamp", stage: "Lost", amount: 6_000, close: -5, lead: 6 },
+    { key: "green", company: 7, contact: 7, title: "GreenFarm — wholesale marketplace", stage: "Discovery", amount: 8_400, close: 30, lead: 7 },
   ];
 
   const deals = dealPlan.map((row) => {
@@ -353,10 +353,10 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
       description: "Seeded demo opportunity.",
       deal_type: "sales",
       amount: row.amount,
-      currency: "VND",
+      currency: "USD",
       probability: pipe.probability,
       expected_close_date: dateDaysFromNow(row.close),
-      priority: row.amount >= 300_000_000 ? "high" : "medium",
+      priority: row.amount >= 12_000 ? "high" : "medium",
       source: firms[row.company].source,
       won_at: pipe.stage_type === "won" ? isoDaysFromNow(row.close) : null,
       lost_at: pipe.stage_type === "lost" ? isoDaysFromNow(row.close) : null,
@@ -388,11 +388,11 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
   );
 
   const quoteSpecs = [
-    { deal: 0, client: 0, title: "Nova Retail POS quote", status: "sent", v2: "sent" },
-    { deal: 1, client: 1, title: "Mekong Logistics portal quote", status: "sent", v2: "sent" },
-    { deal: 3, client: 3, title: "Sài Gòn EdTech LMS quote", status: "won", v2: "accepted" },
+    { deal: 0, client: 0, title: "Northstar Retail POS quote", status: "sent", v2: "sent" },
+    { deal: 1, client: 1, title: "Atlas Logistics portal quote", status: "sent", v2: "sent" },
+    { deal: 3, client: 3, title: "Summit Learning LMS quote", status: "won", v2: "accepted" },
     { deal: 5, client: 5, title: "Harbor booking engine quote", status: "won", v2: "accepted" },
-    { deal: 2, client: 2, title: "An Binh Clinic CRM draft", status: "draft", v2: "draft" },
+    { deal: 2, client: 2, title: "BrightCare Health CRM draft", status: "draft", v2: "draft" },
   ];
   await must(
     "Insert quotes",
@@ -408,9 +408,9 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
           project_type: "Web App",
           status: spec.status,
           quote_status_v2: spec.v2,
-          currency: "VND",
+          currency: "USD",
           items: [{ id: crypto.randomUUID(), name: deal.title, description: "Implementation package", qty: 1, unitPrice: deal.amount }],
-          deliverables: [{ id: crypto.randomUUID(), name: "MVP release", description: "Production-ready scope", priority: "Cao" }],
+          deliverables: [{ id: crypto.randomUUID(), name: "MVP release", description: "Production-ready scope", priority: "High" }],
           payment_milestones: [
             { id: crypto.randomUUID(), label: "Kickoff", description: "Start", percent: 50, trigger: "Contract signed" },
             { id: crypto.randomUUID(), label: "Handover", description: "Go-live", percent: 50, trigger: "Acceptance" },
@@ -420,7 +420,7 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
           project_overview: spec.title,
           timeline: "8–12 weeks",
           next_steps: "Review modules and confirm kickoff date.",
-          contract_number: `HDDV-DEMO-${spec.deal + 1}`,
+          contract_number: `DEMO-${spec.deal + 1}`,
           sent_at: spec.status === "draft" ? null : isoDaysFromNow(-6),
           accepted_at: spec.status === "won" ? isoDaysFromNow(-2) : null,
         };
@@ -431,10 +431,10 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
   await must(
     "Insert tasks",
     admin.from("tasks").insert([
-      { workspace_id: workspaceId, assigned_to: userId, deal_id: deals[0].id, company_id: firms[0].id, contact_id: people[0].id, type: "follow_up", title: "Follow up Nova Retail proposal", priority: "high", status: "open", due_at: isoDaysFromNow(0, 14, 30), created_by: userId },
-      { workspace_id: workspaceId, assigned_to: userId, deal_id: deals[1].id, company_id: firms[1].id, contact_id: people[1].id, type: "call", title: "Call Mekong COO on pricing", priority: "high", status: "open", due_at: isoDaysFromNow(0, 16, 0), created_by: userId },
+      { workspace_id: workspaceId, assigned_to: userId, deal_id: deals[0].id, company_id: firms[0].id, contact_id: people[0].id, type: "follow_up", title: "Follow up Northstar Retail proposal", priority: "high", status: "open", due_at: isoDaysFromNow(0, 14, 30), created_by: userId },
+      { workspace_id: workspaceId, assigned_to: userId, deal_id: deals[1].id, company_id: firms[1].id, contact_id: people[1].id, type: "call", title: "Call Atlas COO on pricing", priority: "high", status: "open", due_at: isoDaysFromNow(0, 16, 0), created_by: userId },
       { workspace_id: workspaceId, assigned_to: userId, deal_id: deals[7].id, company_id: firms[7].id, type: "review", title: "Prep GreenFarm discovery notes", priority: "medium", status: "open", due_at: isoDaysFromNow(0, 11, 0), created_by: userId },
-      { workspace_id: workspaceId, assigned_to: userId, deal_id: deals[2].id, company_id: firms[2].id, type: "email", title: "Send An Binh clinic case study", priority: "medium", status: "open", due_at: isoDaysFromNow(1, 9, 30), created_by: userId },
+      { workspace_id: workspaceId, assigned_to: userId, deal_id: deals[2].id, company_id: firms[2].id, type: "email", title: "Send BrightCare case study", priority: "medium", status: "open", due_at: isoDaysFromNow(1, 9, 30), created_by: userId },
       { workspace_id: workspaceId, assigned_to: userId, deal_id: deals[4].id, company_id: firms[4].id, type: "review", title: "Review Delta MES scope", priority: "low", status: "open", due_at: isoDaysFromNow(-1, 17, 0), created_by: userId },
     ]),
   );
@@ -442,9 +442,9 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
   await must(
     "Insert meetings",
     admin.from("meetings").insert([
-      { workspace_id: workspaceId, title: "Nova Retail proposal walkthrough", starts_at: isoDaysFromNow(0, 10, 0), ends_at: isoDaysFromNow(0, 11, 0), location: "Google Meet", company_id: firms[0].id, contact_id: people[0].id, deal_id: deals[0].id, owner_user_id: userId },
-      { workspace_id: workspaceId, title: "Mekong Logistics commercial review", starts_at: isoDaysFromNow(0, 15, 30), ends_at: isoDaysFromNow(0, 16, 30), location: "CJTEK office", company_id: firms[1].id, contact_id: people[1].id, deal_id: deals[1].id, owner_user_id: userId },
-      { workspace_id: workspaceId, title: "Harbor Hospitality kickoff", starts_at: isoDaysFromNow(2, 9, 0), ends_at: isoDaysFromNow(2, 10, 0), location: "Harbor Hotel Q1", company_id: firms[5].id, contact_id: people[5].id, deal_id: deals[5].id, owner_user_id: userId },
+      { workspace_id: workspaceId, title: "Northstar Retail proposal walkthrough", starts_at: isoDaysFromNow(0, 10, 0), ends_at: isoDaysFromNow(0, 11, 0), location: "Google Meet", company_id: firms[0].id, contact_id: people[0].id, deal_id: deals[0].id, owner_user_id: userId },
+      { workspace_id: workspaceId, title: "Atlas Logistics commercial review", starts_at: isoDaysFromNow(0, 15, 30), ends_at: isoDaysFromNow(0, 16, 30), location: "CJTEK office", company_id: firms[1].id, contact_id: people[1].id, deal_id: deals[1].id, owner_user_id: userId },
+      { workspace_id: workspaceId, title: "Harbor Hotels kickoff", starts_at: isoDaysFromNow(2, 9, 0), ends_at: isoDaysFromNow(2, 10, 0), location: "Harbor Hotel Q1", company_id: firms[5].id, contact_id: people[5].id, deal_id: deals[5].id, owner_user_id: userId },
       { workspace_id: workspaceId, title: "GreenFarm discovery workshop", starts_at: isoDaysFromNow(5, 13, 30), ends_at: isoDaysFromNow(5, 15, 0), location: "Zoom", company_id: firms[7].id, contact_id: people[7].id, deal_id: deals[7].id, owner_user_id: userId },
     ]),
   );
@@ -452,27 +452,27 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
   await must(
     "Insert contracts",
     admin.from("contracts").insert([
-      { workspace_id: workspaceId, deal_id: deals[3].id, company_id: firms[3].id, title: "Sài Gòn EdTech LMS contract", status: "signed", notes: "Signed after the LMS quote was accepted.", signed_at: isoDaysFromNow(-2) },
+      { workspace_id: workspaceId, deal_id: deals[3].id, company_id: firms[3].id, title: "Summit Learning LMS contract", status: "signed", notes: "Signed after the LMS quote was accepted.", signed_at: isoDaysFromNow(-2) },
       { workspace_id: workspaceId, deal_id: deals[5].id, company_id: firms[5].id, title: "Harbor booking engine contract", status: "sent", notes: "Waiting on the general manager to countersign." },
-      { workspace_id: workspaceId, deal_id: deals[0].id, company_id: firms[0].id, title: "Nova Retail POS contract", status: "draft", notes: "Draft from the POS proposal. Not sent yet." },
+      { workspace_id: workspaceId, deal_id: deals[0].id, company_id: firms[0].id, title: "Northstar Retail POS contract", status: "draft", notes: "Draft from the POS proposal. Not sent yet." },
     ]),
   );
 
   await must(
     "Insert communications",
     admin.from("communications").insert([
-      { workspace_id: workspaceId, provider: "manual", direction: "outbound", subject: "Nova POS proposal follow-up", body: "Gửi lại phạm vi POS và lịch walkthrough.", from_address: DEMO_EMAIL, to_address: people[0].email, company_id: firms[0].id, contact_id: people[0].id, deal_id: deals[0].id, occurred_at: isoDaysFromNow(-1, 9, 15) },
-      { workspace_id: workspaceId, provider: "manual", direction: "inbound", subject: "Re: Mekong pricing", body: "COO hỏi lại SLA và chi phí năm 2.", from_address: people[1].email, to_address: DEMO_EMAIL, company_id: firms[1].id, contact_id: people[1].id, deal_id: deals[1].id, occurred_at: isoDaysFromNow(0, 8, 40) },
-      { workspace_id: workspaceId, provider: "manual", direction: "outbound", subject: "An Binh clinic case study", body: "Case study phòng khám để chuẩn bị discovery.", from_address: DEMO_EMAIL, to_address: people[2].email, company_id: firms[2].id, contact_id: people[2].id, deal_id: deals[2].id, occurred_at: isoDaysFromNow(-3, 11, 0) },
-      { workspace_id: workspaceId, provider: "manual", direction: "outbound", subject: "Harbor kickoff agenda", body: "Agenda kickoff booking engine tuần sau.", from_address: DEMO_EMAIL, to_address: people[5].email, company_id: firms[5].id, contact_id: people[5].id, deal_id: deals[5].id, occurred_at: isoDaysFromNow(-2, 16, 20) },
+      { workspace_id: workspaceId, provider: "manual", direction: "outbound", subject: "Northstar POS proposal follow-up", body: "Resending the POS scope and proposed walkthrough times.", from_address: DEMO_EMAIL, to_address: people[0].email, company_id: firms[0].id, contact_id: people[0].id, deal_id: deals[0].id, occurred_at: isoDaysFromNow(-1, 9, 15) },
+      { workspace_id: workspaceId, provider: "manual", direction: "inbound", subject: "Re: Atlas pricing", body: "The COO asked for the SLA and second-year pricing.", from_address: people[1].email, to_address: DEMO_EMAIL, company_id: firms[1].id, contact_id: people[1].id, deal_id: deals[1].id, occurred_at: isoDaysFromNow(0, 8, 40) },
+      { workspace_id: workspaceId, provider: "manual", direction: "outbound", subject: "BrightCare case study", body: "Sharing a healthcare case study before discovery.", from_address: DEMO_EMAIL, to_address: people[2].email, company_id: firms[2].id, contact_id: people[2].id, deal_id: deals[2].id, occurred_at: isoDaysFromNow(-3, 11, 0) },
+      { workspace_id: workspaceId, provider: "manual", direction: "outbound", subject: "Harbor kickoff agenda", body: "Booking engine kickoff agenda for next week.", from_address: DEMO_EMAIL, to_address: people[5].email, company_id: firms[5].id, contact_id: people[5].id, deal_id: deals[5].id, occurred_at: isoDaysFromNow(-2, 16, 20) },
     ]),
   );
 
   const sequences = await must(
     "Insert sequences",
     admin.from("sequences").insert([
-      { workspace_id: workspaceId, name: "Retail proposal follow-up", description: "Ba chạm sau khi gửi proposal cho retail.", status: "active", owner_user_id: userId },
-      { workspace_id: workspaceId, name: "Clinic discovery nudge", description: "Nhắc lịch discovery cho phòng khám chưa phản hồi.", status: "paused", owner_user_id: userId },
+      { workspace_id: workspaceId, name: "Retail proposal follow-up", description: "Three touches after sending a retail proposal.", status: "active", owner_user_id: userId },
+      { workspace_id: workspaceId, name: "Clinic discovery nudge", description: "Nudge healthcare prospects that have not replied.", status: "paused", owner_user_id: userId },
     ]).select("id, name"),
   );
   const retailSequence = sequences?.find((item) => item.name.startsWith("Retail"));
@@ -482,10 +482,10 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
   await must(
     "Insert sequence steps",
     admin.from("sequence_steps").insert([
-      { workspace_id: workspaceId, sequence_id: retailSequence.id, position: 1, step_type: "email", delay_days: 0, subject: "Proposal recap", body: "Tóm tắt phạm vi POS và đề xuất lịch walkthrough." },
-      { workspace_id: workspaceId, sequence_id: retailSequence.id, position: 2, step_type: "wait", delay_days: 3, subject: "Wait 3 days", body: "Chờ phản hồi trước khi gọi." },
-      { workspace_id: workspaceId, sequence_id: retailSequence.id, position: 3, step_type: "task", delay_days: 3, subject: "Call the buyer", body: "Gọi decision maker nếu email recap chưa được trả lời." },
-      { workspace_id: workspaceId, sequence_id: clinicSequence.id, position: 1, step_type: "email", delay_days: 1, subject: "Clinic case study", body: "Gửi case study và đề xuất khung giờ discovery." },
+      { workspace_id: workspaceId, sequence_id: retailSequence.id, position: 1, step_type: "email", delay_days: 0, subject: "Proposal recap", body: "Summarize the POS scope and propose a walkthrough." },
+      { workspace_id: workspaceId, sequence_id: retailSequence.id, position: 2, step_type: "wait", delay_days: 3, subject: "Wait 3 days", body: "Wait for a reply before calling." },
+      { workspace_id: workspaceId, sequence_id: retailSequence.id, position: 3, step_type: "task", delay_days: 3, subject: "Call the buyer", body: "Call the decision maker if the recap is unanswered." },
+      { workspace_id: workspaceId, sequence_id: clinicSequence.id, position: 1, step_type: "email", delay_days: 1, subject: "Clinic case study", body: "Send a case study and propose discovery times." },
     ]),
   );
 
@@ -500,8 +500,8 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
   const lists = await must(
     "Insert lead lists",
     admin.from("lead_lists").insert([
-      { workspace_id: workspaceId, name: "Q3 F&B pipeline", description: "Retail và F&B đang ở proposal hoặc discovery.", source: "manual", status: "active", owner_user_id: userId },
-      { workspace_id: workspaceId, name: "Healthcare nurture", description: "Phòng khám cần nurture trước khi qualify.", source: "manual", status: "active", owner_user_id: userId },
+      { workspace_id: workspaceId, name: "Q3 F&B pipeline", description: "Retail and hospitality accounts in proposal or discovery.", source: "manual", status: "active", owner_user_id: userId },
+      { workspace_id: workspaceId, name: "Healthcare nurture", description: "Healthcare accounts that need nurturing before qualification.", source: "manual", status: "active", owner_user_id: userId },
     ]).select("id, name"),
   );
   const fnbList = lists?.find((item) => item.name.startsWith("Q3"));
@@ -520,29 +520,29 @@ async function seedCrm(admin: SupabaseClient, workspaceId: string, userId: strin
   const jobs = await must(
     "Insert scrape jobs",
     admin.from("lead_scrape_jobs").insert([
-      { workspace_id: workspaceId, created_by: userId, query: "quán cà phê specialty", location: "Quận 1, Hồ Chí Minh", language: "vi", max_results: 20, status: "succeeded", apify_actor_id: "demo", webhook_secret: randomBytes(8).toString("hex"), places_found: 2, places_imported: 0, people_found: 1, people_imported: 0, enrich_people: true, max_people_per_place: 3, pdpa_confirmed: true, finished_at: isoDaysFromNow(-1) },
-      { workspace_id: workspaceId, created_by: userId, query: "phòng khám đa khoa", location: "Quận 3, Hồ Chí Minh", language: "vi", max_results: 15, status: "running", apify_actor_id: "demo", webhook_secret: randomBytes(8).toString("hex"), places_found: 1, places_imported: 0, people_found: 0, people_imported: 0, enrich_people: true, max_people_per_place: 3, pdpa_confirmed: true, started_at: isoDaysFromNow(0, 9, 0) },
+      { workspace_id: workspaceId, created_by: userId, query: "specialty coffee shops", location: "Manhattan, New York", language: "en", max_results: 20, status: "succeeded", apify_actor_id: "demo", webhook_secret: randomBytes(8).toString("hex"), places_found: 2, places_imported: 0, people_found: 1, people_imported: 0, enrich_people: true, max_people_per_place: 3, pdpa_confirmed: true, finished_at: isoDaysFromNow(-1) },
+      { workspace_id: workspaceId, created_by: userId, query: "private healthcare clinics", location: "Brooklyn, New York", language: "en", max_results: 15, status: "running", apify_actor_id: "demo", webhook_secret: randomBytes(8).toString("hex"), places_found: 1, places_imported: 0, people_found: 0, people_imported: 0, enrich_people: true, max_people_per_place: 3, pdpa_confirmed: true, started_at: isoDaysFromNow(0, 9, 0) },
     ]).select("id, query"),
   );
-  const cafeJob = jobs?.find((item) => item.query.includes("cà phê"));
-  const clinicJob = jobs?.find((item) => item.query.includes("phòng khám"));
+  const cafeJob = jobs?.find((item) => item.query.includes("coffee"));
+  const clinicJob = jobs?.find((item) => item.query.includes("healthcare"));
   if (!cafeJob || !clinicJob) throw new Error("Scrape job seed did not return ids.");
 
   const places = await must(
     "Insert scrape results",
     admin.from("lead_scrape_results").insert([
-      { workspace_id: workspaceId, job_id: cafeJob.id, name: "The Workshop Coffee", category: "Cafe", address: "27 Ngô Đức Kế", city: "Hồ Chí Minh", phone: "02838221234", website: "https://theworkshop.vn", match_status: "new", selected: true, raw: {} },
-      { workspace_id: workspaceId, job_id: cafeJob.id, name: "Cà phê Ông Thọ", category: "Cafe", address: "12 Nguyễn Thiệp", city: "Hồ Chí Minh", phone: "02838229876", website: "https://ongtho.cafe", match_status: "new", selected: false, raw: {} },
-      { workspace_id: workspaceId, job_id: clinicJob.id, name: "Phòng khám Đa khoa Ánh Dương", category: "Clinic", address: "88 Võ Văn Tần", city: "Hồ Chí Minh", phone: "02839331234", website: "https://anhduong.clinic", match_status: "new", selected: true, raw: {} },
+      { workspace_id: workspaceId, job_id: cafeJob.id, name: "Juniper Coffee Roasters", category: "Cafe", address: "27 Spring Street", city: "New York", phone: "02838221234", website: "https://junipercoffee.example", match_status: "new", selected: true, raw: {} },
+      { workspace_id: workspaceId, job_id: cafeJob.id, name: "Cedar & Stone Cafe", category: "Cafe", address: "12 Mercer Street", city: "New York", phone: "02838229876", website: "https://cedarstone.example", match_status: "new", selected: false, raw: {} },
+      { workspace_id: workspaceId, job_id: clinicJob.id, name: "Brightline Medical Group", category: "Clinic", address: "88 Atlantic Avenue", city: "New York", phone: "02839331234", website: "https://brightline.example", match_status: "new", selected: true, raw: {} },
     ]).select("id, name"),
   );
-  const workshop = places?.find((item) => item.name.startsWith("The Workshop"));
+  const workshop = places?.find((item) => item.name.startsWith("Juniper Coffee"));
   if (!workshop) throw new Error("Scrape result seed did not return ids.");
 
   await must(
     "Insert scrape people",
     admin.from("lead_scrape_people").insert([
-      { workspace_id: workspaceId, result_id: workshop.id, full_name: "Mai Lê", job_title: "Store manager", email: "mai.le@theworkshop.vn", phone: "0903123456", match_status: "new", selected: true, raw: {} },
+      { workspace_id: workspaceId, result_id: workshop.id, full_name: "Sarah Miller", job_title: "Store manager", email: "sarah.miller@junipercoffee.example", phone: "0903123456", match_status: "new", selected: true, raw: {} },
     ]),
   );
 }
@@ -551,8 +551,6 @@ async function main() {
   loadEnv();
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const key = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
-  demoPassword = requireEnv("DEMO_PASSWORD");
-  if (demoPassword.length < 12) throw new Error("DEMO_PASSWORD must contain at least 12 characters.");
   const admin = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 
   const userId = await findOrCreateUser(admin);

@@ -14,6 +14,12 @@ export default async function OnboardingPage() {
 
   const supabase = await createClient();
   const { data: plans } = await supabase.from("plans").select("*").eq("is_public", true).order("sort_order");
+  const planIds = (plans || []).map((row) => row.id);
+  const { data: prices } = planIds.length
+    ? await supabase.from("billing_provider_prices").select("plan_id, amount").in("plan_id", planIds).eq("active", true).eq("billing_interval", "monthly").eq("currency", "USD")
+    : { data: [] };
+  const monthlyCents = new Map<string, number>();
+  for (const price of prices || []) if (!monthlyCents.has(price.plan_id)) monthlyCents.set(price.plan_id, price.amount);
 
   return (
     <Center mih="100vh" p="md">
@@ -34,7 +40,7 @@ export default async function OnboardingPage() {
               name: plan.name,
               badge: plan.badge,
               isFree: plan.isFree,
-              priceMonthly: plan.priceMonthly,
+              usdMonthlyCents: monthlyCents.get(plan.id) ?? null,
             };
           })}
         />

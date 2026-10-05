@@ -1,6 +1,6 @@
 import type { PlanStatus } from "@/lib/entitlements";
 
-const PLAN_STATUSES = new Set<PlanStatus>(["trialing", "active", "past_due", "expired", "canceled"]);
+const PLAN_STATUSES = new Set<PlanStatus>(["pending", "trialing", "active", "past_due", "suspended", "expired", "canceled"]);
 
 export function effectivePlanStatus(status: PlanStatus, deactivatedAt?: string | null): PlanStatus {
   return deactivatedAt ? "canceled" : status;

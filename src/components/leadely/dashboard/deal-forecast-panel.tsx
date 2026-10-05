@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Group, NativeSelect, Text } from "@mantine/core";
-import { formatVnd } from "@/lib/money";
+import { convertCurrency, DEAL_CURRENCIES, formatCurrency } from "@/lib/money";
 import { DashboardPanel } from "./dashboard-panel";
 import { inPeriod, PERIOD_OPTIONS } from "./period";
 import type { DashboardDealPoint, PeriodKey } from "./types";
@@ -43,19 +43,29 @@ function AreaChart({ values }: { values: number[] }) {
   );
 }
 
-export function DealForecastPanel({ deals }: { deals: DashboardDealPoint[] }) {
+export function DealForecastPanel({ deals, usdRates }: { deals: DashboardDealPoint[]; usdRates: Record<string, number> }) {
   const [period, setPeriod] = useState<PeriodKey>("month");
+  const currencies = [...DEAL_CURRENCIES];
+  const initialCurrency = deals[0]?.currency && currencies.includes(deals[0].currency as (typeof DEAL_CURRENCIES)[number]) ? deals[0].currency : "VND";
+  const [currency, setCurrency] = useState(initialCurrency);
+  const activeCurrency = currencies.includes(currency as (typeof DEAL_CURRENCIES)[number]) ? currency : "VND";
   const { projected, months, values } = useMemo(() => {
     const filtered = deals.filter((deal) => inPeriod(deal.date, period, deal.date));
-    const projectedValue = filtered.reduce((sum, deal) => sum + deal.amount * (deal.probability / 100), 0);
+    const projectedValue = filtered.reduce(
+      (sum, deal) => sum + convertCurrency(deal.amount, deal.currency, activeCurrency, usdRates) * (deal.probability / 100),
+      0,
+    );
     const buckets = lastSixMonths();
     const valuesByMonth = buckets.map((bucket) =>
       deals
         .filter((deal) => monthKey(new Date(deal.date)) === bucket.key)
-        .reduce((sum, deal) => sum + deal.amount * (deal.probability / 100), 0),
+        .reduce(
+          (sum, deal) => sum + convertCurrency(deal.amount, deal.currency, activeCurrency, usdRates) * (deal.probability / 100),
+          0,
+        ),
     );
     return { projected: projectedValue, months: buckets, values: valuesByMonth };
-  }, [deals, period]);
+  }, [activeCurrency, deals, period, usdRates]);
 
   return (
     <DashboardPanel
@@ -63,17 +73,20 @@ export function DealForecastPanel({ deals }: { deals: DashboardDealPoint[] }) {
       minHeight={300}
       className={classes.rowTable}
       action={
-        <NativeSelect
-          className={classes.period}
-          w={132}
-          data={PERIOD_OPTIONS}
-          value={period}
-          onChange={(event) => setPeriod(event.currentTarget.value as PeriodKey)}
-          aria-label="Forecast period"
-        />
+        <Group gap={6} wrap="nowrap">
+          <NativeSelect w={82} data={currencies} value={activeCurrency} onChange={(event) => setCurrency(event.currentTarget.value)} aria-label="Forecast currency" />
+          <NativeSelect
+            className={classes.period}
+            w={118}
+            data={PERIOD_OPTIONS}
+            value={period}
+            onChange={(event) => setPeriod(event.currentTarget.value as PeriodKey)}
+            aria-label="Forecast period"
+          />
+        </Group>
       }
     >
-      <Text className={classes.forecastValue}>{formatVnd(projected)}</Text>
+      <Text className={classes.forecastValue}>{formatCurrency(projected, activeCurrency)}</Text>
       <Text size="xs" c="dimmed" mb="sm">
         Weighted expected close
       </Text>

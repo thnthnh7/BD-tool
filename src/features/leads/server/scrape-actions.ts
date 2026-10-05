@@ -143,7 +143,7 @@ export async function startMapsScrapeAction(formData: FormData) {
     context.workspaceId,
     "maps_scrapes",
     1,
-    context.plan.quotas.maps_scrapes_per_month,
+    -1,
   );
   if (quota.error) {
     await supabase.from("lead_scrape_jobs").delete().eq("id", job.id).eq("workspace_id", context.workspaceId);
@@ -243,7 +243,7 @@ export async function startActorScrapeAction(formData: FormData) {
   if (error?.code === "23505") return { error: "Workspace đang có một lượt scrape chưa xong." };
   if (error || !job) return { error: error?.message || "Không tạo được job." };
 
-  const quota = await incrementUsage(supabase, context.workspaceId, "maps_scrapes", 1, context.plan.quotas.maps_scrapes_per_month);
+  const quota = await incrementUsage(supabase, context.workspaceId, "maps_scrapes", 1, -1);
   if (quota.error) {
     await supabase.from("lead_scrape_jobs").delete().eq("id", job.id).eq("workspace_id", context.workspaceId);
     return quota;

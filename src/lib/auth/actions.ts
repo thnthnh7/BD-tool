@@ -271,14 +271,6 @@ export async function createInviteAction(formData: FormData) {
   if (!email) return { error: "Email là bắt buộc." };
 
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("workspace_members")
-    .select("user_id", { count: "exact", head: true })
-    .eq("workspace_id", context.workspaceId);
-  if (quotaSeatsReached(count || 0, context.plan.quotas.seats)) {
-    return { error: "Đã hết số chỗ ngồi của gói hiện tại." };
-  }
-
   const { data: existingProfile } = await supabase.from("profiles").select("id").eq("email", email).maybeSingle();
   if (existingProfile) {
     const { data: taken } = await supabase.from("workspace_members").select("user_id").eq("user_id", existingProfile.id).maybeSingle();
@@ -287,22 +279,19 @@ export async function createInviteAction(formData: FormData) {
   }
 
   const token = createToken();
-  const { error } = await supabase.from("invites").insert({
-    workspace_id: context.workspaceId,
-    email,
-    role,
-    token_hash: hashToken(token),
-    invited_by: context.userId,
-    expires_at: addDays(new Date(), 7).toISOString(),
+  const { error } = await supabase.rpc("create_workspace_invite", {
+    p_email: email,
+    p_role: role,
+    p_token_hash: hashToken(token),
+    p_expires_at: addDays(new Date(), 7).toISOString(),
   });
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.message.includes("SEAT_LIMIT_REACHED")) return { error: "Đã hết số chỗ ngồi, bao gồm cả lời mời đang chờ." };
+    if (error.message.includes("INVITE_ALREADY_PENDING")) return { error: "Email này đã có lời mời đang chờ." };
+    return { error: error.message };
+  }
 
   return { ok: true as const, url: `${siteUrl()}/invite/${token}` };
-}
-
-function quotaSeatsReached(used: number, limit: number) {
-  if (limit < 0) return false;
-  return used >= limit;
 }
 
 export async function acceptInvite(rawToken: string) {
@@ -313,26 +302,16 @@ export async function acceptInvite(rawToken: string) {
   }
 
   const supabase = await createClient();
-  const { data: invite } = await supabase
-    .from("invites")
-    .select("*")
-    .eq("token_hash", hashToken(rawToken))
-    .is("accepted_at", null)
-    .gt("expires_at", new Date().toISOString())
-    .maybeSingle();
-  if (!invite) return { error: "Invite không hợp lệ hoặc đã hết hạn." };
-  if (invite.email.trim().toLowerCase() !== context.email.trim().toLowerCase()) {
-    return { error: "Hãy đăng nhập bằng đúng email được mời." };
-  }
-
-  const { error } = await supabase.from("workspace_members").insert({
-    workspace_id: invite.workspace_id,
-    user_id: context.userId,
-    role: invite.role,
+  const { error } = await supabase.rpc("accept_workspace_invite", {
+    p_token_hash: hashToken(rawToken),
   });
-  if (error) return { error: error.message };
-
-  await supabase.from("invites").update({ accepted_at: new Date().toISOString() }).eq("id", invite.id);
+  if (error) {
+    if (error.message.includes("SEAT_LIMIT_REACHED")) return { error: "Workspace đã hết seat. Các lời mời sớm hơn được ưu tiên." };
+    if (error.message.includes("INVITE_EMAIL_MISMATCH")) return { error: "Hãy đăng nhập bằng đúng email được mời." };
+    if (error.message.includes("INVITE_INVALID")) return { error: "Invite không hợp lệ hoặc đã hết hạn." };
+    if (error.message.includes("ACCOUNT_ALREADY_ASSIGNED")) return { error: "Account này đã có role." };
+    return { error: error.message };
+  }
   return { ok: true as const };
 }
 

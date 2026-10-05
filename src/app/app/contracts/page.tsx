@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { FileInput, NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { FileSignature, FileUp } from "lucide-react";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
@@ -16,6 +17,7 @@ import { defaultSettings } from "@/lib/default-data";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 
 export default async function ContractsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  await requireModule("contracts");
   const { q, page } = readListQuery(await searchParams);
   const [contracts, deals, app] = await Promise.all([listContracts(), listDeals(), loadWorkspaceAppData(["settings", "quotes"])]);
   const settings = app.settings || defaultSettings;

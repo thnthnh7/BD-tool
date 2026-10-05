@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isIP } from "node:net";
 import { lookup } from "node:dns/promises";
-import { requireWorkspace } from "@/lib/auth/session";
+import { requireWorkspace, requireModule } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revokeCrmProviderTokens, storeCrmTokens } from "@/features/crm-integrations/server/oauth";
@@ -63,6 +63,7 @@ export async function loadCrmIntegrations() {
 }
 
 export async function saveCrmConnectionAction(formData: FormData) {
+  await requireModule("crm_integrations"); // saveCrmConnectionAction
   const workspace = await editableWorkspace();
   if ("error" in workspace) return { error: workspace.error };
   const { context, supabase } = workspace;
@@ -95,6 +96,7 @@ export async function saveCrmConnectionAction(formData: FormData) {
 }
 
 export async function saveCrmFieldMappingAction(formData: FormData) {
+  await requireModule("crm_integrations"); // saveCrmFieldMappingAction
   const workspace = await editableWorkspace();
   if ("error" in workspace) return { error: workspace.error };
   const { context, supabase } = workspace;
@@ -125,6 +127,7 @@ export async function saveCrmFieldMappingAction(formData: FormData) {
 }
 
 export async function setCrmConnectionStateAction(formData: FormData) {
+  await requireModule("crm_integrations"); // setCrmConnectionStateAction
   const workspace = await editableWorkspace();
   if ("error" in workspace) return { error: workspace.error };
   const { context, supabase } = workspace;
@@ -139,6 +142,7 @@ export async function setCrmConnectionStateAction(formData: FormData) {
 }
 
 export async function manageCrmSyncRunAction(formData: FormData) {
+  await requireModule("crm_integrations"); // manageCrmSyncRunAction
   const workspace = await editableWorkspace();
   if ("error" in workspace) return { error: workspace.error };
   const id = text(formData, "id");
@@ -163,6 +167,7 @@ export async function manageCrmSyncRunAction(formData: FormData) {
 }
 
 export async function resolveCrmSyncIssueAction(formData: FormData) {
+  await requireModule("crm_integrations"); // resolveCrmSyncIssueAction
   const workspace = await editableWorkspace();
   if ("error" in workspace) return { error: workspace.error };
   const issueId = text(formData, "issue_id");
@@ -180,6 +185,7 @@ export async function resolveCrmSyncIssueAction(formData: FormData) {
 }
 
 export async function retryCrmRecordFailureAction(formData: FormData) {
+  await requireModule("crm_integrations"); // retryCrmRecordFailureAction
   const workspace = await editableWorkspace();
   if ("error" in workspace) return { error: workspace.error };
   const failureId = text(formData, "failure_id");
@@ -195,6 +201,7 @@ export async function retryCrmRecordFailureAction(formData: FormData) {
 }
 
 export async function disconnectCrmConnectionAction(formData: FormData) {
+  await requireModule("crm_integrations"); // disconnectCrmConnectionAction
   const workspace = await editableWorkspace();
   if ("error" in workspace) return { error: workspace.error };
   const id = text(formData, "id");
@@ -208,6 +215,7 @@ export async function disconnectCrmConnectionAction(formData: FormData) {
 }
 
 export async function saveActiveCampaignCredentialsAction(formData: FormData) {
+  await requireModule("crm_integrations"); // saveActiveCampaignCredentialsAction
   const workspace = await editableWorkspace();
   if ("error" in workspace) return { error: workspace.error };
   const connectionId = text(formData, "connection_id");

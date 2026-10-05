@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Button, Group, NativeSelect, Stack, Text, TextInput } from "@mantine/core";
 import { ArrowUpRight, Plus, Radar, Search } from "lucide-react";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
@@ -28,6 +29,7 @@ function creatorLabel(job: { creator: { display_name: string | null; email: stri
 export default async function LeadScrapePage({ searchParams }: {
   searchParams: Promise<{ q?: string; page?: string; source?: string; status?: string; period?: string }>;
 }) {
+  await requireModule("scraping");
   const params = await searchParams;
   const [t, locale] = await Promise.all([getTranslations("Scrape"), getLocale()]);
   const { q, page } = readListQuery(params);

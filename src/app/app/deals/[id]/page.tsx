@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import type { ReactNode } from "react";
 import { Badge, Divider, Grid, GridCol, Group, NativeSelect, Paper, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { notFound } from "next/navigation";
@@ -5,17 +6,17 @@ import { CompanyMark } from "@/components/leadely/company-mark";
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { StatusBadge } from "@/components/leadely/status-badge";
-import { LinkAnchor, LinkButton } from "@/components/mantine-link";
+import { LinkAnchor } from "@/components/mantine-link";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { ActivityList, NoteForm } from "@/features/crm/components/activity-panel";
 import { listContacts } from "@/features/companies/server/actions";
 import { addDealStakeholderAction, getDeal, listDealStakeholders, listPipelines } from "@/features/deals/server/actions";
-import { DealEditButton, DealTaskList, StageMoveForm } from "@/features/deals/components/deal-workspace";
+import { CompactDisclosure, DealEditButton, DealTaskList, StageMoveForm } from "@/features/deals/components/deal-workspace";
 import { createTaskAction, listActivities, listDealTasks } from "@/features/tasks/server/actions";
 import { generateDealIntelAction, listContracts, listDealQuotes, listQuoteEngagement } from "@/features/deals/server/intel";
 import { DEAL_PRIORITIES, DEAL_TYPES, STAKEHOLDER_ROLES } from "@/lib/crm";
 import { clientInitials } from "@/lib/image";
-import { formatVnd } from "@/lib/money";
+import { formatCurrency } from "@/lib/money";
 import classes from "@/styles/leadely-dashboard.module.css";
 
 const COVERAGE_ROLES = [
@@ -25,6 +26,7 @@ const COVERAGE_ROLES = [
 ] as const;
 
 export default async function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireModule("deals");
   const { id } = await params;
   const [deal, stakeholders, tasks, activities, pipelineData, contacts, quotes, contracts] = await Promise.all([
     getDeal(id),
@@ -38,7 +40,6 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
   ]);
   if (!deal) notFound();
   const stages = pipelineData.stages.filter((item) => item.pipeline_id === deal.pipeline_id).sort((a, b) => a.position - b.position);
-  const stage = stages.find((item) => item.id === deal.stage_id);
   const roles = new Set(stakeholders.map((row) => row.stakeholder_role));
   const latestQuote = quotes[0];
   const engagement = latestQuote ? await listQuoteEngagement(latestQuote.id) : [];
@@ -56,22 +57,19 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
             ? { src: deal.companies.logo_path, initials: clientInitials(deal.companies.name) }
             : undefined
         }
-        subtitle={`${deal.companies?.name || "No company"} · ${formatVnd(deal.amount)}`}
-        action={
-          <Group gap="sm" wrap="nowrap">
-            {stage ? <StatusBadge status={stage.stage_type || "open"} /> : null}
-            <LinkButton href={quoteHref} variant="light">
-              New quote
-            </LinkButton>
-          </Group>
-        }
+        subtitle={`${deal.companies?.name || "No company"} · ${formatCurrency(deal.amount, deal.currency)}`}
       />
 
       <Paper withBorder radius="lg" className={classes.panel} p="md">
         <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
-          <Fact label="Stage" value={stage?.name || "—"} />
+          <StageMoveForm
+            key={deal.stage_id}
+            dealId={deal.id}
+            currentStageId={deal.stage_id}
+            stages={stages.map((item) => ({ id: item.id, name: item.name, stageType: item.stage_type }))}
+          />
           <Fact label="Probability" value={`${deal.probability}%`} />
-          <Fact label="Weighted" value={formatVnd(Math.round(deal.amount * (deal.probability / 100)))} />
+          <Fact label="Weighted" value={formatCurrency(deal.amount * (deal.probability / 100), deal.currency)} />
           <Fact label="Close date" value={formatDay(deal.expected_close_date)} />
         </SimpleGrid>
         <Divider my="sm" />
@@ -91,12 +89,18 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         <GridCol span={{ base: 12, lg: 8 }}>
           <Stack gap="md">
             <SectionPanel title="Timeline">
-              <NoteForm compact dealId={deal.id} companyId={deal.company_id} contactId={deal.primary_contact_id || undefined} />
+              <CompactDisclosure label="Log activity">
+                <NoteForm compact dealId={deal.id} companyId={deal.company_id} contactId={deal.primary_contact_id || undefined} />
+              </CompactDisclosure>
               <ActivityList items={activities} />
             </SectionPanel>
-            <Grid>
-              <GridCol span={{ base: 12, sm: 6 }}>
-                <SectionPanel title="Quotes" action={<LinkAnchor href={quoteHref} size="sm">New</LinkAnchor>}>
+            <SectionPanel title="Commercial">
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl">
+                <Stack gap="xs">
+                  <Group justify="space-between">
+                    <Text fw={700}>Quotes</Text>
+                    <LinkAnchor href={quoteHref} size="sm">New quote</LinkAnchor>
+                  </Group>
                   {quotes.length ? (
                     <Stack gap="xs">
                       {quotes.map((quote) => (
@@ -118,10 +122,12 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                       Latest · {labelize(engagement[0].event_type)} · {formatStamp(engagement[0].occurred_at)}
                     </Text>
                   ) : null}
-                </SectionPanel>
-              </GridCol>
-              <GridCol span={{ base: 12, sm: 6 }}>
-                <SectionPanel title="Contracts" action={<LinkAnchor href="/app/contracts" size="sm">New</LinkAnchor>}>
+                </Stack>
+                <Stack gap="xs">
+                  <Group justify="space-between">
+                    <Text fw={700}>Contracts</Text>
+                    {quotes.length ? <LinkAnchor href="/app/contracts" size="sm">New contract</LinkAnchor> : null}
+                  </Group>
                   {contracts.length ? (
                     <Stack gap="xs">
                       {contracts.map((contract) => (
@@ -138,9 +144,9 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                       Chưa có contract.
                     </Text>
                   )}
-                </SectionPanel>
-              </GridCol>
-            </Grid>
+                </Stack>
+              </SimpleGrid>
+            </SectionPanel>
             <SectionPanel title="People">
               {stakeholders.length ? (
                 <Stack gap="xs" mb="sm">
@@ -168,21 +174,23 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                 </Text>
               )}
               {contacts.length ? (
-                <ActionForm action={addDealStakeholderAction} submitLabel="Add" layout="inline">
-                  <input type="hidden" name="deal_id" value={deal.id} />
-                  <NativeSelect
-                    name="contact_id"
-                    aria-label="Contact"
-                    data={contacts.map((item) => ({ value: item.id, label: item.display_name }))}
-                    style={{ flex: "1 1 180px" }}
-                  />
-                  <NativeSelect
-                    name="stakeholder_role"
-                    aria-label="Role"
-                    data={choice(STAKEHOLDER_ROLES)}
-                    style={{ flex: "1 1 180px" }}
-                  />
-                </ActionForm>
+                <CompactDisclosure label="Add stakeholder">
+                  <ActionForm action={addDealStakeholderAction} submitLabel="Add" layout="inline">
+                    <input type="hidden" name="deal_id" value={deal.id} />
+                    <NativeSelect
+                      name="contact_id"
+                      aria-label="Contact"
+                      data={contacts.map((item) => ({ value: item.id, label: item.display_name }))}
+                      style={{ flex: "1 1 180px" }}
+                    />
+                    <NativeSelect
+                      name="stakeholder_role"
+                      aria-label="Role"
+                      data={choice(STAKEHOLDER_ROLES)}
+                      style={{ flex: "1 1 180px" }}
+                    />
+                  </ActionForm>
+                </CompactDisclosure>
               ) : (
                 <Text size="sm" c="dimmed">
                   <LinkAnchor href="/app/contacts">Thêm contact</LinkAnchor> trước khi gán vào deal.
@@ -194,14 +202,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
 
         <GridCol span={{ base: 12, lg: 4 }}>
           <Stack gap="md">
-            <SectionPanel
-              title="Next step"
-              action={
-                <ActionForm action={generateDealIntelAction} submitLabel="AI summary">
-                  <input type="hidden" name="deal_id" value={deal.id} />
-                </ActionForm>
-              }
-            >
+            <SectionPanel title="Next step">
               {intel ? (
                 <Stack gap={4} mb="sm">
                   {intel.next ? (
@@ -229,21 +230,22 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                   dueAt: task.due_at,
                 }))}
               />
-              <Divider my="sm" />
-              <ActionForm action={createTaskAction} submitLabel="Add" layout="inline">
-                <input type="hidden" name="deal_id" value={deal.id} />
-                <input type="hidden" name="company_id" value={deal.company_id} />
-                <input type="hidden" name="type" value="follow_up" />
-                <TextInput name="title" placeholder="Task" required aria-label="Task title" style={{ flex: "1 1 140px" }} />
-                <TextInput name="due_at" type="datetime-local" aria-label="Due" w={210} />
-              </ActionForm>
-              <Divider my="sm" />
-              <StageMoveForm
-                key={deal.stage_id}
-                dealId={deal.id}
-                currentStageId={deal.stage_id}
-                stages={stages.map((item) => ({ id: item.id, name: item.name, stageType: item.stage_type }))}
-              />
+              <Group gap="xs" mt="sm">
+                <CompactDisclosure label="Add task">
+                  <ActionForm action={createTaskAction} submitLabel="Add" layout="inline">
+                    <input type="hidden" name="deal_id" value={deal.id} />
+                    <input type="hidden" name="company_id" value={deal.company_id} />
+                    <input type="hidden" name="type" value="follow_up" />
+                    <TextInput name="title" placeholder="Task" required aria-label="Task title" style={{ flex: "1 1 140px" }} />
+                    <TextInput name="due_at" type="datetime-local" aria-label="Due" w={210} />
+                  </ActionForm>
+                </CompactDisclosure>
+                <CompactDisclosure label={intel ? "Refresh AI insight" : "Generate AI insight"}>
+                  <ActionForm action={generateDealIntelAction} submitLabel="Generate" variant="light">
+                    <input type="hidden" name="deal_id" value={deal.id} />
+                  </ActionForm>
+                </CompactDisclosure>
+              </Group>
             </SectionPanel>
 
             <SectionPanel
@@ -255,6 +257,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                     updatedAt: deal.updated_at,
                     title: deal.title,
                     amount: deal.amount,
+                    currency: deal.currency,
                     dealType: deal.deal_type,
                     priority: deal.priority,
                     expectedCloseDate: deal.expected_close_date || "",
@@ -311,7 +314,7 @@ function SummaryRow({ label, value }: { label: string; value: ReactNode }) {
       <Text size="sm" c="dimmed">
         {label}
       </Text>
-      <Text size="sm" fw={600} ta="right" style={{ minWidth: 0 }}>
+      <Text component="div" size="sm" fw={600} ta="right" style={{ minWidth: 0 }}>
         {value}
       </Text>
     </Group>

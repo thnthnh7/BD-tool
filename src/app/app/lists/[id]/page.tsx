@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { NativeSelect, Stack, Text } from "@mantine/core";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { notFound } from "next/navigation";
@@ -20,6 +21,7 @@ export default async function ListDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
+  await requireModule("lists");
   const { id } = await params;
   const { q, page } = readListQuery(await searchParams);
   const payload = await getLeadList(id);

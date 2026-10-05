@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Badge, Button, Group, NativeSelect, Paper, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { AlertTriangle, CalendarDays, CheckCircle2, Clock3, Search, XCircle } from "lucide-react";
 import type { ReactNode } from "react";
@@ -26,6 +27,7 @@ function dayBounds() {
 }
 
 export default async function TasksPage({ searchParams }: { searchParams: Promise<Params> }) {
+  await requireModule("tasks");
   const params = await searchParams;
   const [t, locale] = await Promise.all([getTranslations("Tasks"), getLocale()]);
   const q = (params.q || "").trim();

@@ -1,81 +1,138 @@
-import { Badge, Box, Card, Container, Group, List, ListItem, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Bot, Building2, Check, CircleCheck, FileSignature, Globe2, Import, ListChecks, LockKeyhole, MessageSquareText, Quote, Search, ShieldCheck, Sparkles, Workflow } from "lucide-react";
+import { LandingMotion } from "@/components/landing-motion";
 import { AppLogo } from "@/components/leadely/app-logo";
-import { LinkButton } from "@/components/mantine-link";
+import { crmProviders } from "@/features/crm-integrations/catalog";
+import { parsePlan, type ParsedPlan } from "@/lib/entitlements";
+import { formatUsdFromCents } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
-import { parsePlan } from "@/lib/entitlements";
-import { formatVnd } from "@/lib/money";
-import classes from "@/styles/leadely-surfaces.module.css";
+import classes from "@/styles/landing.module.css";
+
+const siteUrl = "https://bizcraw.com";
+const title = "Bizcraw — Web Scraping and AI Sales Workspace";
+const description = "Scrape fresh business leads from the web, turn results into structured CRM records, and manage deals, quotes and sales actions in one AI workspace.";
+const faqs = [
+  ["What is Bizcraw?", "Bizcraw is a web scraping and AI sales workspace. It helps teams collect fresh business data, turn scrape results into CRM records, and manage deals, tasks, quotes and contracts in one system."],
+  ["What can I scrape with Bizcraw?", "Bizcraw provides a source library for supported web scraping actors, including workflows for business locations, search results, public professional profiles, jobs and social profiles. Available sources and usage costs are shown before a run."],
+  ["How does scraped data become a sales lead?", "Every scraping run keeps its own result set. Users can review records, select useful companies and contacts, and import approved results into the workspace CRM with their source history preserved."],
+  ["Can Bizcraw import my existing customer data?", "Yes. You can import structured customer data and use CRM integrations as they become available. Bizcraw keeps imported records inside the correct workspace."],
+  ["Can the AI agent change workspace data?", "The agent can prepare supported actions such as creating contacts, deals, tasks and quotes. Sensitive or high-impact changes require review before they are applied."],
+  ["Does Bizcraw replace a CRM?", "Bizcraw includes connected CRM workflows for small sales teams and can also synchronize with external CRM platforms as connectors become available."],
+  ["Is there a free plan?", "Available public plans are shown on this page. You can create an account and choose the plan that fits your current workflow."],
+] as const;
+const featuredCrmIds = new Set(["hubspot", "salesforce", "dynamics_365", "monday", "pipedrive", "zoho"]);
+const featuredCrmProviders = crmProviders.filter((provider) => featuredCrmIds.has(provider.id));
+
+export const metadata: Metadata = {
+  title: { absolute: title }, description, alternates: { canonical: "/" },
+  openGraph: { title, description, url: siteUrl, siteName: "Bizcraw", type: "website" },
+  twitter: { card: "summary_large_image", title, description },
+};
+
+const jsonLd = { "@context": "https://schema.org", "@graph": [
+  { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Bizcraw", url: siteUrl },
+  { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: siteUrl, name: "Bizcraw", publisher: { "@id": `${siteUrl}/#organization` } },
+  { "@type": "SoftwareApplication", name: "Bizcraw", applicationCategory: "BusinessApplication", operatingSystem: "Web", description, url: siteUrl, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+  { "@type": "FAQPage", mainEntity: faqs.map(([question, answer]) => ({ "@type": "Question", name: question, acceptedAnswer: { "@type": "Answer", text: answer } })) },
+] };
 
 export default async function LandingPage() {
-  const supabase = await createClient();
-  const { data } = await supabase.from("plans").select("*").eq("is_public", true).order("sort_order");
-  const plans = (data || []).map(parsePlan);
+  const plans = await loadPublicPlans();
+  return <LandingMotion><main className={classes.page}>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+    <header className={classes.header}><div className={classes.navShell}>
+      <Link href="/" aria-label="Bizcraw home" className={classes.logoLink}><AppLogo tagline /></Link>
+      <nav className={classes.navLinks} aria-label="Primary navigation"><a href="#platform">Platform</a><a href="#agent">AI agent</a><a href="#integrations">Integrations</a><a href="#pricing">Pricing</a></nav>
+      <div className={classes.navActions}><Link href="/login" className={classes.textButton}>Sign in</Link><Link href="/signup" className={classes.primaryButton}>Start free <ArrowRight size={16} /></Link></div>
+    </div></header>
 
-  return (
-    <main style={{ background: "var(--ld-canvas)", minHeight: "100vh" }}>
-      <Container size="lg" py="lg">
-        <Group justify="space-between" py="md">
-          <AppLogo tagline />
-          <Group gap="sm">
-            <LinkButton href="/login" variant="subtle" color="gray">
-              Sign in
-            </LinkButton>
-            <LinkButton href="/signup">Start free</LinkButton>
-          </Group>
-        </Group>
+    <section className={classes.hero}><div className={classes.heroGlow} /><div className={classes.heroCopy}>
+      <span className={classes.eyebrow}><Sparkles size={15} /> Web scraping + AI sales workspace</span>
+      <h1>Scrape the web. Turn fresh data into <span>sales opportunities.</span></h1>
+      <p>Discover business leads with repeatable web scraping workflows, review structured results, send approved records into your CRM and move every opportunity toward a deal.</p>
+      <div className={classes.heroActions}><Link href="/signup" className={classes.primaryButtonLarge}>Start free <ArrowRight size={18} /></Link><a href="#platform" className={classes.secondaryButton}>See how it works</a></div>
+      <div className={classes.trustLine}><span><Check size={15} /> No credit card</span><span><Check size={15} /> Guided setup</span><span><Check size={15} /> Workspace-level access</span></div>
+    </div><ProductStage /></section>
 
-        <Stack gap="md" py={80} maw={720}>
-          <Text size="sm" fw={600} c="leadely" tt="uppercase" style={{ letterSpacing: "0.08em" }}>
-            Your AI BD assistant
-          </Text>
-          <Title order={1} fw={700} style={{ fontSize: 40, lineHeight: 1.15 }}>
-            More conversations. More opportunities.
-          </Title>
-          <Text c="dimmed" size="md" maw={560}>
-            Create quotes, slideshows and contracts in one calm workspace. One account, one role.
-          </Text>
-          <LinkButton href="/signup" w="fit-content">
-            Start free
-          </LinkButton>
-        </Stack>
+    <section className={classes.proofStrip}><span>Web scraping</span><i /><span>Structured lead data</span><i /><span>CRM import</span><i /><span>Deals & quotes</span><i /><span>AI workspace agent</span></section>
 
-        <SimpleGrid id="pricing" cols={{ base: 1, sm: 2, md: 4 }} spacing="md" pb={80}>
-          {plans.map((plan) => (
-            <Card key={plan.id} withBorder padding="lg" className={classes.panel} style={{ display: "flex", flexDirection: "column" }}>
-              <Group justify="space-between" wrap="nowrap" gap="xs" mih={24}>
-                <Text size="xs" fw={600} c="dimmed">
-                  {plan.isFree ? "Free forever" : "Subscription"}
-                </Text>
-                {plan.badge ? (
-                  <Badge color="leadely" variant="light">
-                    {plan.badge}
-                  </Badge>
-                ) : null}
-              </Group>
-              <Title order={3} mt="xs">
-                {plan.name}
-              </Title>
-              <Text fw={700} size="xl" mt="xs" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {plan.isFree ? `0 ${"\u20AB"}/mo` : `${formatVnd(plan.priceMonthly)}/mo`}
-              </Text>
-              <List mt="md" size="sm" c="dimmed" spacing={4}>
-                <ListItem>{plan.quotas.seats < 0 ? "Unlimited" : plan.quotas.seats} seats</ListItem>
-                <ListItem>
-                  {plan.quotas.quotes_per_month < 0 ? "Unlimited" : plan.quotas.quotes_per_month} quotes/month
-                </ListItem>
-                <ListItem>
-                  {plan.quotas.ai_briefs_per_month < 0 ? "Unlimited" : plan.quotas.ai_briefs_per_month} AI briefs/month
-                </ListItem>
-              </List>
-              <Box style={{ marginTop: "auto", paddingTop: 24 }}>
-                <LinkButton href="/signup" fullWidth variant={plan.badge ? "filled" : "default"}>
-                  {plan.isFree ? "Start free" : `Choose ${plan.name}`}
-                </LinkButton>
-              </Box>
-            </Card>
-          ))}
-        </SimpleGrid>
-      </Container>
-    </main>
-  );
+    <section className={classes.scrapingSection}><div className={classes.scrapingIntro}><span className={classes.sectionLabel}>SCRAPING AT THE CORE</span><h2>Web scraping built for lead generation, not disconnected exports.</h2><p>Bizcraw keeps each scraping run, its source, raw results and selected records connected. Your team can find businesses and people, review data quality, control usage and move approved leads directly into the sales workspace.</p></div><div className={classes.scrapingPillars}>{[["01","Choose a source","Browse supported scraping actors and see what each source collects."],["02","Run a targeted search","Define the market, location and result volume for a repeatable run."],["03","Review structured results","Inspect companies, websites, phones and discovered people before import."],["04","Send leads to CRM","Import only approved records while preserving where the data came from."]].map(([n,h,p])=><article key={n}><span>{n}</span><h3>{h}</h3><p>{p}</p></article>)}</div></section>
+
+    <section className={classes.section}><Heading label="ONE CONNECTED SYSTEM" title="Sales work breaks when context lives everywhere." text="Bizcraw connects the records, documents and next actions your team needs, so every workflow starts with the same source of truth." />
+      <div className={classes.compareGrid}><article className={classes.beforeCard}><span>Without Bizcraw</span><h3>Busy tools. Broken handoffs.</h3><ul><li>Prospect lists live in separate files</li><li>Deal updates disappear into chat</li><li>Quotes are rebuilt from old documents</li><li>AI answers without workspace context</li></ul></article><article className={classes.afterCard}><span>With Bizcraw</span><h3>One workflow from signal to sale.</h3><ul>{["Leads become connected records", "Every deal keeps its full history", "Quotes use current customer data", "AI acts within permissions"].map(x => <li key={x}><CircleCheck size={17} /> {x}</li>)}</ul></article></div>
+    </section>
+
+    <section id="platform" className={`${classes.section} ${classes.workflowSection}`}><div className={classes.workflowIntro}><h2>Move from research to revenue without rebuilding your process.</h2><p>Each step feeds the next. Your team spends less time transferring data and more time deciding what to do with it.</p></div>
+      <div className={classes.workflowGrid}>{[[Search,"01","Discover","Find and collect relevant prospects from supported data sources."],[Import,"02","Organize","Turn raw results and imports into clean company and contact records."],[Workflow,"03","Sell","Track opportunities, owners, activities and the next best action."],[FileSignature,"04","Close","Create quotes and contracts using connected customer data."]].map(([Icon,n,name,text]) => { const I=Icon as typeof Search; return <article key={String(name)}><span className={classes.stepNumber}>{String(n)}</span><span className={classes.stepIcon}><I size={21}/></span><h3>{String(name)}</h3><p>{String(text)}</p></article> })}</div>
+    </section>
+
+    <section id="agent" className={classes.agentSection}><div className={classes.agentSectionInner}><div className={classes.agentCopy}><span className={classes.darkLabel}><Bot size={16}/> BIZCRAW AGENT</span><h2>Ask about your business. Then move the work forward.</h2><p>The agent reads only the workspace data and permissions available to the user. It can answer operational questions, prepare changes and ask for approval before sensitive actions.</p><ul><li><Check size={17}/> Answers link back to workspace records</li><li><Check size={17}/> Changes are previewed before execution</li><li><Check size={17}/> Actions respect roles and audit history</li></ul><Link href="/signup" className={classes.lightButton}>Try the workspace <ArrowRight size={17}/></Link></div><div className={classes.agentDemo}><div className={classes.demoQuestion}><MessageSquareText size={17}/> Which enterprise deals need attention this week?</div><div className={classes.demoAnswer}><div className={classes.answerTitle}><Sparkles size={17}/><strong>3 deals need attention</strong></div><p>Two have no recent activity, and one quote was viewed three times but has not received a follow-up.</p><div className={classes.answerRows}>{[["Northstar Labs","No activity · 16 days"],["Acme APAC","Quote viewed · 3 times"],["Orbit Commerce","Task overdue · 2 days"]].map(([a,b])=><span key={a}><b>{a}</b><small>{b}</small></span>)}</div><div className={classes.answerSources}><span>Sources</span><code>Deals</code><code>Quote events</code><code>Tasks</code></div></div></div></div></section>
+
+    <section className={classes.section}><Heading label="BUILT AROUND REAL SALES WORK" title="Clear workflows for every stage of the deal." />
+      <div className={classes.storyStack}><Story icon={Workflow} title="Run repeatable data collection without losing control." text="Launch scraping jobs, monitor progress, records and spend, then review every result before it becomes part of your CRM." bullets={["Run history and live status","Record and cost visibility","Review before CRM import"]}><ScrapeVisual /></Story><Story reverse icon={Building2} title="Keep every customer relationship in context." text="Companies, contacts, deals, tasks and activities stay connected so the team can see what happened and what should happen next." bullets={["Company and contact timelines","Deal stages and ownership","CRM synchronization controls"]}><CrmVisual /></Story><Story icon={Quote} title="Turn approved data into documents that close." text="Create quotes and contracts from current workspace records, then track whether a customer has received and viewed the document." bullets={["Reusable commercial defaults","Share and view tracking","Connected deal history"]}><QuoteVisual /></Story></div>
+    </section>
+
+    <section id="integrations" className={classes.integrationSection}><div className={classes.integrationCopy}><span className={classes.sectionLabel}>INTEGRATIONS</span><h2>Connect Bizcraw to the tools your team already uses.</h2><p>Start with imports and workspace-native workflows. Add CRM connections as each connector becomes available.</p></div><div className={classes.logoCloud}>{featuredCrmProviders.map((provider)=><article key={provider.id} className={classes.integrationCard}><div className={classes.integrationLogo} data-provider={provider.id}><Image src={provider.logo} alt={`${provider.name} logo`} width={110} height={42}/></div><div><h3>{provider.name}</h3><small>{provider.auth}</small></div></article>)}</div></section>
+
+    <section className={classes.securitySection}><div><span className={classes.securityIcon}><ShieldCheck size={26}/></span><h2>Your workspace stays within its boundaries.</h2><p>Bizcraw uses workspace-scoped access, role checks and server-side secret handling to keep customer data and connected credentials separated.</p></div><div className={classes.securityPoints}><span><LockKeyhole size={19}/><b>Role-aware access</b><small>Users see and act on what their role allows.</small></span><span><Globe2 size={19}/><b>Workspace isolation</b><small>Records remain associated with the correct organization.</small></span><span><ListChecks size={19}/><b>Reviewable actions</b><small>Agent changes can require approval and leave an audit trail.</small></span></div></section>
+
+    <section id="pricing" className={`${classes.section} ${classes.pricingSection}`}><Heading label="PRICING" title="Start with the workflow you need today." text="Choose a public plan below. You can review plan limits inside the product before upgrading."/><div className={classes.pricingGrid}>{plans.length ? plans.map((plan)=>{ const featured = plan.badge.trim().length > 0; return <article key={plan.id} className={featured?classes.featuredPlan:classes.planCard}>{featured&&<span className={classes.planBadge}>{plan.badge}</span>}<span className={classes.planType}>{plan.isFree?"Free forever":"For growing teams"}</span><h3>{plan.name}</h3><div className={classes.price}>{plan.isFree?"Free":plan.usdMonthlyCents==null?"—":formatUsdFromCents(plan.usdMonthlyCents)}{!plan.isFree&&plan.usdMonthlyCents!=null&&<small>/ month</small>}</div><p>{plan.quotas.seats < 0 ? "Unlimited seats" : `${plan.quotas.seats} workspace seat${plan.quotas.seats===1?"":"s"} included.`}</p><ul>{planHighlights(plan).map((line)=><li key={line}><Check size={16}/> {line}</li>)}</ul><Link href="/signup" className={featured?classes.primaryButtonWide:classes.secondaryButtonWide}>Choose {plan.name}</Link></article>}) : <article className={classes.pricingFallback}><span className={classes.planType}>PLANS TEMPORARILY UNAVAILABLE</span><h3>Start with a Bizcraw workspace</h3><p>Current plan details could not be loaded. Create an account to review availability when the connection returns.</p><Link href="/signup" className={classes.primaryButtonWide}>Create account</Link></article>}</div></section>
+
+    <section className={classes.faqSection}><div className={classes.faqHeading}><span className={classes.sectionLabel}>FREQUENTLY ASKED QUESTIONS</span><h2>What teams ask before getting started.</h2></div><div className={classes.faqList}>{faqs.map(([q,a])=><details key={q}><summary>{q}<span>+</span></summary><p>{a}</p></details>)}</div></section>
+    <section className={classes.finalCta}><div><span><Sparkles size={16}/> Your sales workspace is ready</span><h2>Give your team one place to find, understand and act on every opportunity.</h2><p>Create a workspace and start organizing your sales process today.</p><Link href="/signup" className={classes.lightButtonLarge}>Start free <ArrowRight size={18}/></Link></div></section>
+    <footer className={classes.footer}><div className={classes.footerBrand}><AppLogo tagline/><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div><div><b>Product</b><a href="#platform">Platform</a><a href="#agent">AI agent</a><a href="#pricing">Pricing</a></div><div><b>Access</b><Link href="/login">Sign in</Link><Link href="/signup">Create account</Link></div><div className={classes.footerMeta}><span>© {new Date().getFullYear()} Bizcraw</span><span>Built for focused sales teams.</span></div></footer>
+  </main></LandingMotion>;
+}
+
+function Heading({label,title,text}:{label:string;title:string;text?:string}) { return <div className={classes.centerHeading}><span className={classes.sectionLabel}>{label}</span><h2>{title}</h2>{text&&<p>{text}</p>}</div> }
+function Story({icon:Icon,title,text,bullets,children,reverse}:{icon:typeof Search;title:string;text:string;bullets:string[];children:React.ReactNode;reverse?:boolean}) { return <article className={`${classes.story} ${reverse?classes.storyReverse:""}`}><div className={classes.storyCopy}><span className={classes.storyIcon}><Icon size={20}/></span><h3>{title}</h3><p>{text}</p><ul>{bullets.map(x=><li key={x}>{x}</li>)}</ul></div>{children}</article> }
+function ProductStage(){return <div className={classes.heroVisual}><figure className={classes.heroScreenshot}><div className={classes.screenshotBar}><span/><span/><span/><b>Source Library</b></div><Image src="/landing/bizcraw-source-library-hero.png" alt="Bizcraw Source Library showing web scraping actors for Google Maps, Google Search, LinkedIn and social profiles" width={1530} height={900} priority sizes="(max-width: 1280px) 96vw, 1240px"/></figure></div>}
+function ScrapeVisual(){return <ProductScreenshot src="/landing/bizcraw-scrape-runs.png" alt="Bizcraw scraping run history showing run status, collected records and usage costs" label="Scrape runs"/>}
+function CrmVisual(){return <ProductScreenshot src="/landing/bizcraw-crm-companies.png" alt="Bizcraw CRM showing real English demo companies, industries and lead sources" label="Connected CRM"/>}
+function QuoteVisual(){return <ProductScreenshot src="/landing/bizcraw-quotes.png" alt="Bizcraw quotes workspace showing real quote statuses, clients and values" label="Quotes workspace"/>}
+function ProductScreenshot({src,alt,label}:{src:string;alt:string;label:string}){return <figure className={classes.productScreenshot}><div className={classes.screenshotBar}><span/><span/><span/><b>{label}</b></div><Image src={src} alt={alt} width={1050} height={650} sizes="(max-width: 900px) 100vw, 650px"/></figure>}
+
+function quotaLabel(limit: number, counted: string, unlimited: string) {
+  return limit < 0 ? unlimited : counted;
+}
+
+function planHighlights(plan: ParsedPlan) {
+  const lines = [
+    quotaLabel(plan.quotas.quotes_per_month, `${plan.quotas.quotes_per_month} quotes per month`, "Unlimited quotes"),
+    quotaLabel(plan.quotas.ai_briefs_per_month, `${plan.quotas.ai_briefs_per_month} AI actions per month`, "Unlimited AI actions"),
+  ];
+  const optionalQuotas: Array<[number, string, string]> = [
+  ];
+  for (const [limit, counted, unlimited] of optionalQuotas) {
+    if (limit !== 0) lines.push(quotaLabel(limit, counted, unlimited));
+  }
+  const features: Array<[boolean, string]> = [
+    [plan.features.lead_scrape, "Lead scraping"],
+    [plan.features.byok_ai, "Bring your own AI key"],
+    [plan.features.export_docx, "Document export"],
+    [plan.features.contracts, "Contracts"],
+    [plan.features.custom_branding, "Custom branding"],
+    [plan.features.mcp_access, "MCP access"],
+  ];
+  for (const [enabled, label] of features) if (enabled) lines.push(label);
+  return lines;
+}
+
+async function loadPublicPlans() {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("plans").select("*").eq("is_public", true).order("sort_order");
+    if (error || !data) return [];
+    const ids = data.map((row) => row.id);
+    const { data: prices } = ids.length
+      ? await supabase.from("billing_provider_prices").select("plan_id, amount").in("plan_id", ids).eq("active", true).eq("billing_interval", "monthly").eq("currency", "USD")
+      : { data: [] };
+    const monthlyCents = new Map<string, number>();
+    for (const price of prices || []) if (!monthlyCents.has(price.plan_id)) monthlyCents.set(price.plan_id, price.amount);
+    return data.map((row) => ({ ...parsePlan(row), usdMonthlyCents: monthlyCents.get(row.id) ?? null }));
+  } catch {
+    return [];
+  }
 }

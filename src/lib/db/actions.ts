@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { uploadLogoJpeg } from "@/lib/logo-storage";
 import { createClient } from "@/lib/supabase/server";
-import { requireOwner, requireOwnerOrAdmin, requireWorkspace } from "@/lib/auth/session";
+import { requireOwner, requireOwnerOrAdmin, requireWorkspace, requireModule } from "@/lib/auth/session";
 import { clientFromRow, moduleFromRow, quoteFromRow, quoteToRow, settingsFromRow, settingsToUpdate } from "@/lib/db/mappers";
 import { canUsePaidFeatures } from "@/lib/entitlements";
 import { incrementUsage } from "@/lib/usage";
@@ -98,6 +98,7 @@ export async function updateClientLogoAction(clientId: string, logoUrl: string) 
 }
 
 export async function createModuleAction(input: Pick<ServiceModule, "name" | "description" | "suggestedPrice">) {
+  await requireModule("product_modules"); // createModuleAction
   const context = await requireOwnerOrAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("modules").insert({
@@ -115,6 +116,7 @@ export async function createModuleAction(input: Pick<ServiceModule, "name" | "de
 }
 
 export async function saveQuoteAction(quote: Quote) {
+  await requireModule("quotes"); // saveQuoteAction
   const context = await requireWorkspace();
   if (!canUsePaidFeatures(context.planStatus) || context.locked) {
     return { error: "Gói đã hết hạn. Hãy gia hạn để tiếp tục tạo/sửa báo giá." };
@@ -164,6 +166,7 @@ export async function saveQuoteAction(quote: Quote) {
 }
 
 export async function deleteQuoteAction(quoteId: string) {
+  await requireModule("quotes"); // deleteQuoteAction
   const context = await requireWorkspace();
   const id = quoteId.trim();
   if (!id) return { error: "Không thấy quote." };
@@ -185,6 +188,7 @@ export async function deleteQuoteAction(quoteId: string) {
 }
 
 export async function createShareAction(payload: unknown) {
+  await requireModule("quotes"); // createShareAction
   const context = await requireWorkspace();
   const supabase = await createClient();
   for (let attempt = 0; attempt < 5; attempt += 1) {

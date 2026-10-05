@@ -1,5 +1,7 @@
 "use server";
 
+import { requireModule } from "@/lib/auth/session";
+
 import { revalidatePath } from "next/cache";
 import { completeChat } from "@/features/ai/server/complete";
 import { asJoined, formOptionalId, formText } from "@/lib/crm";
@@ -31,6 +33,7 @@ export async function listQuoteEngagement(quoteId: string) {
 }
 
 export async function createQuoteRevisionAction(formData: FormData) {
+  await requireModule("quotes"); // createQuoteRevisionAction
   const { context, supabase } = await withWorkspace();
   const quoteId = formText(formData, "quote_id");
   const { data: quote } = await supabase
@@ -73,6 +76,7 @@ export async function createQuoteRevisionAction(formData: FormData) {
 }
 
 export async function generateDealIntelAction(formData: FormData) {
+  await requireModule("deals"); // generateDealIntelAction
   const { context, supabase } = await withWorkspace();
   const dealId = formText(formData, "deal_id");
   const { data: deal } = await supabase
@@ -147,6 +151,7 @@ export async function listContracts(dealId?: string) {
 }
 
 export async function createContractAction(formData: FormData) {
+  await requireModule("contracts"); // createContractAction
   const { context, supabase } = await withWorkspace();
   const dealId = formText(formData, "deal_id");
   const title = formText(formData, "title");
@@ -187,6 +192,7 @@ export async function createContractAction(formData: FormData) {
 }
 
 export async function updateContractAction(formData: FormData) {
+  await requireModule("contracts"); // updateContractAction
   const { context, supabase } = await withWorkspace();
   const id = formText(formData, "id");
   const status = formText(formData, "status") || "draft";

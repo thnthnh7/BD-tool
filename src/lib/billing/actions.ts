@@ -10,6 +10,7 @@ import { recordHeartbeat } from "@/lib/platform/heartbeat";
 import { createPayPalSubscription, createStripeSubscriptionCheckout, type BillingProvider } from "@/lib/billing/providers";
 import { convertUsdCents, loadUsdRates, marketForLocale } from "@/lib/billing/localization";
 import { getBillingProviderConfig } from "@/lib/billing/config";
+import { reconcileExternalSubscriptions } from "@/lib/billing/subscription-service";
 
 export async function createCheckoutInvoice(formData: FormData) {
   const context = await requireOwner();
@@ -28,9 +29,8 @@ export async function createCheckoutInvoice(formData: FormData) {
 
   const { data: usdPrice } = await supabase.from("billing_provider_prices").select("amount")
     .eq("plan_id", plan.id).eq("billing_interval", interval).eq("currency", "USD").eq("active", true).limit(1).maybeSingle();
-  const amount = usdPrice
-    ? convertUsdCents(usdPrice.amount, "VND", await loadUsdRates())
-    : interval === "yearly" ? plan.priceYearly : plan.priceMonthly;
+  if (!usdPrice?.amount) return { error: "Chưa cấu hình giá USD cho gói này." };
+  const amount = convertUsdCents(usdPrice.amount, "VND", await loadUsdRates());
   const { data: sub } = await supabase.from("subscriptions").select("id").eq("workspace_id", context.workspaceId).maybeSingle();
 
   const { data: invoice, error } = await supabase
@@ -49,8 +49,9 @@ export async function createCheckoutInvoice(formData: FormData) {
       billing_interval: interval,
       price_snapshot: {
         name: plan.name,
-        price_monthly: plan.priceMonthly,
-        price_yearly: plan.priceYearly,
+        currency: "USD",
+        amount_cents: usdPrice.amount,
+        billing_interval: interval,
       },
       vat_requested: vatRequested,
       vat_tax_code: vatRequested ? vatTaxCode : "",
@@ -278,9 +279,10 @@ export async function runBillingCron() {
         updated += 1;
       }
     }
+    const reconciliation = await reconcileExternalSubscriptions();
     await anonymizeDeletedProfiles(admin);
-    await recordHeartbeat("billing_cron", true, `updated ${updated}`);
-    return { ok: true as const, updated };
+    await recordHeartbeat("billing_cron", reconciliation.failed === 0, `updated ${updated}; reconciled ${reconciliation.reconciled}; failed ${reconciliation.failed}`);
+    return { ok: true as const, updated, ...reconciliation };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Billing cron failed";
     await recordHeartbeat("billing_cron", false, message);

@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { Alert, Badge, Button, Group, Radio, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { createWorkspaceAction } from "@/lib/auth/actions";
-import { formatVnd } from "@/lib/money";
+import { formatUsdFromCents } from "@/lib/money";
 
 type PlanOption = {
   id: string;
   name: string;
   badge: string;
   isFree: boolean;
-  priceMonthly: number;
+  usdMonthlyCents: number | null;
 };
 
 export function OnboardingForm({ plans }: { plans: PlanOption[] }) {
@@ -66,7 +66,7 @@ export function OnboardingForm({ plans }: { plans: PlanOption[] }) {
                   ) : null}
                 </Group>
                 <Text fw={700} mt="xs">
-                  {plan.isFree ? "Miễn phí" : `${formatVnd(plan.priceMonthly)}/tháng`}
+                  {plan.isFree ? "Free" : plan.usdMonthlyCents == null ? "—" : `${formatUsdFromCents(plan.usdMonthlyCents)}/month`}
                 </Text>
               </Radio.Card>
             ))}

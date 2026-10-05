@@ -1,5 +1,7 @@
 "use server";
 
+import { requireModule } from "@/lib/auth/session";
+
 import { revalidatePath } from "next/cache";
 import { recordActivity, withWorkspace } from "@/lib/events";
 import { asJoined, formInt, formOptionalId, formText, LEAD_STATUSES } from "@/lib/crm";
@@ -39,6 +41,7 @@ export async function getLead(id: string) {
 }
 
 export async function createLeadAction(formData: FormData) {
+  await requireModule("leads"); // createLeadAction
   const { context, supabase } = await withWorkspace();
   const status = formText(formData, "status") || "new";
   const { data, error } = await supabase
@@ -71,6 +74,7 @@ export async function createLeadAction(formData: FormData) {
 }
 
 export async function updateLeadAction(formData: FormData) {
+  await requireModule("leads"); // updateLeadAction
   const { context, supabase } = await withWorkspace();
   const id = formText(formData, "id");
   if (!id) return { error: "Thiếu lead." };
@@ -95,6 +99,7 @@ export async function updateLeadAction(formData: FormData) {
 }
 
 export async function qualifyLeadAction(formData: FormData) {
+  await requireModule("leads"); // qualifyLeadAction
   const { context, supabase } = await withWorkspace();
   const leadId = formText(formData, "lead_id");
   const title = formText(formData, "title");

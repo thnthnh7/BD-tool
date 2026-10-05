@@ -1,5 +1,7 @@
 "use server";
 
+import { requireModule } from "@/lib/auth/session";
+
 import { revalidatePath } from "next/cache";
 import { recordActivity, withWorkspace } from "@/lib/events";
 import { uploadLogoJpeg } from "@/lib/logo-storage";
@@ -83,6 +85,7 @@ function revalidateCompanySurfaces(id?: string) {
 }
 
 export async function createCompanyAction(formData: FormData) {
+  await requireModule("companies"); // createCompanyAction
   const { context, supabase } = await withWorkspace();
   const name = formText(formData, "name");
   if (!name) return { error: "Tên công ty bắt buộc." };
@@ -126,6 +129,7 @@ export async function createCompanyAction(formData: FormData) {
 }
 
 export async function updateCompanyAction(formData: FormData) {
+  await requireModule("companies"); // updateCompanyAction
   const { context, supabase } = await withWorkspace();
   const id = formText(formData, "id");
   const name = formText(formData, "name");
@@ -247,6 +251,7 @@ export async function getContact(id: string) {
 }
 
 export async function createContactAction(formData: FormData) {
+  await requireModule("contacts"); // createContactAction
   const { context, supabase } = await withWorkspace();
   const firstName = formText(formData, "first_name");
   const lastName = formText(formData, "last_name");
@@ -284,6 +289,7 @@ export async function createContactAction(formData: FormData) {
 }
 
 export async function updateContactAction(formData: FormData) {
+  await requireModule("contacts"); // updateContactAction
   const { context, supabase } = await withWorkspace();
   const id = formText(formData, "id");
   const firstName = formText(formData, "first_name");

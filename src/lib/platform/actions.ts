@@ -4,21 +4,38 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requirePlatform } from "@/lib/auth/session";
-import { parsePlan } from "@/lib/entitlements";
+import { createEntitlementSnapshot, parsePlan } from "@/lib/entitlements";
 import { syncLeadGenerationStore } from "@/features/leads/server/sync-store";
 import { recordPlatformAudit } from "@/lib/platform/audit";
 import { syncPayPalCatalogPlan, syncStripeCatalogPrice } from "@/lib/billing/providers";
 import { billingProviderReady, getAllBillingProviderConfigs } from "@/lib/billing/config";
+import { CAPABILITY_OPTIONS, MODULE_KEYS } from "@/lib/module-catalog";
 
 export async function updatePlanAction(formData: FormData) {
   await requirePlatform("super_admin");
   const supabase = await createClient();
   const id = String(formData.get("id") || "");
-  const { data: current } = await supabase.from("plans").select("features").eq("id", id).maybeSingle();
+  const { data: current } = await supabase.from("plans").select("*").eq("id", id).maybeSingle();
   const currentFeatures = { ...((current?.features || {}) as Record<string, unknown>) };
   delete currentFeatures.share_no_watermark;
   delete currentFeatures.google_drive;
   delete currentFeatures.vat_invoice;
+  if (!current) return { error: "Gói không tồn tại." };
+  const requestedSeats = Number(formData.get("seats") || 1);
+  const nextQuotas = {
+    seats: requestedSeats < 0 ? -1 : Math.max(1, requestedSeats),
+    quotes_per_month: Number(formData.get("quotes_per_month") || 0),
+    ai_briefs_per_month: Number(formData.get("ai_briefs_per_month") || 0),
+  };
+  const nextFeatures = {
+    ...currentFeatures,
+    ...Object.fromEntries(
+      [...MODULE_KEYS, ...CAPABILITY_OPTIONS.map(([key]) => key)].map((key) => [key, String(formData.get(`feature_${key}`) || "") === "on"]),
+    ),
+  };
+  const entitlementsChanged = JSON.stringify(current.quotas) !== JSON.stringify(nextQuotas)
+    || JSON.stringify(current.features) !== JSON.stringify(nextFeatures);
+  const nextVersion = Number(current.entitlement_version || 1) + (entitlementsChanged ? 1 : 0);
   const { error } = await supabase
     .from("plans")
     .update({
@@ -26,26 +43,21 @@ export async function updatePlanAction(formData: FormData) {
       trial_days: Number(formData.get("trial_days") || 0),
       is_public: String(formData.get("is_public") || "") === "on",
       badge: String(formData.get("badge") || ""),
-      quotas: {
-        seats: Number(formData.get("seats") || 1),
-        quotes_per_month: Number(formData.get("quotes_per_month") || 0),
-        ai_briefs_per_month: Number(formData.get("ai_briefs_per_month") || 0),
-        maps_scrapes_per_month: Number(formData.get("maps_scrapes_per_month") || 0),
-        maps_places_per_month: Number(formData.get("maps_places_per_month") || 0),
-        maps_people_per_month: Number(formData.get("maps_people_per_month") || 0),
-      },
-      features: {
-        ...currentFeatures,
-        byok_ai: String(formData.get("byok_ai") || "") === "on",
-        lead_scrape: String(formData.get("lead_scrape") || "") === "on",
-        export_docx: String(formData.get("export_docx") || "") === "on",
-        custom_branding: String(formData.get("custom_branding") || "") === "on",
-        contracts: String(formData.get("contracts") || "") === "on",
-        mcp_access: String(formData.get("mcp_access") || "") === "on",
-      },
+      quotas: nextQuotas,
+      features: nextFeatures as never,
+      entitlement_version: nextVersion,
     })
     .eq("id", id);
   if (error) return { error: error.message };
+  if (entitlementsChanged && String(formData.get("apply_to_existing") || "") === "on") {
+    const updatedPlan = parsePlan({ ...current, quotas: nextQuotas, features: nextFeatures });
+    const snapshot = createEntitlementSnapshot(updatedPlan, nextVersion);
+    const { error: snapshotError } = await supabase.from("subscriptions").update({
+      entitlement_version: nextVersion,
+      entitlement_snapshot: snapshot as never,
+    }).eq("plan_id", id);
+    if (snapshotError) return { error: snapshotError.message };
+  }
   await recordPlatformAudit({
     action: "plan.update",
     entityType: "plan",
@@ -54,6 +66,7 @@ export async function updatePlanAction(formData: FormData) {
   });
   revalidatePath("/app/platform/plans");
   revalidatePath("/pricing");
+  revalidatePath("/");
   return { ok: true as const };
 }
 
@@ -80,12 +93,9 @@ export async function updateProviderPricesAction(formData: FormData) {
   await requirePlatform("super_admin");
   const supabase = await createClient();
   const planId = String(formData.get("planId") || "");
-  const vndMonthly = Math.max(0, Math.round(Number(formData.get("vnd_monthly") || 0)));
-  const vndYearly = Math.max(0, Math.round(Number(formData.get("vnd_yearly") || 0)));
   const monthlyAmount = Math.round(Math.max(0, Number(formData.get("usd_monthly") || 0)) * 100);
   const yearlyAmount = Math.round(Math.max(0, Number(formData.get("usd_yearly") || 0)) * 100);
-  if (!vndMonthly || !vndYearly) return { error: "Nhập giá VND tháng và năm lớn hơn 0." };
-  if (!monthlyAmount || !yearlyAmount) return { error: "Nhập giá USD tháng và năm lớn hơn 0." };
+  if (!monthlyAmount) return { error: "Nhập giá USD tháng lớn hơn 0." };
   const [{ data: plan }, { data: existingPrices }] = await Promise.all([
     supabase.from("plans").select("name").eq("id", planId).single(),
     supabase.from("billing_provider_prices").select("*").eq("plan_id", planId),
@@ -103,6 +113,7 @@ export async function updateProviderPricesAction(formData: FormData) {
       let productId = (existingPrices || []).find((row) => row.provider === provider)?.external_product_id || null;
       for (const interval of ["monthly", "yearly"] as const) {
         const amount = interval === "monthly" ? monthlyAmount : yearlyAmount;
+        if (!amount) continue;
         const current = (existingPrices || []).find((row) => row.provider === provider && row.billing_interval === interval);
         if (current?.amount === amount && current.external_price_id) {
           productId = current.external_product_id || productId;
@@ -128,15 +139,11 @@ export async function updateProviderPricesAction(formData: FormData) {
   } catch (syncError) {
     return { error: syncError instanceof Error ? syncError.message : "Không đồng bộ được bảng giá." };
   }
-  const { error: planPriceError } = await supabase.from("plans").update({
-    price_monthly: vndMonthly,
-    price_yearly: vndYearly,
-  }).eq("id", planId);
-  if (planPriceError) return { error: planPriceError.message };
   await recordPlatformAudit({ action: "plan.provider_prices.update", entityType: "plan", entityId: planId });
   revalidatePath("/app/platform/plans");
   revalidatePath("/app/billing");
   revalidatePath("/pricing");
+  revalidatePath("/");
   return { ok: true as const };
 }
 
@@ -189,9 +196,6 @@ export async function createPlanAction(formData: FormData) {
       seats: 1,
       quotes_per_month: 0,
       ai_briefs_per_month: 0,
-      maps_scrapes_per_month: 0,
-      maps_places_per_month: 0,
-      maps_people_per_month: 0,
     },
     features: {},
     badge: "",
@@ -203,6 +207,7 @@ export async function createPlanAction(formData: FormData) {
   await recordPlatformAudit({ action: "plan.create", entityType: "plan", entityId: plan.id, after: { name, slug } });
   revalidatePath("/app/platform/plans");
   revalidatePath("/pricing");
+  revalidatePath("/");
   redirect(`/app/platform/plans?plan=${plan.id}`);
 }
 
@@ -223,6 +228,7 @@ export async function deletePlanAction(formData: FormData) {
   await recordPlatformAudit({ action: "plan.delete", entityType: "plan", entityId: id, before: { name: plan.name } });
   revalidatePath("/app/platform/plans");
   revalidatePath("/pricing");
+  revalidatePath("/");
   redirect("/app/platform/plans");
 }
 

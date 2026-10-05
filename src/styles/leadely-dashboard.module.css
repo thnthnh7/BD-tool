@@ -247,6 +247,11 @@
   overflow-x: auto;
 }
 
+.tableWrap :global(.mantine-Badge-root) {
+  min-width: max-content;
+  flex-shrink: 0;
+}
+
 .empty {
   flex: 1;
   display: flex;

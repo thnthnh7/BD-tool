@@ -5,7 +5,8 @@ import { NativeSelect, Text } from "@mantine/core";
 import { GitBranch } from "lucide-react";
 import { DashboardPanel } from "./dashboard-panel";
 import { CompactEmpty } from "./compact-empty";
-import { compactVnd, inPeriod, PERIOD_OPTIONS } from "./period";
+import { inPeriod, PERIOD_OPTIONS } from "./period";
+import { currencyTotals, formatCurrencyTotals } from "@/lib/money";
 import type { DashboardDealPoint, DashboardStage, PeriodKey } from "./types";
 import classes from "@/styles/leadely-dashboard.module.css";
 
@@ -20,11 +21,11 @@ export function PipelineOverview({ stages, deals }: { stages: DashboardStage[]; 
       return {
         ...stage,
         count: items.length,
-        value: items.reduce((sum, deal) => sum + deal.amount, 0),
+        totals: currencyTotals(items),
       };
     });
   }, [deals, period, stages]);
-  const maxValue = Math.max(1, ...bars.map((bar) => bar.value || bar.count));
+  const maxValue = Math.max(1, ...bars.map((bar) => bar.count));
 
   return (
     <DashboardPanel
@@ -47,14 +48,13 @@ export function PipelineOverview({ stages, deals }: { stages: DashboardStage[]; 
       ) : (
         <div className={classes.bars}>
           {bars.map((bar, index) => {
-            const magnitude = bar.value || bar.count;
-            const height = Math.max(bar.count || bar.value ? 10 : 4, Math.round((magnitude / maxValue) * 132));
+            const height = Math.max(bar.count ? 10 : 4, Math.round((bar.count / maxValue) * 132));
             return (
               <div key={bar.id} className={classes.barCol}>
                 <div className={classes.barTrack}>
                   <Text className={classes.barMeta}>
                     {bar.count}
-                    {bar.value ? ` · ${compactVnd(bar.value)}` : ""}
+                    {Object.keys(bar.totals).length ? ` · ${formatCurrencyTotals(bar.totals, true)}` : ""}
                   </Text>
                   <div className={classes.barFill} style={{ height, background: BAR_COLORS[Math.min(index, BAR_COLORS.length - 1)] }} />
                 </div>

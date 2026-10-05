@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Box, Button, Group, NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { Building2 } from "lucide-react";
@@ -17,6 +18,7 @@ import { getTranslations } from "next-intl/server";
 const PAGE_SIZE = 20;
 
 export default async function CompaniesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  await requireModule("companies");
   const t = await getTranslations("CRM");
   const params = await searchParams;
   const q = (params.q || "").trim();

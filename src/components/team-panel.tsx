@@ -13,11 +13,13 @@ export function TeamPanel({
   viewerRole,
   workspaceType,
   seatLimit,
+  pendingInvites = 0,
 }: {
-  members: Array<{ userId: string; email: string; role: string; displayName: string }>;
+  members: Array<{ userId: string; email: string; role: string; displayName: string; seatActive: boolean }>;
   viewerRole: "owner" | "admin";
   workspaceType: "personal" | "company";
   seatLimit: number;
+  pendingInvites?: number;
 }) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
@@ -59,6 +61,13 @@ export function TeamPanel({
     <Stack gap="md">
       <PageHeader title="Team" subtitle="One account, one role. Invite assigns admin or member." />
       <SectionPanel title="Invite member">
+        <Group justify="space-between" mb="md">
+          <Text size="sm" fw={600}>{members.filter((member) => member.seatActive).length}/{seatLimit < 0 ? "∞" : seatLimit} active seats</Text>
+          <Text size="sm" c="dimmed">{pendingInvites} pending invitation{pendingInvites === 1 ? "" : "s"}</Text>
+        </Group>
+        {members.some((member) => !member.seatActive) ? (
+          <Alert color="orange" mb="md">This workspace is over its seat limit. The owner and earliest invited members remain active; later members cannot access workspace data until a seat becomes available.</Alert>
+        ) : null}
         <form action={invite}>
           <Group align="flex-end" grow>
             <TextInput name="email" type="email" required placeholder="Email" />
@@ -106,6 +115,7 @@ export function TeamPanel({
                     <Badge variant="light" color={member.role === "owner" ? "leadely" : member.role === "admin" ? "blue" : "gray"}>
                       {member.role}
                     </Badge>
+                      <Badge ml="xs" variant="light" color={member.seatActive ? "green" : "orange"}>{member.seatActive ? "Active seat" : "Waiting for seat"}</Badge>
                   </Table.Td>
                   <Table.Td>
                     {member.role === "owner" ? null : (

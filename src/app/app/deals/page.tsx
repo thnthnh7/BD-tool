@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { BriefcaseBusiness } from "lucide-react";
@@ -14,10 +15,11 @@ import { listCompanies, listContacts } from "@/features/companies/server/actions
 import { createDealAction, listDeals, listPipelines } from "@/features/deals/server/actions";
 import { DEAL_PRIORITIES, DEAL_TYPES } from "@/lib/crm";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
-import { formatVnd } from "@/lib/money";
+import { DEAL_CURRENCIES, formatCurrency } from "@/lib/money";
 import { getTranslations } from "next-intl/server";
 
 export default async function DealsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  await requireModule("deals");
   const t = await getTranslations("Deals");
   const { q, page } = readListQuery(await searchParams);
   const [deals, companies, contacts, pipelineData] = await Promise.all([
@@ -57,7 +59,10 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
               data={[{ value: "", label: "—" }, ...contacts.map((item) => ({ value: item.id, label: item.display_name }))]}
             />
             <NativeSelect name="deal_type" label={t("type")} data={DEAL_TYPES.map((item) => ({ value: item, label: item }))} />
-            <TextInput name="amount" type="number" label={t("amount")} defaultValue="0" />
+            <SimpleGrid cols={2} spacing="xs">
+              <TextInput name="amount" type="number" label={t("amount")} defaultValue="0" min={0} />
+              <NativeSelect name="currency" label="Currency" defaultValue="VND" data={DEAL_CURRENCIES.map((item) => ({ value: item, label: item }))} />
+            </SimpleGrid>
             <NativeSelect name="priority" label={t("priority")} data={DEAL_PRIORITIES.map((item) => ({ value: item, label: item }))} />
             <TextInput name="expected_close_date" type="date" label={t("expectedClose")} />
           </SimpleGrid>
@@ -100,7 +105,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
                   <TableTd>
                     <StatusBadge status={deal.pipeline_stages?.name || deal.pipeline_stages?.stage_type || ""} />
                   </TableTd>
-                  <TableTd ta="right">{formatVnd(deal.amount)}</TableTd>
+                  <TableTd ta="right">{formatCurrency(deal.amount, deal.currency)}</TableTd>
                   <TableTd ta="right">
                     <LinkIcon href={`/app/deals/${deal.id}`} label={t("openDeal", { name: deal.title })} />
                   </TableTd>

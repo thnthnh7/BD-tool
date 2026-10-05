@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { formOptionalId, formText } from "@/lib/crm";
 import { recordActivity, withWorkspace } from "@/lib/events";
+import { requireModule } from "@/lib/auth/session";
 
 export async function listCommunications() {
   const { context, supabase } = await withWorkspace();
@@ -16,6 +17,7 @@ export async function listCommunications() {
 }
 
 export async function logCommunicationAction(formData: FormData) {
+  await requireModule("inbox");
   const { context, supabase } = await withWorkspace();
   const subject = formText(formData, "subject");
   if (!subject) return { error: "Cần subject." };
@@ -62,6 +64,7 @@ export async function listMeetings() {
 }
 
 export async function createMeetingAction(formData: FormData) {
+  await requireModule("calendar");
   const { context, supabase } = await withWorkspace();
   const title = formText(formData, "title");
   const startsAt = formText(formData, "starts_at");
@@ -90,8 +93,9 @@ export async function listIntegrations() {
 }
 
 export async function upsertIntegrationAction(formData: FormData) {
-  const { context, supabase } = await withWorkspace();
   const provider = formText(formData, "provider");
+  await requireModule(provider.includes("calendar") ? "calendar" : "inbox");
+  const { context, supabase } = await withWorkspace();
   if (!provider) return { error: "Thiếu provider." };
   const { error } = await supabase.from("integration_connections").upsert(
     {
@@ -149,6 +153,7 @@ export async function getSequence(id: string) {
 }
 
 export async function createSequenceAction(formData: FormData) {
+  await requireModule("sequences");
   const { context, supabase } = await withWorkspace();
   const name = formText(formData, "name");
   if (!name) return { error: "Cần tên sequence." };
@@ -169,6 +174,7 @@ export async function createSequenceAction(formData: FormData) {
 }
 
 export async function addSequenceStepAction(formData: FormData) {
+  await requireModule("sequences");
   const { context, supabase } = await withWorkspace();
   const sequenceId = formText(formData, "sequence_id");
   const { data: last } = await supabase
@@ -193,6 +199,7 @@ export async function addSequenceStepAction(formData: FormData) {
 }
 
 export async function enrollSequenceAction(formData: FormData) {
+  await requireModule("sequences");
   const { context, supabase } = await withWorkspace();
   const sequenceId = formText(formData, "sequence_id");
   const { error } = await supabase.from("sequence_enrollments").insert({

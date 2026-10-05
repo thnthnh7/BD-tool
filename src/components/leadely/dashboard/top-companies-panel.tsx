@@ -4,7 +4,7 @@ import { clientInitials } from "@/lib/image";
 import { LinkAnchor } from "@/components/mantine-link";
 import { DashboardPanel } from "./dashboard-panel";
 import { CompactEmpty } from "./compact-empty";
-import { compactVnd } from "./period";
+import { formatCurrencyTotals } from "@/lib/money";
 import type { DashboardCompanyRank } from "./types";
 import classes from "@/styles/leadely-dashboard.module.css";
 
@@ -42,7 +42,7 @@ export function TopCompaniesPanel({ companies }: { companies: DashboardCompanyRa
                       {company.name}
                     </Text>
                     <Text size="xs" c="dimmed">
-                      {company.deals} open · {compactVnd(company.value)}
+                      {company.deals} open · {formatCurrencyTotals(company.values, true)}
                     </Text>
                   </div>
                 </Group>

@@ -10,7 +10,6 @@ import { SectionPanel } from "@/components/leadely/section-panel";
 import { StatusBadge } from "@/components/leadely/status-badge";
 import { createCheckoutInvoice, initGatewayCheckout, initiateSubscriptionCheckout } from "@/lib/billing/client-actions";
 import { billingMarketOptions, convertUsdCents, formatMinorAmount, marketForLocale } from "@/lib/billing/localization";
-import { formatVnd } from "@/lib/money";
 import type { AppLocale } from "@/i18n/config";
 import type { ParsedPlan } from "@/lib/entitlements";
 import classes from "@/styles/billing.module.css";
@@ -92,7 +91,7 @@ export function BillingPanel({ plans, providerPrices, usdRates, locale, invoices
     <PageHeader title={t("title")} subtitle={t("subtitle")} />
     <SectionPanel><div className={classes.summaryRow}>
       <div><Group gap={7}><Text size="xs" c="dimmed">{t("currentPlan")}</Text>{subscription ? <span className={classes.planStatus} data-status={subscription.status}><i />{subscription.status.replace(/_/g, " ")}</span> : null}</Group><Text fw={750} fz="lg" mt={2}>{current?.name || "—"}</Text></div>
-      <div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("price")}</Text><Text size="sm" fw={650}>{current?.isFree ? t("free") : displayPrice(current?.id, currentCycle) || formatVnd(current?.priceMonthly || 0)}</Text></div>
+      <div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("price")}</Text><Text size="sm" fw={650}>{current?.isFree ? t("free") : displayPrice(current?.id, currentCycle) || t("notConfigured")}</Text></div>
       {subscription ? <><div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("method")}</Text><Text size="sm" fw={650}>{subscription.provider?.toUpperCase() || "SEPAY"}</Text></div><div className={classes.summaryItem}><Text size="xs" c="dimmed">{subscription.cancel_at_period_end ? t("ends") : t("renews")}</Text><Text size="sm" fw={650}>{new Date(subscription.current_period_end).toLocaleDateString(locale)}</Text></div></> : null}
       {canPay ? <Button size="xs" variant={editing ? "light" : "filled"} onClick={() => setEditing((value) => !value)}>{editing ? t("close") : t("changePlan")}</Button> : null}
     </div></SectionPanel>

@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Group, Stack, Text } from "@mantine/core";
 import { DeleteQuoteButton } from "@/components/bd-tool/delete-quote-button";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
@@ -15,6 +16,7 @@ import { calculateQuoteTotals, formatVnd } from "@/lib/money";
 import { getTranslations } from "next-intl/server";
 
 export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  await requireModule("quotes");
   const t = await getTranslations("Quotes");
   const { q, page } = readListQuery(await searchParams);
   const { quotes, clients } = await loadWorkspaceAppData(["quotes", "clients"]);

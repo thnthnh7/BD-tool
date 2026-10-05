@@ -47,7 +47,7 @@ export function formatMinorAmount(amount: number, currency: string, locale: AppL
 const fallbackUsdRates: Record<string, number> = {
   USD: 1, VND: 25000, CNY: 7.2, TWD: 32, EUR: 0.92, BRL: 5.4, PLN: 3.9,
   TRY: 44, RUB: 83, UAH: 41, JPY: 150, KRW: 1400, IDR: 16600, THB: 32,
-  AED: 3.6725, INR: 92, SGD: 1.35,
+  AED: 3.6725, INR: 92, SGD: 1.35, GBP: 0.75, AUD: 1.52, CAD: 1.39,
 };
 
 export async function loadUsdRates() {

@@ -3,7 +3,7 @@ import { Check, KeyRound } from "lucide-react";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
-import { requireWorkspace } from "@/lib/auth/session";
+import { requireWorkspace, requireModule } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mcpScopeLabelKeys } from "@/features/mcp/scopes";
 import { mcpResource, normalizeOAuthScopes, validPkceChallenge } from "@/features/mcp/server/oauth";
@@ -13,6 +13,7 @@ import { getTranslations } from "next-intl/server";
 type Params = { client_id?: string; redirect_uri?: string; state?: string; code_challenge?: string; code_challenge_method?: string; resource?: string; scope?: string };
 
 export default async function McpAuthorizePage({ searchParams }: { searchParams: Promise<Params> }) {
+  await requireModule("mcp_access");
   await requireWorkspace();
   const params = await searchParams;
   const { data: client } = await createAdminClient().from("mcp_oauth_clients").select("client_id, client_name, redirect_uris, status").eq("client_id", params.client_id || "").maybeSingle();

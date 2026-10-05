@@ -64,6 +64,10 @@ export async function POST(request: NextRequest) {
           });
         }
       }
+    } else if (["invoice.payment_failed", "invoice.payment_action_required"].includes(event.type)) {
+      const parent = object.parent as { subscription_details?: { subscription?: string } } | undefined;
+      const subscriptionId = typeof object.subscription === "string" ? object.subscription : parent?.subscription_details?.subscription;
+      if (subscriptionId) await syncStripeSubscription(await loadStripeSubscription(subscriptionId) as StripeObject);
     }
     await finishWebhookEvent("stripe", event.id);
     return NextResponse.json({ received: true });

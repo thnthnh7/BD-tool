@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { loadWorkspaceAppData } from "@/lib/db/actions";
 import { QuoteEditor } from "@/components/bd-tool/quote-editor";
 import { defaultSettings } from "@/lib/default-data";
@@ -6,6 +7,7 @@ import { ensureLegacyClientForCompany } from "@/features/companies/server/action
 import { getDeal } from "@/features/deals/server/actions";
 
 export default async function NewQuotePage({ searchParams }: { searchParams: Promise<{ dealId?: string; mode?: string }> }) {
+  await requireModule("quotes");
   const { dealId, mode } = await searchParams;
   const { settings, clients, modules } = await loadWorkspaceAppData(["settings", "clients", "modules"]);
   let resolvedClients = clients;

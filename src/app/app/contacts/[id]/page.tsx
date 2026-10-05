@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Grid, GridCol, NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { notFound } from "next/navigation";
 import { CompanyMark } from "@/components/leadely/company-mark";
@@ -11,6 +12,7 @@ import { listActivities } from "@/features/tasks/server/actions";
 import { RELATIONSHIP_STRENGTHS } from "@/lib/crm";
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireModule("contacts");
   const { id } = await params;
   const [contact, companies] = await Promise.all([getContact(id), listCompanies()]);
   if (!contact) notFound();

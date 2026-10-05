@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/leadely/page-header";
 import { LinkButton } from "@/components/mantine-link";
 import { listScrapeSources } from "@/features/leads/server/source-actions";
 import { summarizePricing, type ActorPricing } from "@/features/leads/source-pricing";
-import { requireWorkspace } from "@/lib/auth/session";
+import { requireWorkspace, requireModule } from "@/lib/auth/session";
 import { readListQuery } from "@/lib/list-page";
 import classes from "@/features/leads/components/source-cards.module.css";
 import { ApifyAccountStatus } from "@/features/leads/components/apify-account-status";
@@ -33,6 +33,7 @@ function initial(title: string) {
 export default async function LeadSourcesPage({ searchParams }: {
   searchParams: Promise<{ q?: string; page?: string; installed?: string; category?: string }>;
 }) {
+  await requireModule("sources");
   const params = await searchParams;
   const [t, scrapeT, locale] = await Promise.all([getTranslations("Sources"), getTranslations("Scrape"), getLocale()]);
   const { q, page } = readListQuery(params);

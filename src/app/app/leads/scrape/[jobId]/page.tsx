@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Alert, Box, Code, Group, NativeSelect, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { notFound } from "next/navigation";
@@ -28,6 +29,7 @@ export default async function ScrapeJobPage({ params, searchParams }: {
   params: Promise<{ jobId: string }>;
   searchParams: Promise<{ q?: string; page?: string; view?: string }>;
 }) {
+  await requireModule("scraping");
   const { jobId } = await params;
   const search = await searchParams;
   const { q, page } = readListQuery(search);

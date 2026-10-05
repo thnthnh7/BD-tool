@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { ListFilter } from "lucide-react";
@@ -12,6 +13,7 @@ import { createLeadListAction, listLeadLists } from "@/features/lists/server/act
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 
 export default async function ListsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  await requireModule("lists");
   const { q, page } = readListQuery(await searchParams);
   const lists = await listLeadLists();
   const matched = lists.filter((list) => matchesQuery(q, [list.name, list.description, list.source, list.status]));

@@ -1,5 +1,7 @@
 "use server";
 
+import { requireModule } from "@/lib/auth/session";
+
 import { revalidatePath } from "next/cache";
 import { asJoined, formOptionalId, formText } from "@/lib/crm";
 import { withWorkspace } from "@/lib/events";
@@ -50,6 +52,7 @@ export async function getLeadList(id: string) {
 }
 
 export async function createLeadListAction(formData: FormData) {
+  await requireModule("lists"); // createLeadListAction
   const { context, supabase } = await withWorkspace();
   const name = formText(formData, "name");
   if (!name) return { error: "Cần tên list." };
@@ -71,6 +74,7 @@ export async function createLeadListAction(formData: FormData) {
 }
 
 export async function addListMemberAction(formData: FormData) {
+  await requireModule("lists"); // addListMemberAction
   const { context, supabase } = await withWorkspace();
   const listId = formText(formData, "list_id");
   const companyId = formText(formData, "company_id");
@@ -92,6 +96,7 @@ export async function addListMemberAction(formData: FormData) {
 }
 
 export async function updateListMemberStatusAction(formData: FormData) {
+  await requireModule("lists"); // updateListMemberStatusAction
   const { context, supabase } = await withWorkspace();
   const id = formText(formData, "id");
   const { error } = await supabase

@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/database.types";
 import { apifyActorPath, isMapsActor, MAPS_SLUG } from "@/features/leads/maps-source";
-import { parsePlan } from "@/lib/entitlements";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { incrementUsage } from "@/lib/usage";
 import { readAllPages } from "@/features/leads/server/read-pages";
@@ -367,18 +366,13 @@ export async function runScrapeIngest(job: Job) {
     }
     const items = await fetchApifyDatasetItems(job.apify_dataset_id, token);
     const ingested = await ingestDatasetItems(supabase, job, items);
-    const { data: workspace } = await supabase.from("workspaces").select("plan_id").eq("id", job.workspace_id).single();
-    const { data: planRow } = workspace
-      ? await supabase.from("plans").select("*").eq("id", workspace.plan_id).single()
-      : { data: null };
-    if (ingested.billPlaces && planRow) {
-      const plan = parsePlan(planRow);
+    if (ingested.billPlaces) {
       const placesQuota = await incrementUsage(
         supabase,
         job.workspace_id,
         "maps_places",
         ingested.placesFound,
-        plan.quotas.maps_places_per_month,
+        -1,
       );
       if (placesQuota.error) {
         await supabase
@@ -393,7 +387,7 @@ export async function runScrapeIngest(job: Job) {
           job.workspace_id,
           "maps_people",
           ingested.peopleFound,
-          plan.quotas.maps_people_per_month,
+          -1,
         );
         if (peopleQuota.error) {
           await supabase

@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { requireUser } from "@/lib/auth/session";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "@/i18n/messages";
 import { LocaleDocument } from "@/i18n/locale-document";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const context = await requireUser();

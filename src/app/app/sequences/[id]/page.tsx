@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { NativeSelect, Paper, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { notFound } from "next/navigation";
@@ -17,6 +18,7 @@ export default async function SequenceDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  await requireModule("sequences");
   const { id } = await params;
   const query = await searchParams;
   const stepsQuery = readNamedQuery(query, "step");

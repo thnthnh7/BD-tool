@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { NativeSelect, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { UserPlus } from "lucide-react";
@@ -16,6 +17,7 @@ import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 import { getTranslations } from "next-intl/server";
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  await requireModule("leads");
   const t = await getTranslations("CRM");
   const { q, page } = readListQuery(await searchParams);
   const [leads, companies, contacts] = await Promise.all([listLeads(), listCompanies(), listContacts()]);

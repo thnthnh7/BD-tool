@@ -30,8 +30,13 @@ const deckSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "Bizcraw",
-  description: "AI BD assistant — quotes, slideshows and contracts.",
+  metadataBase: new URL("https://bizcraw.com"),
+  title: { default: "Bizcraw", template: "%s | Bizcraw" },
+  description: "AI sales workspace for lead discovery, CRM operations, deals, quotes and contracts.",
+  applicationName: "Bizcraw",
+  authors: [{ name: "Bizcraw" }],
+  creator: "Bizcraw",
+  publisher: "Bizcraw",
 };
 
 export default async function RootLayout({

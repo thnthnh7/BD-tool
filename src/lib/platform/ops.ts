@@ -17,9 +17,6 @@ const QUOTA_KEYS: (keyof PlanQuotas)[] = [
   "seats",
   "quotes_per_month",
   "ai_briefs_per_month",
-  "maps_scrapes_per_month",
-  "maps_places_per_month",
-  "maps_people_per_month",
 ];
 
 function monthStartIso() {
@@ -49,7 +46,7 @@ export async function loadPlatformDashboard() {
     ]);
 
   const tenantRows = workspaces || [];
-  const statusCounts = { trialing: 0, active: 0, past_due: 0, expired: 0, canceled: 0 };
+  const statusCounts = { pending: 0, trialing: 0, active: 0, past_due: 0, suspended: 0, expired: 0, canceled: 0 };
   for (const row of tenantRows) {
     if (row.plan_status in statusCounts) statusCounts[row.plan_status as keyof typeof statusCounts] += 1;
   }
@@ -80,9 +77,6 @@ export async function loadPlatformDashboard() {
     const used: Record<string, number> = {
       quotes_per_month: row.quotes_created,
       ai_briefs_per_month: row.ai_briefs,
-      maps_scrapes_per_month: row.maps_scrapes,
-      maps_places_per_month: row.maps_places,
-      maps_people_per_month: row.maps_people,
     };
     for (const key of Object.keys(used)) {
       const limit = effective.quotas[key as keyof PlanQuotas];
@@ -397,7 +391,7 @@ export async function updateWorkspaceBillingAction(formData: FormData) {
   const planStatus = String(formData.get("planStatus") || "");
   const periodEnd = String(formData.get("periodEnd") || "");
   const interval = String(formData.get("interval") || "") === "yearly" ? "yearly" : "monthly";
-  const allowed = ["trialing", "active", "past_due", "expired", "canceled"];
+  const allowed = ["pending", "trialing", "active", "past_due", "suspended", "expired", "canceled"];
   if (!allowed.includes(planStatus)) return { error: "Invalid plan status." };
   const { data: accessLock } = await supabase.from("workspaces")
     .select("plan_deactivated_at")
@@ -668,7 +662,6 @@ export async function loadPlatformHealth() {
       cron: Boolean(process.env.CRON_SECRET),
       sepayWebhook: Boolean(sepayConfig.enabled && sepayConfig.credentials.webhookSecret),
       apifyOauth: Boolean(process.env.APIFY_OAUTH_CLIENT_ID && process.env.APIFY_OAUTH_CLIENT_SECRET && process.env.APIFY_OAUTH_AUTHORIZATION_URL && process.env.APIFY_OAUTH_TOKEN_URL),
-      platformAi: Boolean(process.env.NINE_ROUTER_API_KEY && process.env.NINE_ROUTER_BASE_URL && process.env.NINE_ROUTER_MODEL),
     },
   };
 }

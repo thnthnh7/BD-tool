@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Alert, Badge, Button, Checkbox, CheckboxGroup, Group, NativeSelect, Paper, SimpleGrid, Stack, Text, TextInput, ThemeIcon } from "@mantine/core";
 import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, Check, CheckCircle2, KeyRound, Map, Play, RefreshCw } from "lucide-react";
 import { LinkButton } from "@/components/mantine-link";
@@ -27,6 +28,7 @@ export default async function CrmIntegrationsPage({
 }: {
   searchParams: Promise<{ provider?: string; object?: string; oauth?: string }>;
 }) {
+  await requireModule("crm_integrations");
   const [{ provider: requestedProvider, object: requestedObject, oauth }, data] = await Promise.all([searchParams, loadCrmIntegrations()]);
   const selectedProvider = crmProvider(requestedProvider || "") || crmProvider(data.connections[0]?.provider) || crmProviders[0];
   const selectedConnection = data.connections.find((connection) => connection.provider === selectedProvider.id);

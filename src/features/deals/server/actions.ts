@@ -1,9 +1,12 @@
 "use server";
 
+import { requireModule } from "@/lib/auth/session";
+
 import { revalidatePath } from "next/cache";
 import { recordActivity, withWorkspace } from "@/lib/events";
 import { asJoined, DEAL_TYPES, formInt, formOptionalId, formText } from "@/lib/crm";
 import type { Database } from "@/lib/database.types";
+import { normalizeDealCurrency } from "@/lib/money";
 
 type DealRow = Database["public"]["Tables"]["deals"]["Row"];
 
@@ -71,6 +74,7 @@ export async function listDealStakeholders(dealId: string) {
 }
 
 export async function createDealAction(formData: FormData) {
+  await requireModule("deals"); // createDealAction
   const { context, supabase } = await withWorkspace();
   const title = formText(formData, "title");
   const companyId = formOptionalId(formData, "company_id");
@@ -98,6 +102,7 @@ export async function createDealAction(formData: FormData) {
       description: formText(formData, "description"),
       deal_type: DEAL_TYPES.includes(dealType as (typeof DEAL_TYPES)[number]) ? dealType : "sales",
       amount: formInt(formData, "amount"),
+      currency: normalizeDealCurrency(formText(formData, "currency")),
       probability: stage?.probability ?? 10,
       expected_close_date: formText(formData, "expected_close_date") || null,
       priority: formText(formData, "priority") || "medium",
@@ -128,10 +133,12 @@ export async function createDealAction(formData: FormData) {
     title: `Deal created: ${title}`,
   });
   revalidatePath("/app/deals");
+  revalidatePath("/app");
   return { ok: true as const, id: data.id };
 }
 
 export async function updateDealAction(formData: FormData) {
+  await requireModule("deals"); // updateDealAction
   const { context, supabase } = await withWorkspace();
   const id = formText(formData, "id");
   const title = formText(formData, "title");
@@ -142,6 +149,7 @@ export async function updateDealAction(formData: FormData) {
       title,
       description: formText(formData, "description"),
       amount: formInt(formData, "amount"),
+      currency: normalizeDealCurrency(formText(formData, "currency")),
       expected_close_date: formText(formData, "expected_close_date") || null,
       priority: formText(formData, "priority") || "medium",
       deal_type: formText(formData, "deal_type") || "sales",
@@ -152,10 +160,12 @@ export async function updateDealAction(formData: FormData) {
   if (error) return { error: error.message };
   revalidatePath("/app/deals");
   revalidatePath(`/app/deals/${id}`);
+  revalidatePath("/app");
   return { ok: true as const };
 }
 
 export async function moveDealStageAction(formData: FormData) {
+  await requireModule("deals"); // moveDealStageAction
   const { context, supabase } = await withWorkspace();
   const dealId = formText(formData, "deal_id");
   const stageId = formText(formData, "stage_id");
@@ -202,10 +212,12 @@ export async function moveDealStageAction(formData: FormData) {
   });
   revalidatePath("/app/deals");
   revalidatePath(`/app/deals/${dealId}`);
+  revalidatePath("/app");
   return { ok: true as const };
 }
 
 export async function addDealStakeholderAction(formData: FormData) {
+  await requireModule("deals"); // addDealStakeholderAction
   const { context, supabase } = await withWorkspace();
   const dealId = formText(formData, "deal_id");
   const contactId = formOptionalId(formData, "contact_id");

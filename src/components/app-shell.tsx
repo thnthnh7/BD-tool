@@ -31,6 +31,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
+import { AgentWidget } from "@/features/agent/components/agent-widget";
 import { AppLogo } from "@/components/leadely/app-logo";
 import { LinkButton } from "@/components/mantine-link";
 import { ContentContainer } from "@/components/layout/content-container";
@@ -38,6 +39,7 @@ import { signOut } from "@/lib/auth/actions";
 import type { SessionContext } from "@/lib/auth/session";
 import classes from "@/styles/leadely-shell.module.css";
 import { useTranslations } from "next-intl";
+import type { ModuleKey } from "@/lib/module-catalog";
 
 type NavRole = "owner" | "admin" | "member" | "super_admin" | "support";
 type NavItem = {
@@ -45,7 +47,7 @@ type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   roles: NavRole[];
-  feature?: "mcp_access";
+  feature?: ModuleKey;
 };
 type NavGroup = {
   id: string;
@@ -62,47 +64,47 @@ const workspaceGroups: NavGroup[] = [
     id: "find",
     label: "Find",
     items: [
-      { href: "/app/leads/sources", label: "sources", icon: Library, roles: ["owner", "admin", "member"] },
-      { href: "/app/leads/scrape", label: "scrape", icon: Radar, roles: ["owner", "admin", "member"] },
-      { href: "/app/data", label: "dataLibrary", icon: Database, roles: ["owner", "admin", "member"] },
-      { href: "/app/leads", label: "leads", icon: UserPlus, roles: ["owner", "admin", "member"] },
-      { href: "/app/lists", label: "lists", icon: ListFilter, roles: ["owner", "admin", "member"] },
+      { href: "/app/leads/sources", label: "sources", icon: Library, roles: ["owner", "admin", "member"], feature: "sources" },
+      { href: "/app/leads/scrape", label: "scrape", icon: Radar, roles: ["owner", "admin", "member"], feature: "scraping" },
+      { href: "/app/data", label: "dataLibrary", icon: Database, roles: ["owner", "admin", "member"], feature: "data_library" },
+      { href: "/app/leads", label: "leads", icon: UserPlus, roles: ["owner", "admin", "member"], feature: "leads" },
+      { href: "/app/lists", label: "lists", icon: ListFilter, roles: ["owner", "admin", "member"], feature: "lists" },
     ],
   },
   {
     id: "crm",
     label: "CRM",
     items: [
-      { href: "/app/companies", label: "companies", icon: Building2, roles: ["owner", "admin", "member"] },
-      { href: "/app/contacts", label: "contacts", icon: Users, roles: ["owner", "admin", "member"] },
-      { href: "/app/deals", label: "deals", icon: BriefcaseBusiness, roles: ["owner", "admin", "member"] },
-      { href: "/app/tasks", label: "tasks", icon: CheckSquare, roles: ["owner", "admin", "member"] },
+      { href: "/app/companies", label: "companies", icon: Building2, roles: ["owner", "admin", "member"], feature: "companies" },
+      { href: "/app/contacts", label: "contacts", icon: Users, roles: ["owner", "admin", "member"], feature: "contacts" },
+      { href: "/app/deals", label: "deals", icon: BriefcaseBusiness, roles: ["owner", "admin", "member"], feature: "deals" },
+      { href: "/app/tasks", label: "tasks", icon: CheckSquare, roles: ["owner", "admin", "member"], feature: "tasks" },
     ],
   },
   {
     id: "sell",
     label: "Sell",
     items: [
-      { href: "/app/quotes", label: "quotes", icon: FileText, roles: ["owner", "admin", "member"] },
-      { href: "/app/modules", label: "modules", icon: PackagePlus, roles: ["owner", "admin", "member"] },
-      { href: "/app/contracts", label: "contracts", icon: FileText, roles: ["owner", "admin"] },
+      { href: "/app/quotes", label: "quotes", icon: FileText, roles: ["owner", "admin", "member"], feature: "quotes" },
+      { href: "/app/modules", label: "modules", icon: PackagePlus, roles: ["owner", "admin", "member"], feature: "product_modules" },
+      { href: "/app/contracts", label: "contracts", icon: FileText, roles: ["owner", "admin"], feature: "contracts" },
     ],
   },
   {
     id: "engage",
     label: "Engage",
     items: [
-      { href: "/app/inbox", label: "inbox", icon: Inbox, roles: ["owner", "admin", "member"] },
-      { href: "/app/calendar", label: "calendar", icon: CalendarDays, roles: ["owner", "admin", "member"] },
-      { href: "/app/sequences", label: "sequences", icon: Mail, roles: ["owner", "admin", "member"] },
+      { href: "/app/inbox", label: "inbox", icon: Inbox, roles: ["owner", "admin", "member"], feature: "inbox" },
+      { href: "/app/calendar", label: "calendar", icon: CalendarDays, roles: ["owner", "admin", "member"], feature: "calendar" },
+      { href: "/app/sequences", label: "sequences", icon: Mail, roles: ["owner", "admin", "member"], feature: "sequences" },
     ],
   },
   {
     id: "workspace",
     label: "Workspace",
     items: [
-      { href: "/app/team", label: "team", icon: Users, roles: ["owner", "admin"] },
-      { href: "/app/crm-integrations", label: "crmIntegration", icon: Share2, roles: ["owner", "admin", "member"] },
+      { href: "/app/team", label: "team", icon: Users, roles: ["owner", "admin"], feature: "team" },
+      { href: "/app/crm-integrations", label: "crmIntegration", icon: Share2, roles: ["owner", "admin", "member"], feature: "crm_integrations" },
       { href: "/app/mcp", label: "mcp", icon: Network, roles: ["owner", "admin"], feature: "mcp_access" },
     ],
   },
@@ -157,7 +159,7 @@ export function AppShellNav({
     .filter((group) => group.items.length > 0);
 
   const locked =
-    context.kind === "workspace" && (context.locked || context.planStatus === "expired" || context.planStatus === "canceled");
+    context.kind === "workspace" && (context.locked || ["pending", "suspended", "expired", "canceled"].includes(context.planStatus));
   const pastDue = context.kind === "workspace" && context.planStatus === "past_due";
   const accountLabel = context.kind === "platform" ? context.platformRole : context.memberRole;
 
@@ -266,6 +268,7 @@ export function AppShellNav({
           </ContentContainer>
         </div>
       </AppShell.Main>
+      {context.kind === "workspace" && context.plan.features.ai_agent ? <AgentWidget workspaceId={context.workspaceId} userId={context.userId} /> : null}
     </AppShell>
   );
 }

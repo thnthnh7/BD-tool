@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { applyPlanOverrides, parsePlan, type ParsedPlan, type PlanStatus } from "@/lib/entitlements";
+import { applyEntitlementSnapshot, applyPlanOverrides, isPlanLocked, parsePlan, type ParsedPlan, type PlanStatus } from "@/lib/entitlements";
 import { defaultLocale, isAppLocale, type AppLocale } from "@/i18n/config";
+import type { ModuleKey } from "@/lib/module-catalog";
 
 export type MemberRole = "owner" | "admin" | "member";
 export type PlatformRole = "super_admin" | "support";
@@ -70,6 +71,12 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
 
+  const { data: seatActive, error: seatError } = await supabase.rpc("has_workspace_seat", {
+    p_workspace_id: membership.workspace_id,
+    p_user_id: userId,
+  });
+  if (seatError || !seatActive) redirect("/seat-unavailable");
+
   const { data: workspace } = await supabase
     .from("workspaces")
     .select("id, name, type, plan_id, plan_status, locked, archived_at")
@@ -81,14 +88,19 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
   }
 
   // Both reads depend on the verified workspace, but not on each other.
-  const [{ data: planRow }, { data: override }] = await Promise.all([
+  const [{ data: planRow }, { data: override }, { data: subscription }] = await Promise.all([
     supabase.from("plans").select("*").eq("id", workspace.plan_id).single(),
     supabase.from("workspace_overrides").select("quotas, features").eq("workspace_id", workspace.id).maybeSingle(),
+    supabase.from("subscriptions").select("plan_id, status, entitlement_snapshot").eq("workspace_id", workspace.id).maybeSingle(),
   ]);
   if (!planRow) {
     return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
 
+  const snapshot = subscription?.plan_id === workspace.plan_id
+    && ["active", "trialing", "past_due"].includes(subscription.status)
+    ? subscription.entitlement_snapshot
+    : null;
   return {
     kind: "workspace",
     userId,
@@ -98,7 +110,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     workspaceName: workspace.name,
     workspaceType: workspace.type as "personal" | "company",
     memberRole: membership.role as MemberRole,
-    plan: applyPlanOverrides(parsePlan(planRow), override?.quotas, override?.features),
+    plan: applyPlanOverrides(applyEntitlementSnapshot(parsePlan(planRow), snapshot), override?.quotas, override?.features),
     planStatus: workspace.plan_status as PlanStatus,
     locked: workspace.locked || Boolean(workspace.archived_at),
   };
@@ -126,6 +138,14 @@ export async function requireOwner() {
 export async function requireOwnerOrAdmin() {
   const context = await requireWorkspace();
   if (context.memberRole === "member") redirect("/app");
+  return context;
+}
+
+export async function requireModule(module: ModuleKey) {
+  const context = await requireWorkspace();
+  if (!context.plan.features[module] || context.locked || isPlanLocked(context.planStatus)) {
+    redirect(`/app/billing?required=${encodeURIComponent(module)}`);
+  }
   return context;
 }
 

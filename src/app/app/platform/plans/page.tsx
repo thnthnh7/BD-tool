@@ -5,6 +5,7 @@ import { createPlanAction, deletePlanAction, loadPlatformPlans, updatePlanConfig
 import { requirePlatform } from "@/lib/auth/session";
 import classes from "@/styles/platform-plans.module.css";
 import { billingProviderReady, getAllBillingProviderConfigs } from "@/lib/billing/config";
+import { CAPABILITY_OPTIONS, MODULE_GROUPS } from "@/lib/module-catalog";
 
 export default async function PlatformPlansPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
   const context = await requirePlatform();
@@ -69,19 +70,30 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                   <TextInput name="seats" label="Seats" type="number" defaultValue={String(plan.quotas.seats)} />
                   <TextInput name="quotes_per_month" label="Quotes / month" type="number" defaultValue={String(plan.quotas.quotes_per_month)} />
                   <TextInput name="ai_briefs_per_month" label="AI briefs / month" type="number" defaultValue={String(plan.quotas.ai_briefs_per_month)} />
-                  <TextInput name="maps_scrapes_per_month" label="Maps scrapes / month" type="number" defaultValue={String(plan.quotas.maps_scrapes_per_month)} />
-                  <TextInput name="maps_places_per_month" label="Maps places / month" type="number" defaultValue={String(plan.quotas.maps_places_per_month)} />
-                  <TextInput name="maps_people_per_month" label="Maps people / month" type="number" defaultValue={String(plan.quotas.maps_people_per_month)} />
                 </SimpleGrid>
-                <Group gap="md" mt={4}>
-                  <Checkbox name="byok_ai" label="BYOK AI" defaultChecked={plan.features.byok_ai} />
-                  <Checkbox name="lead_scrape" label="Lead scrape" defaultChecked={plan.features.lead_scrape} />
-                  <Checkbox name="export_docx" label="Export docx" defaultChecked={plan.features.export_docx} />
-                  <Checkbox name="custom_branding" label="Custom branding" defaultChecked={plan.features.custom_branding} />
-                  <Checkbox name="contracts" label="Contracts" defaultChecked={plan.features.contracts} />
-                  <Checkbox name="mcp_access" label="MCP access" defaultChecked={plan.features.mcp_access} />
+                <Text size="sm" fw={700} mt="xs">Modules included</Text>
+                <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
+                  {MODULE_GROUPS.map((group) => (
+                    <Stack key={group.id} gap={6} p="sm" style={{ border: "1px solid var(--mantine-color-gray-3)", borderRadius: 10 }}>
+                      <Text size="xs" fw={700} tt="uppercase" c="dimmed">{group.label}</Text>
+                      {group.modules.map(([key, label]) => (
+                        <Checkbox key={key} name={`feature_${key}`} label={label} defaultChecked={plan.features[key]} />
+                      ))}
+                    </Stack>
+                  ))}
+                </SimpleGrid>
+                <Text size="sm" fw={700} mt="xs">Advanced capabilities</Text>
+                <Group gap="md">
+                  {CAPABILITY_OPTIONS.map(([key, label]) => (
+                    <Checkbox key={key} name={`feature_${key}`} label={label} defaultChecked={plan.features[key]} />
+                  ))}
                 </Group>
                 <Switch name="is_public" label="Listed on pricing" defaultChecked={plan.isPublic} mt={4} />
+                <Checkbox
+                  name="apply_to_existing"
+                  label="Apply entitlement changes to existing subscriptions"
+                  description="Leave off to preserve the modules and quotas current customers subscribed to."
+                />
               </Stack>
             </div>
             {!plan.isFree && context.platformRole === "super_admin" ? (
@@ -90,7 +102,7 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                   <Group justify="space-between" align="flex-start">
                     <div>
                       <Text size="sm" fw={700}>Pricing</Text>
-                      <Text size="xs" c="dimmed">VND is used by SePay; USD is synchronized to connected providers.</Text>
+                      <Text size="xs" c="dimmed">Set the plan price in USD. Stripe and PayPal bill this amount. SePay converts it to VND at checkout.</Text>
                     </div>
                     <Group gap={6}>
                       <Badge size="sm" color={stripeConnected ? "leadely" : "gray"} variant="light">Stripe · {stripeConnected ? "Connected" : "Not connected"}</Badge>
@@ -99,18 +111,8 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                   </Group>
                   <div className={classes.currencyGroup}>
                     <div className={classes.currencyLabel}>
-                      <Text fw={700} size="sm">VND</Text>
-                      <Text size="xs" c="dimmed">SePay and local bank transfer</Text>
-                    </div>
-                    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs" className={classes.currencyFields}>
-                      <TextInput name="vnd_monthly" label="Monthly" type="number" min={1} step={1000} defaultValue={String(plan.priceMonthly)} rightSection="₫" />
-                      <TextInput name="vnd_yearly" label="Yearly" type="number" min={1} step={1000} defaultValue={String(plan.priceYearly)} rightSection="₫" />
-                    </SimpleGrid>
-                  </div>
-                  <div className={classes.currencyGroup}>
-                    <div className={classes.currencyLabel}>
                       <Text fw={700} size="sm">USD</Text>
-                      <Text size="xs" c="dimmed">Stripe and PayPal subscriptions</Text>
+                      <Text size="xs" c="dimmed">Monthly is required. Leave yearly blank until you offer it.</Text>
                     </div>
                     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs" className={classes.currencyFields}>
                     <TextInput
@@ -126,7 +128,7 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                       name="usd_yearly"
                       label="Yearly"
                       type="number"
-                      min={0.01}
+                      min={0}
                       step={0.01}
                       defaultValue={String((providerPrices.find((item) => item.billing_interval === "yearly")?.amount || 0) / 100)}
                       leftSection="$"

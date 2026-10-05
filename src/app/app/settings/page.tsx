@@ -1,8 +1,8 @@
 import { loadWorkspaceAppData } from "@/lib/db/actions";
 import { SettingsPanel } from "@/components/bd-tool/settings-panel";
 import { defaultSettings } from "@/lib/default-data";
-import { Table, Text } from "@mantine/core";
-import Link from "next/link";
+import { Divider, Text } from "@mantine/core";
+import { Table, TableTbody, TableTd, TableTh, TableThead, TableTr } from "@/components/leadely/table";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { deleteAiProviderAction, getDefaultAiProvider } from "@/features/ai/server/providers";
@@ -11,10 +11,14 @@ import { getCurrentWorkspaceApifyStatus } from "@/features/leads/server/apify-co
 import { LocaleSettings } from "@/features/settings/components/locale-settings";
 import { getTranslations } from "next-intl/server";
 import { AiProviderForm } from "@/features/ai/components/ai-provider-form";
+import { AiProviderOverview } from "@/features/ai/components/ai-provider-overview";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
   const t = await getTranslations("Settings");
   const { context, settings } = await loadWorkspaceAppData(["settings"]);
+  const supabase = await createClient();
+  const { data: agentSettings } = await supabase.from("workspace_agent_settings").select("enabled, write_enabled").eq("workspace_id", context.workspaceId).maybeSingle();
   const [ai, apify] = await Promise.all([getDefaultAiProvider(), getCurrentWorkspaceApifyStatus()]);
   const canManage = context.memberRole === "owner" || context.memberRole === "admin";
 
@@ -27,38 +31,28 @@ export default async function SettingsPage() {
         apifyProvider={<ApifyAccountStatus connection={apify.connection} canManage={apify.canManage} oauthReady={apify.oauthReady} showSetup />}
         aiProvider={
       <SectionPanel title={t("aiTitle")}>
-        <Text size="sm" mb="md">{t("aiSharedHelp")}</Text>
-        <Text size="xs" c="dimmed" mb="md">{t("aiFallbackHelp")}</Text>
-        <Text size="xs" c={ai.platformConfigured ? "teal" : "orange"} mb="xs">
-          Platform AI: {ai.platformConfigured ? "Ready" : "Not configured"}
-        </Text>
-        <Text size="xs" c="dimmed" mb="md">
-          Shared AI usage this month: {ai.usage}/{ai.quota < 0 ? "Unlimited" : ai.quota}
-        </Text>
-        <Text size="xs" c={ai.readyKnowledge > 0 ? "teal" : "orange"} mb="md">
-          Knowledge sources: {ai.readyKnowledge} ready · <Link href="/app/modules">Manage knowledge</Link>
-        </Text>
+        <AiProviderOverview
+          canManage={canManage}
+          enabled={agentSettings?.enabled ?? true}
+          writeEnabled={agentSettings?.write_enabled ?? false}
+          readyKnowledge={ai.readyKnowledge}
+          provider={ai.provider ? { provider: ai.provider.provider, model: ai.provider.model, status: ai.provider.status } : null}
+        />
+        <Divider my="md" />
         {ai.canByok ? (
           canManage ? (
             <>
-              {ai.provider ? (
-                <Text size="sm" mb="sm">
-                  {t("active")}: {ai.provider.provider} · {ai.provider.model} · {ai.provider.base_url} · {ai.provider.status}
-                </Text>
-              ) : (
-                <Text size="sm" c="dimmed" mb="sm">
-                  {t("noAiKey")}
-                </Text>
-              )}
               <AiProviderForm
                 current={ai.provider}
                 submitLabel={t("testSaveKey")}
                 labels={{ provider: t("provider"), model: t("model"), apiKeyPlaceholder: t("apiKeyPlaceholder") }}
               />
               {ai.provider ? (
-                <ActionForm action={deleteAiProviderAction} submitLabel={t("removeKey")}>
-                  <input type="hidden" name="confirm" value="1" />
-                </ActionForm>
+                <div style={{ marginTop: 12 }}>
+                  <ActionForm action={deleteAiProviderAction} submitLabel={t("removeKey")} variant="light">
+                    <input type="hidden" name="confirm" value="1" />
+                  </ActionForm>
+                </div>
               ) : null}
             </>
           ) : (
@@ -72,25 +66,25 @@ export default async function SettingsPage() {
         {ai.recentActivity.length ? (
           <>
             <Text size="sm" fw={700} mt="xl" mb="xs">Recent AI activity</Text>
-            <Table.ScrollContainer minWidth={720}>
-              <Table striped highlightOnHover withTableBorder>
-                <Table.Thead>
-                  <Table.Tr><Table.Th>User</Table.Th><Table.Th>Task</Table.Th><Table.Th>Source</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Tokens</Table.Th></Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
+            <div style={{ overflowX: "auto" }}>
+              <Table striped highlightOnHover withTableBorder style={{ minWidth: 720 }}>
+                <TableThead>
+                  <TableTr><TableTh>User</TableTh><TableTh>Task</TableTh><TableTh>Source</TableTh><TableTh>Status</TableTh><TableTh>Latency</TableTh><TableTh>Tokens</TableTh></TableTr>
+                </TableThead>
+                <TableTbody>
                   {ai.recentActivity.map((event) => (
-                    <Table.Tr key={`${event.created_at}-${event.actor_user_id || "system"}`}>
-                      <Table.Td>{event.actor}</Table.Td>
-                      <Table.Td>{event.operation.replaceAll("_", " ")}</Table.Td>
-                      <Table.Td>{event.source === "byok" ? event.provider : "Platform"}</Table.Td>
-                      <Table.Td><Text size="xs" c={event.status === "success" ? "teal" : "red"}>{event.status}</Text></Table.Td>
-                      <Table.Td>{event.latency_ms} ms</Table.Td>
-                      <Table.Td>{event.total_tokens ?? "—"}</Table.Td>
-                    </Table.Tr>
+                    <TableTr key={`${event.created_at}-${event.actor_user_id || "system"}`}>
+                      <TableTd>{event.actor}</TableTd>
+                      <TableTd>{event.operation.replaceAll("_", " ")}</TableTd>
+                      <TableTd>{event.source === "byok" ? event.provider : "Platform"}</TableTd>
+                      <TableTd><Text size="xs" c={event.status === "success" ? "teal" : "red"}>{event.status}</Text></TableTd>
+                      <TableTd>{event.latency_ms} ms</TableTd>
+                      <TableTd>{event.total_tokens ?? "—"}</TableTd>
+                    </TableTr>
                   ))}
-                </Table.Tbody>
+                </TableTbody>
               </Table>
-            </Table.ScrollContainer>
+            </div>
           </>
         ) : null}
       </SectionPanel>

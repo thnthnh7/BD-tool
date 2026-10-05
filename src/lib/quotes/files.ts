@@ -2,7 +2,7 @@
 
 import { createAdminClient, hasServiceRole } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { requireWorkspace } from "@/lib/auth/session";
+import { requireWorkspace, requireModule } from "@/lib/auth/session";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
@@ -43,12 +43,14 @@ async function storeProposalPdf(quoteId: string, file: File) {
 }
 
 export async function uploadProposalPdfAction(quoteId: string, formData: FormData) {
+  await requireModule("quotes"); // uploadProposalPdfAction
   const file = formData.get("file");
   if (!(file instanceof File)) return { ok: false as const, error: "Chọn file PDF." };
   return storeProposalPdf(quoteId, file);
 }
 
 export async function saveContractDocx(contractId: string, file: File) {
+  await requireModule("contracts"); // saveContractDocx
   const context = await requireWorkspace();
   if (!contractId) return { ok: false as const, error: "Chưa có hợp đồng." };
   if (file.size <= 0 || file.size > MAX_BYTES) return { ok: false as const, error: "File cần nhỏ hơn 20 MB." };
@@ -75,6 +77,7 @@ export async function saveContractDocx(contractId: string, file: File) {
 }
 
 export async function uploadContractDocxAction(contractId: string, formData: FormData) {
+  await requireModule("contracts"); // uploadContractDocxAction
   const file = formData.get("file");
   if (!(file instanceof File)) return { ok: false as const, error: "Chọn file DOCX." };
   return saveContractDocx(contractId, file);

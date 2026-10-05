@@ -16,7 +16,6 @@ export function AppLogo({ compact = false, platform = false, tagline = false }: 
         width={512}
         height={411}
         className={`${classes.img} ${classes.compact}`}
-        quality={100}
         unoptimized
         priority
       />
@@ -31,7 +30,6 @@ export function AppLogo({ compact = false, platform = false, tagline = false }: 
         width={1600}
         height={384}
         className={`${classes.img} ${classes.lockup}`}
-        quality={100}
         unoptimized
         priority
       />
@@ -46,7 +44,6 @@ export function AppLogo({ compact = false, platform = false, tagline = false }: 
         width={1600}
         height={384}
         className={`${classes.img} ${classes.navbar}`}
-        quality={100}
         unoptimized
         priority
       />

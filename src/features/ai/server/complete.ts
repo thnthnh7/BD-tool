@@ -1,13 +1,12 @@
 import { acquireHold, admit, releaseHold } from "@/lib/admission";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { isPlatformFlagEnabled } from "@/lib/platform/flags";
 import { decryptSecret } from "@/lib/crypto-utils";
 import { canUsePaidFeatures } from "@/lib/entitlements";
 import { requireWorkspace } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { incrementUsage } from "@/lib/usage";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { explainProviderError } from "@/features/ai/provider-catalog";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -59,7 +58,7 @@ function isPrivateAddress(address: string) {
   return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80:");
 }
 
-async function validateAiBaseUrl(rawUrl: string) {
+export async function validateAiBaseUrl(rawUrl: string) {
   const url = new URL(rawUrl);
   if (url.protocol !== "https:" || url.username || url.password || url.port) {
     throw new Error("AI provider URL must use HTTPS without credentials or a custom port.");
@@ -287,14 +286,13 @@ export async function completeChat(input: {
   }
 
   try {
-    return await completeChatUnlocked(supabase, context, input);
+    return await completeChatUnlocked(context, input);
   } finally {
     await releaseHold(supabase, context.workspaceId, "ai_brief");
   }
 }
 
 async function completeChatUnlocked(
-  supabase: Awaited<ReturnType<typeof createClient>>,
   context: Awaited<ReturnType<typeof requireWorkspace>>,
   input: {
     messages: ChatMessage[];
@@ -342,55 +340,11 @@ async function completeChatUnlocked(
       .update({ status: "invalid", last_tested_at: new Date().toISOString() })
       .eq("id", byok.id)
       .eq("workspace_id", context.workspaceId);
-    console.warn("ai.complete byok failed, falling back", result.raw.slice(0, 120));
+    return { error: explainProviderError(result.raw), status: 502 };
   }
 
-  if (!(await isPlatformFlagEnabled("ai_enabled"))) {
-    return { error: "AI nền tảng đang tạm dừng.", status: 503 };
+  if (!context.plan.features.byok_ai) {
+    return { error: "Gói hiện tại không cho gắn API key riêng.", status: 403 };
   }
-
-  const baseUrl = process.env.NINE_ROUTER_BASE_URL?.replace(/\/$/, "");
-  const apiKey = process.env.NINE_ROUTER_API_KEY;
-  const model = process.env.NINE_ROUTER_MODEL;
-  if (!baseUrl || !apiKey || !model) {
-    await recordAiUsage({ workspaceId: context.workspaceId, actorUserId: context.userId, operation, source: "platform", provider: "platform", model: model || "", status: "error", latencyMs: 0, error: "Platform AI is not configured." });
-    return { error: "AI nền tảng chưa được cấu hình.", status: 503 };
-  }
-
-  if (input.consumePlatformQuota !== false) {
-    const quota = await incrementUsage(
-      supabase,
-      context.workspaceId,
-      "ai_briefs",
-      1,
-      context.plan.quotas.ai_briefs_per_month,
-    );
-    if (quota.error) return { error: quota.error, status: 429 };
-  }
-
-  const result = await callOpenAiCompatible({
-    baseUrl,
-    apiKey,
-    model,
-    messages: input.messages,
-    temperature: input.temperature,
-    maxTokens: input.maxTokens,
-    responseFormat: input.responseFormat,
-    timeoutMs: input.timeoutMs,
-  });
-  if (!result.ok) {
-    await recordAiUsage({ workspaceId: context.workspaceId, actorUserId: context.userId, operation, source: "platform", provider: "platform", model, status: "error", latencyMs: result.elapsedMs, error: result.raw });
-    return { error: `Nhà cung cấp AI lỗi: ${result.raw.slice(0, 180)}`, status: 502 };
-  }
-  let parsed: unknown = {};
-  try {
-    parsed = JSON.parse(result.raw) as unknown;
-  } catch {
-    parsed = {};
-  }
-  const content = extractMessageContent(parsed) || result.raw;
-  const usage = parsed && typeof parsed === "object" && "usage" in parsed ? (parsed as { usage?: AiUsage }).usage : undefined;
-  await recordAiUsage({ workspaceId: context.workspaceId, actorUserId: context.userId, operation, source: "platform", provider: "platform", model, status: "success", latencyMs: result.elapsedMs, usage });
-  console.info("ai.complete", { source: "platform", model, elapsedMs: result.elapsedMs, usage });
-  return { data: { content, source: "platform", model, raw: result.raw, usage } };
+  return { error: "Gắn API key trong Settings để dùng AI.", status: 503 };
 }

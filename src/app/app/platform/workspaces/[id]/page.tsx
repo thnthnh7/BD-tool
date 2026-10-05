@@ -53,7 +53,7 @@ export default async function PlatformWorkspaceDetailPage({
         <Text size="sm">Admin access: {workspace.plan_deactivated_at ? `Deactivated · ${workspace.plan_deactivation_reason || "No reason"}` : "Enabled"}</Text>
         <Text size="sm">Period ends: {subscription?.current_period_end || "—"} · {subscription?.billing_interval}</Text>
         <Text size="sm">
-          Quotes {usage?.quotes_created || 0}/{plan?.quotas.quotes_per_month ?? "—"} · AI {usage?.ai_briefs || 0}/{plan?.quotas.ai_briefs_per_month ?? "—"} · Scrapes {usage?.maps_scrapes || 0}/{plan?.quotas.maps_scrapes_per_month ?? "—"}
+          Quotes {usage?.quotes_created || 0}/{plan?.quotas.quotes_per_month ?? "—"} · AI {usage?.ai_briefs || 0}/{plan?.quotas.ai_briefs_per_month ?? "—"} · Scrape runs {usage?.maps_scrapes || 0} (metering only)
         </Text>
         <Text size="sm">Members {members.length}/{plan?.quotas.seats ?? "—"}</Text>
       </SectionPanel>
@@ -66,7 +66,7 @@ export default async function PlatformWorkspaceDetailPage({
               <NativeSelect
                 name="planStatus"
                 label="Status"
-                data={["trialing", "active", "past_due", "expired", "canceled"]}
+                data={["pending", "trialing", "active", "past_due", "suspended", "expired", "canceled"]}
                 defaultValue={workspace.plan_status}
               />
               <TextInput name="periodEnd" label="Period end" type="datetime-local" defaultValue={periodEnd} />
@@ -95,9 +95,6 @@ export default async function PlatformWorkspaceDetailPage({
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               <TextInput name="quotes_per_month" label="Quotes" placeholder="plan default" />
               <TextInput name="ai_briefs_per_month" label="AI briefs" />
-              <TextInput name="maps_scrapes_per_month" label="Scrapes" />
-              <TextInput name="maps_places_per_month" label="Places" />
-              <TextInput name="maps_people_per_month" label="People" />
               <TextInput name="seats" label="Seats" />
             </SimpleGrid>
             <Group mt="sm">

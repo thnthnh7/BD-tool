@@ -31,6 +31,7 @@ export type DashboardDealPoint = {
   companyId: string;
   companyName: string;
   amount: number;
+  currency: string;
   probability: number;
   date: string;
 };
@@ -40,7 +41,7 @@ export type DashboardCompanyRank = {
   name: string;
   logo?: string;
   deals: number;
-  value: number;
+  values: Record<string, number>;
 };
 
 export type DashboardNotification = {

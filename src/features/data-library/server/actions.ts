@@ -1,5 +1,7 @@
 "use server";
 
+import { requireModule } from "@/lib/auth/session";
+
 import { revalidatePath } from "next/cache";
 import type { Json } from "@/lib/database.types";
 import { withWorkspace } from "@/lib/events";
@@ -41,6 +43,7 @@ export async function listDataLibrary(input: { q?: string; type?: string; collec
 }
 
 export async function promoteDataRecordAction(formData: FormData) {
+  await requireModule("data_library"); // promoteDataRecordAction
   const { context, supabase } = await withWorkspace();
   const recordId = String(formData.get("record_id") || "");
   const target = String(formData.get("target") || "");

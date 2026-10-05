@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Grid, GridCol, NativeSelect, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/leadely/page-header";
@@ -13,6 +14,7 @@ import { listActivities } from "@/features/tasks/server/actions";
 import { LEAD_STATUSES } from "@/lib/crm";
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireModule("leads");
   const { id } = await params;
   const [lead, companies, contacts, pipelineData, activities] = await Promise.all([
     getLead(id),

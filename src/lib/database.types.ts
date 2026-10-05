@@ -694,8 +694,9 @@ export type Database = {
           sort_order: number;
           trial_days: number;
           updated_at: string;
+          entitlement_version: number;
         };
-        Insert: Database["public"]["Tables"]["plans"]["Row"];
+        Insert: Omit<Database["public"]["Tables"]["plans"]["Row"], "entitlement_version"> & { entitlement_version?: number };
         Update: Partial<Database["public"]["Tables"]["plans"]["Row"]>;
         Relationships: [];
       };
@@ -926,6 +927,10 @@ export type Database = {
           provider_status: string | null;
           cancel_at_period_end: boolean;
           trial_end: string | null;
+          entitlement_version: number;
+          entitlement_snapshot: Json;
+          last_reconciled_at: string | null;
+          reconciliation_error: string | null;
         };
         Insert: {
           billing_interval?: string;
@@ -945,6 +950,10 @@ export type Database = {
           provider_status?: string | null;
           cancel_at_period_end?: boolean;
           trial_end?: string | null;
+          entitlement_version?: number;
+          entitlement_snapshot?: Json;
+          last_reconciled_at?: string | null;
+          reconciliation_error?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["subscriptions"]["Insert"]>;
         Relationships: [];
@@ -974,12 +983,14 @@ export type Database = {
       workspace_members: {
         Row: {
           created_at: string;
+          seat_priority_at: string;
           role: string;
           user_id: string;
           workspace_id: string;
         };
         Insert: {
           created_at?: string;
+          seat_priority_at?: string;
           role: string;
           user_id: string;
           workspace_id: string;
@@ -1291,6 +1302,8 @@ export type Database = {
           completion_tokens: number | null;
           total_tokens: number | null;
           error_message: string;
+          degraded: boolean;
+          request_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -1307,6 +1320,8 @@ export type Database = {
           completion_tokens?: number | null;
           total_tokens?: number | null;
           error_message?: string;
+          degraded?: boolean;
+          request_id?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["ai_usage_events"]["Insert"]>;
@@ -1902,9 +1917,73 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["workspace_scrape_sources"]["Insert"]>;
         Relationships: Rel;
       };
+      workspace_agent_settings: {
+        Row: { workspace_id: string; enabled: boolean; allow_platform_fallback: boolean; write_enabled: boolean; updated_by: string | null; updated_at: string };
+        Insert: { workspace_id: string; enabled?: boolean; allow_platform_fallback?: boolean; write_enabled?: boolean; updated_by?: string | null; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["workspace_agent_settings"]["Insert"]>;
+        Relationships: Rel;
+      };
+      agent_conversations: {
+        Row: { id: string; workspace_id: string; user_id: string; title: string; status: string; unread: boolean; summary: string; created_at: string; updated_at: string };
+        Insert: { id?: string; workspace_id: string; user_id: string; title?: string; status?: string; unread?: boolean; summary?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["agent_conversations"]["Insert"]>;
+        Relationships: Rel;
+      };
+      agent_messages: {
+        Row: { id: string; conversation_id: string; workspace_id: string; user_id: string; role: string; content: string; blocks: Json; status: string; request_id: string | null; created_at: string };
+        Insert: { id?: string; conversation_id: string; workspace_id: string; user_id: string; role: string; content?: string; blocks?: Json; status?: string; request_id?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["agent_messages"]["Insert"]>;
+        Relationships: Rel;
+      };
+      agent_tool_calls: {
+        Row: { id: string; conversation_id: string; message_id: string | null; workspace_id: string; user_id: string; request_id: string | null; tool_name: string; arguments: Json; result: Json; status: string; latency_ms: number; record_ids: string[]; created_at: string };
+        Insert: { id?: string; conversation_id: string; message_id?: string | null; workspace_id: string; user_id: string; request_id?: string | null; tool_name: string; arguments?: Json; result?: Json; status: string; latency_ms?: number; record_ids?: string[]; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["agent_tool_calls"]["Insert"]>;
+        Relationships: Rel;
+      };
+      agent_entity_refs: {
+        Row: { id: string; conversation_id: string; workspace_id: string; user_id: string; entity_type: string; entity_id: string; label: string; created_at: string };
+        Insert: { id?: string; conversation_id: string; workspace_id: string; user_id: string; entity_type: string; entity_id: string; label?: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["agent_entity_refs"]["Insert"]>;
+        Relationships: Rel;
+      };
+      agent_attachments: {
+        Row: { id: string; conversation_id: string | null; workspace_id: string; user_id: string; file_name: string; storage_path: string; mime_type: string; byte_size: number; extracted_text: string; created_at: string };
+        Insert: { id?: string; conversation_id?: string | null; workspace_id: string; user_id: string; file_name: string; storage_path: string; mime_type: string; byte_size: number; extracted_text?: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["agent_attachments"]["Insert"]>;
+        Relationships: Rel;
+      };
+      agent_approvals: {
+        Row: { id: string; workspace_id: string; user_id: string; conversation_id: string | null; tool_name: string; tier: number; payload: Json; payload_hash: string; status: string; preview: Json; result: Json | null; expires_at: string; created_at: string; updated_at: string };
+        Insert: { id?: string; workspace_id: string; user_id: string; conversation_id?: string | null; tool_name: string; tier: number; payload: Json; payload_hash: string; status?: string; preview?: Json; result?: Json | null; expires_at: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["agent_approvals"]["Insert"]>;
+        Relationships: Rel;
+      };
+      agent_idempotency_keys: {
+        Row: { id: string; workspace_id: string; user_id: string; tool_name: string; idempotency_key: string; result: Json; created_at: string };
+        Insert: { id?: string; workspace_id: string; user_id: string; tool_name: string; idempotency_key: string; result: Json; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["agent_idempotency_keys"]["Insert"]>;
+        Relationships: Rel;
+      };
+      agent_jobs: {
+        Row: { id: string; workspace_id: string; user_id: string; conversation_id: string | null; kind: string; status: string; file_name: string; mapping: Json; duplicate_policy: string; list_name: string; cursor_row: number; counts: Json; plan_snapshot: Json; error_message: string; created_at: string; updated_at: string };
+        Insert: { id?: string; workspace_id: string; user_id: string; conversation_id?: string | null; kind: string; status?: string; file_name?: string; mapping?: Json; duplicate_policy?: string; list_name?: string; cursor_row?: number; counts?: Json; plan_snapshot?: Json; error_message?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["agent_jobs"]["Insert"]>;
+        Relationships: Rel;
+      };
+      agent_import_rows: {
+        Row: { id: string; job_id: string; workspace_id: string; row_number: number; raw: Json; status: string; error_message: string; record_id: string | null };
+        Insert: { id?: string; job_id: string; workspace_id: string; row_number: number; raw: Json; status?: string; error_message?: string; record_id?: string | null };
+        Update: Partial<Database["public"]["Tables"]["agent_import_rows"]["Insert"]>;
+        Relationships: Rel;
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      agent_fuzzy_names: {
+        Args: { p_kind: string; p_query: string; p_limit: number };
+        Returns: { id: string; label: string; score: number; updated_at: string }[];
+      };
       replace_workspace_ai_provider: {
         Args: {
           target_workspace_id: string;
@@ -1985,6 +2064,13 @@ export type Database = {
         Args: { p_workspace_id: string; p_field: string; p_amount: number; p_limit: number };
         Returns: boolean;
       };
+      workspace_seat_limit: { Args: { p_workspace_id: string }; Returns: number };
+      has_workspace_seat: { Args: { p_workspace_id: string; p_user_id?: string }; Returns: boolean };
+      create_workspace_invite: {
+        Args: { p_email: string; p_role: string; p_token_hash: string; p_expires_at: string };
+        Returns: string;
+      };
+      accept_workspace_invite: { Args: { p_token_hash: string }; Returns: string };
       current_member_role: { Args: Record<string, never>; Returns: string };
       current_workspace_id: { Args: Record<string, never>; Returns: string };
       data_library_type_counts: {

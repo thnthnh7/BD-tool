@@ -1,0 +1,77 @@
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+}
+
+.panel {
+  position: fixed;
+  right: 20px;
+  bottom: 76px;
+  z-index: 40;
+  width: min(400px, calc(100vw - 24px));
+  height: min(560px, calc(100vh - 120px));
+  display: flex;
+  flex-direction: column;
+  background: var(--mantine-color-body);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 16px;
+  box-shadow: var(--mantine-shadow-md);
+}
+
+.full {
+  inset: 12px;
+  width: auto;
+  height: auto;
+}
+
+.log {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+
+.reply {
+  margin: 0;
+}
+
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 48em) {
+  .panel {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    bottom: 72px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .launcher {
+    transition: none;
+  }
+}

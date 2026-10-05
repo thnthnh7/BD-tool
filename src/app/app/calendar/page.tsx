@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Divider, NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { CalendarDays } from "lucide-react";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
@@ -11,6 +12,7 @@ import { createMeetingAction, listMeetings, listIntegrations, upsertIntegrationA
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  await requireModule("calendar");
   const { q, page } = readListQuery(await searchParams);
   const [meetings, companies, contacts, integrations] = await Promise.all([
     listMeetings(),

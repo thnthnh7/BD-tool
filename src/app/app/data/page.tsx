@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Button, Group, NativeSelect, Stack, TextInput } from "@mantine/core";
 import { Database, Search } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -11,6 +12,7 @@ import { DataLibraryBrowser } from "@/features/data-library/components/data-libr
 export default async function DataLibraryPage({ searchParams }: {
   searchParams: Promise<{ q?: string; type?: string; collection?: string; page?: string }>;
 }) {
+  await requireModule("data_library");
   const params = await searchParams;
   const [t, locale] = await Promise.all([getTranslations("DataLibrary"), getLocale()]);
   const q = params.q?.trim() || "";

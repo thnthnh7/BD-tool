@@ -5,7 +5,7 @@ import { LinkAnchor } from "@/components/mantine-link";
 import { StageMover } from "@/features/deals/components/stage-mover";
 import type { DealListItem } from "@/features/deals/server/actions";
 import type { Database } from "@/lib/database.types";
-import { formatVnd } from "@/lib/money";
+import { currencyTotals, formatCurrency, formatCurrencyTotals } from "@/lib/money";
 import classes from "@/styles/leadely-kanban.module.css";
 import { useTranslations } from "next-intl";
 
@@ -35,7 +35,7 @@ export function DealBoard({ stages, deals }: { stages: Stage[]; deals: DealListI
       <div className={classes.board}>
         {stages.map((stage) => {
           const column = deals.filter((deal) => deal.stage_id === stage.id);
-          const total = column.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+          const totals = currencyTotals(column.map((deal) => ({ amount: deal.amount || 0, currency: deal.currency })));
           return (
             <section
               key={stage.id}
@@ -52,7 +52,7 @@ export function DealBoard({ stages, deals }: { stages: Stage[]; deals: DealListI
                 </Text>
               </Group>
               <Text size="xs" c="dimmed" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {formatVnd(total)}
+                {formatCurrencyTotals(totals, true)}
               </Text>
               <div className={classes.cards}>
                 {column.map((deal) => (
@@ -67,7 +67,7 @@ export function DealBoard({ stages, deals }: { stages: Stage[]; deals: DealListI
                       <CompanyMark name={deal.companies?.name || "—"} logo={deal.companies?.logo_path} size={20} fw={400} />
                     </div>
                     <Text size="sm" fw={700} mt={8} style={{ fontVariantNumeric: "tabular-nums" }}>
-                      {formatVnd(deal.amount)}
+                      {formatCurrency(deal.amount, deal.currency)}
                     </Text>
                     <StageMover mode="select" dealId={deal.id} stageId={stage.id} stages={stageOptions} />
                   </article>

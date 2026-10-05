@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Badge, Button, Code, Group, Paper, Stack, Text } from "@mantine/core";
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
@@ -12,6 +13,7 @@ function requestPayload(value: unknown) {
 }
 
 export default async function McpPage({ searchParams }: { searchParams: Promise<{ request?: string; status?: string }> }) {
+  await requireModule("mcp_access");
   const params = await searchParams;
   const selectedRequest = params.request;
   const statusFilter = ["pending", "completed", "rejected", "failed", "expired"].includes(params.status || "") ? params.status : "all";

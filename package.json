@@ -8,6 +8,7 @@
     "i18n:check": "node scripts/check-i18n.mjs",
     "i18n:translate": "node scripts/translate-messages.mjs",
     "test:core": "tsx --test src/features/leads/tests/*.test.ts src/features/data-library/tests/*.test.ts",
+    "test:agent": "tsx --test src/features/agent/tests/*.test.ts",
     "test:mcp": "node scripts/mcp-smoke-test.mjs",
     "test:mcp:oauth": "node scripts/mcp-oauth-smoke-test.mjs",
     "test:mcp:write": "node scripts/mcp-write-smoke-test.mjs",
@@ -24,6 +25,7 @@
     "seed:demo": "npx tsx scripts/seed-demo.ts"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@mantine/core": "^9.6.2",
     "@mantine/form": "^9.6.2",
     "@mantine/hooks": "^9.6.2",
@@ -35,6 +37,7 @@
     "docx": "^9.7.1",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
+    "gsap": "^3.15.0",
     "jsonrepair": "^3.15.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.25.0",

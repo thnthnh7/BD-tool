@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/auth/session";
 import { Grid, GridCol, NativeSelect, SimpleGrid, Stack, TextInput, Textarea } from "@mantine/core";
 import { BriefcaseBusiness, Users } from "lucide-react";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
@@ -21,6 +22,7 @@ import { LIFECYCLE_STAGES } from "@/lib/crm";
 import { getAccountPlan, upsertAccountPlanAction } from "@/features/comms/server/actions";
 
 export default async function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireModule("companies");
   const { id } = await params;
   const company = await getCompany(id);
   if (!company) notFound();

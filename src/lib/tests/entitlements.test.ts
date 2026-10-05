@@ -1,0 +1,58 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { applyEntitlementSnapshot, canUsePaidFeatures, createEntitlementSnapshot, isPlanLocked, parsePlan } from "@/lib/entitlements";
+
+function row(features: Record<string, boolean> = {}, quotas: Record<string, number> = {}) {
+  return {
+    id: "plan",
+    slot: 1,
+    name: "Plan",
+    slug: "plan",
+    is_public: true,
+    is_free: false,
+    price_monthly: 0,
+    price_yearly: 0,
+    trial_days: 0,
+    quotas,
+    features,
+    sort_order: 1,
+    badge: "",
+  };
+}
+
+test("legacy plans keep existing workspace modules until an admin explicitly disables them", () => {
+  const plan = parsePlan(row({ lead_scrape: true }));
+  assert.equal(plan.features.sources, true);
+  assert.equal(plan.features.scraping, true);
+  assert.equal(plan.features.deals, true);
+  assert.equal(plan.features.ai_agent, true);
+});
+
+test("explicit module settings override compatibility defaults", () => {
+  const plan = parsePlan(row({ scraping: false, deals: false, ai_agent: false, lead_scrape: true }));
+  assert.equal(plan.features.scraping, false);
+  assert.equal(plan.features.lead_scrape, false);
+  assert.equal(plan.features.deals, false);
+  assert.equal(plan.features.ai_agent, false);
+});
+
+test("pending and suspended subscriptions never receive paid access", () => {
+  for (const status of ["pending", "suspended", "expired", "canceled"] as const) {
+    assert.equal(isPlanLocked(status), true);
+    assert.equal(canUsePaidFeatures(status), false);
+  }
+  for (const status of ["trialing", "active", "past_due"] as const) {
+    assert.equal(isPlanLocked(status), false);
+    assert.equal(canUsePaidFeatures(status), true);
+  }
+});
+
+test("subscription snapshots preserve entitlements after the plan changes", () => {
+  const original = parsePlan(row({ deals: true, contracts: false }, { seats: 2 }));
+  const snapshot = createEntitlementSnapshot(original, 3);
+  const changedPlan = parsePlan(row({ deals: false, contracts: true }, { seats: 10 }));
+  const effective = applyEntitlementSnapshot(changedPlan, snapshot);
+  assert.equal(effective.features.deals, true);
+  assert.equal(effective.features.contracts, false);
+  assert.equal(effective.quotas.seats, 2);
+});

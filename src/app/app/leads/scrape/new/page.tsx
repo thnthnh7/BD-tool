@@ -13,12 +13,13 @@ import { listInstalledSources } from "@/features/leads/server/source-actions";
 import { startMapsScrapeAction } from "@/features/leads/server/scrape-actions";
 import { getScrapeInput } from "@/features/leads/server/scrape-input";
 import { isMapsActor } from "@/features/leads/maps-source";
-import { requireWorkspace } from "@/lib/auth/session";
+import { requireWorkspace, requireModule } from "@/lib/auth/session";
 import { ApifyAccountStatus } from "@/features/leads/components/apify-account-status";
 import { getCurrentWorkspaceApifyStatus, requireWorkspaceApifyConnection } from "@/features/leads/server/apify-connection";
 import { getTranslations } from "next-intl/server";
 
 export default async function NewScrapePage({ searchParams }: { searchParams: Promise<{ source?: string; rerun?: string }> }) {
+  await requireModule("scraping");
   const params = await searchParams;
   const t = await getTranslations("Scrape");
   const context = await requireWorkspace();

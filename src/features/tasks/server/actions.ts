@@ -1,5 +1,7 @@
 "use server";
 
+import { requireModule } from "@/lib/auth/session";
+
 import { revalidatePath } from "next/cache";
 import { recordActivity, withWorkspace } from "@/lib/events";
 import { asJoined, formOptionalId, formText, TASK_STATUSES, TASK_TYPES } from "@/lib/crm";
@@ -40,6 +42,7 @@ export async function listDealTasks(dealId: string) {
 }
 
 export async function createTaskAction(formData: FormData) {
+  await requireModule("tasks"); // createTaskAction
   const { context, supabase } = await withWorkspace();
   const title = formText(formData, "title");
   if (!title) return { error: "Cần tiêu đề task." };
@@ -83,6 +86,7 @@ export async function createTaskAction(formData: FormData) {
 }
 
 export async function completeTaskAction(formData: FormData) {
+  await requireModule("tasks"); // completeTaskAction
   const { context, supabase } = await withWorkspace();
   const id = formText(formData, "id");
   const status = formText(formData, "status") || "completed";
@@ -133,6 +137,7 @@ export async function listActivities(filters: { companyId?: string; contactId?: 
 }
 
 export async function addNoteAction(formData: FormData) {
+  await requireModule("tasks"); // addNoteAction
   const { context } = await withWorkspace();
   const activityType = formText(formData, "activity_type") || "note";
   const title = formText(formData, "title") || labelize(activityType);

@@ -3,14 +3,14 @@ import { Grid, GridCol, SimpleGrid, Stack } from "@mantine/core";
 import { MetricCard } from "@/components/leadely/metric-card";
 import { DashboardHeader } from "@/components/leadely/dashboard/dashboard-header";
 import { PipelineOverview } from "@/components/leadely/dashboard/pipeline-overview";
-import { AiAssistantPanel } from "@/components/leadely/dashboard/ai-assistant-panel";
 import { TodayTasksPanel } from "@/components/leadely/dashboard/today-tasks-panel";
 import { RecentLeadsPanel } from "@/components/leadely/dashboard/recent-leads-panel";
 import { DealForecastPanel } from "@/components/leadely/dashboard/deal-forecast-panel";
 import { TopCompaniesPanel } from "@/components/leadely/dashboard/top-companies-panel";
 import { LeadelyBanner } from "@/components/leadely/dashboard/leadely-banner";
 import { loadWorkspaceAppData } from "@/lib/db/actions";
-import { calculateQuoteTotals, formatVnd } from "@/lib/money";
+import { calculateQuoteTotals, currencyTotals, formatCurrencyTotals, normalizeDealCurrency } from "@/lib/money";
+import { loadUsdRates } from "@/lib/billing/localization";
 import { listCompanies } from "@/features/companies/server/actions";
 import { listDeals, listPipelines } from "@/features/deals/server/actions";
 import { listLeads } from "@/features/leads/server/actions";
@@ -43,7 +43,7 @@ function isOpenDeal(stageType: string | null | undefined) {
 }
 
 export default async function AppHomePage() {
-  const [{ context, quotes, clients }, deals, pipelinesData, leads, tasks, companies, meetings, notifications] = await Promise.all([
+  const [{ context, quotes, clients }, deals, pipelinesData, leads, tasks, companies, meetings, notifications, usdRates] = await Promise.all([
     loadWorkspaceAppData(["quotes", "clients"]),
     listDeals(),
     listPipelines(),
@@ -52,6 +52,7 @@ export default async function AppHomePage() {
     listCompanies(),
     listMeetings(),
     listNotifications(),
+    loadUsdRates(),
   ]);
 
   const name = context.email.split("@")[0];
@@ -59,11 +60,11 @@ export default async function AppHomePage() {
   const todayEnd = endOfToday();
   const openDeals = deals.filter((deal) => isOpenDeal(deal.pipeline_stages?.stage_type));
   const wonDeals = deals.filter((deal) => deal.pipeline_stages?.stage_type === "won");
-  const revenue = wonDeals.reduce((sum, deal) => sum + Number(deal.amount || 0), 0);
-  const weightedForecast = openDeals.reduce((sum, deal) => {
-    const probability = deal.pipeline_stages?.probability ?? deal.probability ?? 0;
-    return sum + Number(deal.amount || 0) * (Number(probability) / 100);
-  }, 0);
+  const revenueTotals = currencyTotals(wonDeals.map((deal) => ({ amount: Number(deal.amount || 0), currency: deal.currency })));
+  const weightedForecastTotals = currencyTotals(openDeals.map((deal) => ({
+    amount: Number(deal.amount || 0) * (Number(deal.pipeline_stages?.probability ?? deal.probability ?? 0) / 100),
+    currency: deal.currency,
+  })));
 
   const openTasks = tasks.filter((task) => task.status === "open");
   const tasksToday = openTasks.filter((task) => task.due_at && new Date(task.due_at) >= todayStart && new Date(task.due_at) < todayEnd);
@@ -85,6 +86,7 @@ export default async function AppHomePage() {
     companyId: deal.company_id,
     companyName: deal.companies?.name || "Unnamed company",
     amount: Number(deal.amount || 0),
+    currency: normalizeDealCurrency(deal.currency),
     probability: Number(deal.pipeline_stages?.probability ?? deal.probability ?? 0),
     date: deal.expected_close_date || deal.created_at,
   }));
@@ -100,6 +102,7 @@ export default async function AppHomePage() {
     companyId: quote.clientId || "",
     companyName: clients.find((client) => client.id === quote.clientId)?.companyName || "Untitled",
     amount: calculateQuoteTotals(quote).grandTotal,
+    currency: normalizeDealCurrency(quote.currency),
     probability: quote.status === "won" ? 100 : quote.status === "sent" ? 50 : quote.status === "draft" ? 10 : 0,
     date: quote.createdAt,
   }));
@@ -116,14 +119,15 @@ export default async function AppHomePage() {
         name: deal.companies?.name || companies.find((company) => company.id === id)?.name || "Unnamed company",
         logo: deal.companies?.logo_path || companies.find((company) => company.id === id)?.logo_path || "",
         deals: 0,
-        value: 0,
+        values: {},
       };
       current.deals += 1;
-      current.value += Number(deal.amount || 0);
+      const currency = normalizeDealCurrency(deal.currency);
+      current.values[currency] = (current.values[currency] || 0) + Number(deal.amount || 0);
       acc[id] = current;
       return acc;
     }, {}),
-  ).sort((a, b) => b.value - a.value || b.deals - a.deals);
+  ).sort((a, b) => b.deals - a.deals);
 
   const mappedLeads: DashboardLead[] = leads.map((lead) => ({
     id: lead.id,
@@ -169,19 +173,16 @@ export default async function AppHomePage() {
 
       <SimpleGrid cols={{ base: 2, md: 4 }} spacing={16}>
         <MetricCard label="Total leads" value={String(leads.length)} icon={<UserPlus size={18} />} hint={`${leads.filter((lead) => lead.status === "working").length} working`} />
-        <MetricCard label="Active deals" value={String(openDeals.length)} icon={<BriefcaseBusiness size={18} />} hint={formatVnd(weightedForecast)} />
+        <MetricCard label="Active deals" value={String(openDeals.length)} icon={<BriefcaseBusiness size={18} />} hint={formatCurrencyTotals(weightedForecastTotals, true)} />
         <MetricCard label="Meetings booked" value={String(meetings.length)} icon={<CalendarDays size={18} />} hint={`${meetingsToday} today`} />
-        <MetricCard label="Revenue" value={formatVnd(revenue)} icon={<Wallet size={18} />} hint={`${wonDeals.length} won deals`} />
+        <MetricCard label="Revenue" value={formatCurrencyTotals(revenueTotals, true)} icon={<Wallet size={18} />} hint={`${wonDeals.length} won deals`} />
       </SimpleGrid>
 
       <Grid gap={16} align="stretch">
-        <GridCol span={{ base: 12, md: 5 }} className={classes.rowFill}>
+        <GridCol span={{ base: 12, md: 8 }} className={classes.rowFill}>
           <PipelineOverview stages={pipelineStages} deals={pipelineDeals} />
         </GridCol>
         <GridCol span={{ base: 12, md: 4 }} className={classes.rowFill}>
-          <AiAssistantPanel />
-        </GridCol>
-        <GridCol span={{ base: 12, md: 3 }} className={classes.rowFill}>
           <TodayTasksPanel
             tasks={tasksToday.map((task) => ({
               id: task.id,
@@ -198,7 +199,7 @@ export default async function AppHomePage() {
           <RecentLeadsPanel leads={recentRows} title={recentTitle} />
         </GridCol>
         <GridCol span={{ base: 12, md: 4 }} className={classes.rowFill}>
-          <DealForecastPanel deals={forecastDeals} />
+          <DealForecastPanel deals={forecastDeals} usdRates={usdRates} />
         </GridCol>
         <GridCol span={{ base: 12, md: 3 }} className={classes.rowFill}>
           <TopCompaniesPanel companies={companyRanks} />

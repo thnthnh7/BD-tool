@@ -1,8 +1,10 @@
+import { requireModule } from "@/lib/auth/session";
 import { loadWorkspaceAppData } from "@/lib/db/actions";
 import { ModulesPanel } from "@/components/bd-tool/modules-panel";
 import { loadKnowledgeData } from "@/features/knowledge/server/actions";
 
 export default async function ModulesPage() {
+  await requireModule("product_modules");
   const [{ context, modules }, knowledge] = await Promise.all([loadWorkspaceAppData(["modules"]), loadKnowledgeData()]);
   return (
     <ModulesPanel
