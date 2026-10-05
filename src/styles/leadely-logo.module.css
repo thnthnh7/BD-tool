@@ -18,8 +18,8 @@
 }
 
 .navbar {
-  height: 40px;
-  width: auto;
+  width: 168px;
+  height: auto;
   overflow: visible;
 }
 
@@ -29,7 +29,7 @@
 }
 
 .lockup {
-  height: 48px;
+  height: 38px;
   width: auto;
   max-width: 100%;
 }

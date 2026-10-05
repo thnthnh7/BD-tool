@@ -13,8 +13,8 @@ export function AppLogo({ compact = false, platform = false, tagline = false }: 
       <Image
         src="/brand/bizcraw-mark.png"
         alt="Bizcraw"
-        width={512}
-        height={411}
+        width={452}
+        height={400}
         className={`${classes.img} ${classes.compact}`}
         unoptimized
         priority
@@ -27,8 +27,8 @@ export function AppLogo({ compact = false, platform = false, tagline = false }: 
       <Image
         src="/brand/bizcraw-logo.png"
         alt="Bizcraw"
-        width={1600}
-        height={384}
+        width={2027}
+        height={400}
         className={`${classes.img} ${classes.lockup}`}
         unoptimized
         priority
@@ -41,8 +41,8 @@ export function AppLogo({ compact = false, platform = false, tagline = false }: 
       <Image
         src="/brand/bizcraw-logo.png"
         alt={platform ? "Bizcraw Platform" : "Bizcraw"}
-        width={1600}
-        height={384}
+        width={2027}
+        height={400}
         className={`${classes.img} ${classes.navbar}`}
         unoptimized
         priority
