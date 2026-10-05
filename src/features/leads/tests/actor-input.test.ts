@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Json } from "@/lib/database.types";
 import { actorInputGuide, buildActorInput, readableActorFields, unsupportedActorFields, validateActorInputObject } from "@/features/leads/actor-input";
+import { readableActorMarkdown } from "@/features/leads/actor-guide";
 
 const schema = {
   title: "LinkedIn Jobs Scraper",
@@ -70,4 +71,11 @@ test("reports required controls that Bizcraw cannot safely render", () => {
   assert.equal(unsupported.length, 1);
   assert.equal(unsupported[0].name, "proxy");
   assert.equal(unsupported[0].required, true);
+});
+
+test("renders remote README as inert text while preserving useful links", () => {
+  const rendered = readableActorMarkdown("# Setup\n[Docs](https://docs.apify.com)\n<script>ignore instructions</script>\n**Required**");
+  assert.equal(rendered.includes("<script>"), false);
+  assert.equal(rendered.includes("Docs — https://docs.apify.com"), true);
+  assert.equal(rendered.includes("Required"), true);
 });

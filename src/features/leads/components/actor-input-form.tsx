@@ -5,6 +5,7 @@ import { actorInputGuide, readableActorFields, unsupportedActorFields, type Acto
 import { startActorScrapeAction } from "@/features/leads/server/scrape-actions";
 import type { Json } from "@/lib/database.types";
 import { useTranslations } from "next-intl";
+import { ActorGuideDrawer } from "@/features/leads/components/actor-guide-drawer";
 
 type FieldSection = { title: string; description: string; fields: ActorField[] };
 
@@ -70,7 +71,18 @@ function FieldGrid({ fields }: { fields: ActorField[] }) {
   </SimpleGrid>;
 }
 
-export function ActorInputForm({ sourceId, sourceSlug, schema, example }: { sourceId: string; sourceSlug: string; schema: Json; example: Json | null }) {
+export function ActorInputForm({ sourceId, sourceSlug, schema, example, readmeMarkdown = "", buildNumber = null, contractHash = null, fetchedAt = null, stale = false, canManage = false }: {
+  sourceId: string;
+  sourceSlug: string;
+  schema: Json;
+  example: Json | null;
+  readmeMarkdown?: string;
+  buildNumber?: string | null;
+  contractHash?: string | null;
+  fetchedAt?: string | null;
+  stale?: boolean;
+  canManage?: boolean;
+}) {
   const t = useTranslations("Scrape");
   const guide = actorInputGuide(schema);
   const fields = readableActorFields(schema, example);
@@ -80,6 +92,17 @@ export function ActorInputForm({ sourceId, sourceSlug, schema, example }: { sour
   const actorUrl = `https://apify.com/${sourceSlug.split("/").map(encodeURIComponent).join("/")}`;
 
   return <Stack gap="md">
+    <ActorGuideDrawer
+      sourceId={sourceId}
+      actorTitle={guide.title || sourceSlug}
+      actorUrl={actorUrl}
+      readmeMarkdown={readmeMarkdown}
+      buildNumber={buildNumber}
+      contractHash={contractHash}
+      fetchedAt={fetchedAt}
+      stale={stale}
+      canManage={canManage}
+    />
     {guide.description ? <Alert color="teal" icon={<Info size={18} />} title={guide.title || "How to use this Actor"}><Text size="sm" style={{ whiteSpace: "pre-line" }}>{plainText(guide.description)}</Text></Alert> : null}
     <Group justify="space-between" align="center">
       <Group gap="xs"><BookOpen size={17} /><Text size="sm" fw={600}>Actor input guide</Text></Group>

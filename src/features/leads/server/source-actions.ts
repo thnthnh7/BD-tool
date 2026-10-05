@@ -6,6 +6,7 @@ import { ensureSourceContract } from "@/features/leads/server/actor-schema";
 import { withWorkspace } from "@/lib/events";
 import type { Json } from "@/lib/database.types";
 import { CATALOG_CARD_COLUMNS, getCatalogPage } from "./catalog-page";
+import { requireWorkspaceApifyConnection } from "@/features/leads/server/apify-connection";
 const SOURCES_PAGE_SIZE = 200;
 
 export type SourceListFilters = {
@@ -241,6 +242,29 @@ export async function uninstallScrapeSourceAction(formData: FormData) {
   if (error) return { error: error.message };
   revalidatePath("/app/leads/sources");
   revalidatePath("/app/leads/scrape");
+  return { ok: true as const };
+}
+
+export async function refreshActorContractAction(formData: FormData) {
+  const { context, supabase } = await withWorkspace();
+  if (context.memberRole === "member") return { error: "Only an owner or admin can refresh an Actor definition." };
+  const sourceId = String(formData.get("source_id") || "");
+  if (!sourceId) return { error: "Missing Actor source." };
+  const { data: installed, error: installedError } = await supabase
+    .from("workspace_scrape_sources")
+    .select("source_id")
+    .eq("workspace_id", context.workspaceId)
+    .eq("source_id", sourceId)
+    .maybeSingle();
+  if (installedError) return { error: installedError.message };
+  if (!installed) return { error: "This Actor is not installed in the workspace." };
+  let token: string;
+  try { token = (await requireWorkspaceApifyConnection(context.workspaceId)).token; }
+  catch (error) { return { error: error instanceof Error ? error.message : "Connect Apify before refreshing this Actor." }; }
+  const contract = await ensureSourceContract(sourceId, token, true);
+  if (contract.error) return { error: contract.error };
+  revalidatePath("/app/leads/scrape/new");
+  revalidatePath("/app/leads/sources");
   return { ok: true as const };
 }
 

@@ -72,6 +72,7 @@ export async function executeReadTool(ctx: ReadContext, name: string, args: Reco
   const text = (key: string) => (typeof args[key] === "string" ? args[key] : "");
   if (name === "search_actors") return searchActors(ctx, text("query"));
   if (name === "get_actor_contract") return actorContract(ctx, text("sourceId"));
+  if (name === "get_actor_guide") return actorGuide(ctx, text("sourceId"));
   if (name === "get_actor_field_help") return actorFieldHelp(ctx, text("sourceId"), text("fieldName"));
   if (name === "get_actor_pricing") return actorPricing(ctx, text("sourceId"));
   if (name === "validate_actor_input" || name === "preview_actor_run") {
@@ -122,7 +123,7 @@ async function installedActor(ctx: ReadContext, sourceId: string) {
   if (!installed) return null;
   const { data, error } = await (ctx.supabase as any)
     .from("scrape_sources")
-    .select("id, title, slug, description, pricing_model, pricing_info, input_schema, example_input, schema_fetched_at, archived_at")
+    .select("id, title, slug, description, pricing_model, pricing_info, input_schema, example_input, schema_fetched_at, archived_at, actor_build_id, actor_build_number, actor_build_tag, contract_hash, readme_markdown, contract_fetch_status, contract_fetch_error, actor_store_url")
     .eq("id", sourceId)
     .is("archived_at", null)
     .maybeSingle();
@@ -141,7 +142,7 @@ async function searchActors(ctx: ReadContext, query: string) {
   if (!ids.length) return { match: "none", items: [], partial: false };
   const { data: sources, error: sourceError } = await (ctx.supabase as any)
     .from("scrape_sources")
-    .select("id, title, slug, description, pricing_model, schema_fetched_at")
+    .select("id, title, slug, description, pricing_model, schema_fetched_at, actor_build_number, contract_hash, contract_fetch_status")
     .in("id", ids)
     .is("archived_at", null)
     .limit(200);
@@ -152,7 +153,8 @@ async function searchActors(ctx: ReadContext, query: string) {
     match: matches.length ? "list" : "none",
     items: matches.slice(0, LIMIT).map((row: Record<string, any>) => ({
       id: row.id, title: row.title, slug: row.slug, description: row.description, pricingModel: row.pricing_model,
-      schemaFetchedAt: row.schema_fetched_at, href: `/app/leads/scrape/new?source=${row.id}`, actorUrl: `https://console.apify.com/actors/${row.slug.replace("/", "~")}/input`,
+      schemaFetchedAt: row.schema_fetched_at, buildNumber: row.actor_build_number, contractHash: row.contract_hash,
+      contractStatus: row.contract_fetch_status, href: `/app/leads/scrape/new?source=${row.id}`, actorUrl: `https://apify.com/${row.slug}`,
     })),
     partial: matches.length > LIMIT,
   };
@@ -178,7 +180,27 @@ async function actorContract(ctx: ReadContext, sourceId: string) {
     fields: safeActorFields(actor),
     unsupportedFields: unsupportedActorFields(actor.input_schema),
     schemaFetchedAt: actor.schema_fetched_at,
-    actorUrl: `https://console.apify.com/actors/${actor.slug.replace("/", "~")}/input`,
+    build: { id: actor.actor_build_id, number: actor.actor_build_number, tag: actor.actor_build_tag },
+    contractHash: actor.contract_hash,
+    contractStatus: actor.contract_fetch_status,
+    actorUrl: actor.actor_store_url || `https://apify.com/${actor.slug}`,
+  };
+}
+
+async function actorGuide(ctx: ReadContext, sourceId: string) {
+  const actor = await installedActor(ctx, sourceId);
+  if (!actor) return { found: false, limitation: "This Actor is not installed in the current workspace." };
+  return {
+    found: true,
+    actor: { id: actor.id, title: actor.title, slug: actor.slug },
+    sourceType: "default-build-readme",
+    readmeMarkdown: actor.readme_markdown || "",
+    build: { id: actor.actor_build_id, number: actor.actor_build_number, tag: actor.actor_build_tag },
+    contractHash: actor.contract_hash,
+    fetchedAt: actor.schema_fetched_at,
+    contractStatus: actor.contract_fetch_status,
+    actorUrl: actor.actor_store_url || `https://apify.com/${actor.slug}`,
+    limitation: actor.readme_markdown ? undefined : "This Actor does not publish a README for its current default build.",
   };
 }
 

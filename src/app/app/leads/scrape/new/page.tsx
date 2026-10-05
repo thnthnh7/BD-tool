@@ -38,17 +38,18 @@ export default async function NewScrapePage({ searchParams }: { searchParams: Pr
     {rerunUnavailable && <Alert color="yellow">{t("oldSourceUnavailable")}</Alert>}
     {!context.plan.features.lead_scrape && <Alert color="yellow">{t("planUnavailable")}</Alert>}
     {sources.length ? <SectionPanel><SourceChooser sources={sources} selectedId={selected?.id || ""} /></SectionPanel> : <SectionPanel><EmptyState icon={<Radar size={20} />} title={t("noSources")} description={t("noSourcesHelp")} /></SectionPanel>}
-    <Suspense key={`${selected?.id}-${reuse?.id || "new"}`} fallback={<Skeleton height={260} radius="md" />}><SelectedActor selected={selected} reuse={reuse} workspaceId={context.workspaceId} enabled={Boolean(context.plan.features.lead_scrape)} connected={apify.connection?.status === "active"} /></Suspense>
+    <Suspense key={`${selected?.id}-${reuse?.id || "new"}`} fallback={<Skeleton height={260} radius="md" />}><SelectedActor selected={selected} reuse={reuse} workspaceId={context.workspaceId} enabled={Boolean(context.plan.features.lead_scrape)} connected={apify.connection?.status === "active"} canManage={context.memberRole !== "member"} /></Suspense>
     {selected && <Group><Text size="xs" c="dimmed">{t("storageNote")}</Text></Group>}
   </Stack>;
 }
 
-async function SelectedActor({ selected, reuse, workspaceId, enabled, connected }: {
+async function SelectedActor({ selected, reuse, workspaceId, enabled, connected, canManage }: {
   selected: Awaited<ReturnType<typeof listInstalledSources>>[number] | undefined;
   reuse: NonNullable<Awaited<ReturnType<typeof getScrapeInput>>>["job"] | null;
   workspaceId: string;
   enabled: boolean;
   connected: boolean;
+  canManage: boolean;
 }) {
   const t = await getTranslations("Scrape");
   const maps = selected && isMapsActor(selected.slug);
@@ -71,6 +72,18 @@ async function SelectedActor({ selected, reuse, workspaceId, enabled, connected 
         <Checkbox name="enrich_people" label={t("enrich")} defaultChecked={reuse?.enrich_people ?? true} />
         <Checkbox name="verify_emails" label={t("verify")} defaultChecked={reuse?.verify_emails ?? false} />
         <Checkbox name="pdpa_confirmed" label={t("pdpa")} required />
-      </ActionForm> : enabled && canUseConnection && contract?.inputSchema ? <ActorInputForm key={`${selected.id}-${reuse?.id || "new"}`} sourceId={selected.id} sourceSlug={selected.slug} schema={contract.inputSchema} example={reuse?.filters || contract.exampleInput} /> : <Text size="sm" c="dimmed">{!canUseConnection ? t("connectFirst") : contract?.error || t("notReady")}</Text>}
+      </ActionForm> : enabled && canUseConnection && contract?.inputSchema ? <ActorInputForm
+        key={`${selected.id}-${reuse?.id || "new"}`}
+        sourceId={selected.id}
+        sourceSlug={selected.slug}
+        schema={contract.inputSchema}
+        example={reuse?.filters || contract.exampleInput}
+        readmeMarkdown={contract.readmeMarkdown}
+        buildNumber={contract.buildNumber}
+        contractHash={contract.contractHash}
+        fetchedAt={contract.fetchedAt}
+        stale={contract.stale}
+        canManage={canManage}
+      /> : <Text size="sm" c="dimmed">{!canUseConnection ? t("connectFirst") : contract?.error || t("notReady")}</Text>}
     </SectionPanel>;
 }
