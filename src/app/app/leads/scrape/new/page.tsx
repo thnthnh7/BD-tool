@@ -17,13 +17,19 @@ import { requireWorkspace, requireModule } from "@/lib/auth/session";
 import { ApifyAccountStatus } from "@/features/leads/components/apify-account-status";
 import { getCurrentWorkspaceApifyStatus, requireWorkspaceApifyConnection } from "@/features/leads/server/apify-connection";
 import { getTranslations } from "next-intl/server";
+import { getActorInputDraft } from "@/features/leads/server/actor-drafts";
 
-export default async function NewScrapePage({ searchParams }: { searchParams: Promise<{ source?: string; rerun?: string }> }) {
+export default async function NewScrapePage({ searchParams }: { searchParams: Promise<{ source?: string; rerun?: string; draft?: string }> }) {
   await requireModule("scraping");
   const params = await searchParams;
   const t = await getTranslations("Scrape");
   const context = await requireWorkspace();
-  const [sources, apify, previous] = await Promise.all([listInstalledSources(), getCurrentWorkspaceApifyStatus(), params.rerun ? getScrapeInput(params.rerun) : null]);
+  const [sources, apify, previous, actorDraft] = await Promise.all([
+    listInstalledSources(),
+    getCurrentWorkspaceApifyStatus(),
+    params.rerun ? getScrapeInput(params.rerun) : null,
+    getActorInputDraft(params.draft),
+  ]);
   const previousSource = previous && sources.find((source) => source.id === previous.job.source_id ||
     source.slug === previous.job.apify_actor_id.replaceAll("~", "/") || (isMapsActor(source.slug) && previous.job.apify_actor_id === "demo"));
   const requestedId = params.source || previousSource?.id;
@@ -38,14 +44,16 @@ export default async function NewScrapePage({ searchParams }: { searchParams: Pr
     {rerunUnavailable && <Alert color="yellow">{t("oldSourceUnavailable")}</Alert>}
     {!context.plan.features.lead_scrape && <Alert color="yellow">{t("planUnavailable")}</Alert>}
     {sources.length ? <SectionPanel><SourceChooser sources={sources} selectedId={selected?.id || ""} /></SectionPanel> : <SectionPanel><EmptyState icon={<Radar size={20} />} title={t("noSources")} description={t("noSourcesHelp")} /></SectionPanel>}
-    <Suspense key={`${selected?.id}-${reuse?.id || "new"}`} fallback={<Skeleton height={260} radius="md" />}><SelectedActor selected={selected} reuse={reuse} workspaceId={context.workspaceId} enabled={Boolean(context.plan.features.lead_scrape)} connected={apify.connection?.status === "active"} canManage={context.memberRole !== "member"} /></Suspense>
+    <Suspense key={`${selected?.id}-${reuse?.id || actorDraft?.id || "new"}`} fallback={<Skeleton height={260} radius="md" />}><SelectedActor selected={selected} reuse={reuse} actorDraft={actorDraft} draftRequested={Boolean(params.draft)} workspaceId={context.workspaceId} enabled={Boolean(context.plan.features.lead_scrape)} connected={apify.connection?.status === "active"} canManage={context.memberRole !== "member"} /></Suspense>
     {selected && <Group><Text size="xs" c="dimmed">{t("storageNote")}</Text></Group>}
   </Stack>;
 }
 
-async function SelectedActor({ selected, reuse, workspaceId, enabled, connected, canManage }: {
+async function SelectedActor({ selected, reuse, actorDraft, draftRequested, workspaceId, enabled, connected, canManage }: {
   selected: Awaited<ReturnType<typeof listInstalledSources>>[number] | undefined;
   reuse: NonNullable<Awaited<ReturnType<typeof getScrapeInput>>>["job"] | null;
+  actorDraft: Awaited<ReturnType<typeof getActorInputDraft>>;
+  draftRequested: boolean;
   workspaceId: string;
   enabled: boolean;
   connected: boolean;
@@ -59,8 +67,11 @@ async function SelectedActor({ selected, reuse, workspaceId, enabled, connected,
   const apifyCredential = enabled && connected && !maps ? await requireWorkspaceApifyConnection(workspaceId).catch(() => null) : null;
   const canUseConnection = connected && (maps || Boolean(apifyCredential));
   const contract = !maps && enabled && apifyCredential ? await ensureSourceContract(selected.id, apifyCredential.token) : null;
+  const draftInput = contract?.contractHash && actorDraft?.source_id === selected.id && actorDraft.contract_hash === contract.contractHash ? actorDraft.input : null;
+  const draftUnavailable = draftRequested && !draftInput;
 
   return <SectionPanel title={selected.title} action={<Badge color={maps ? "teal" : "gray"}>{maps ? t("crmSupported") : t("datasetOnly")}</Badge>}>
+      {draftUnavailable ? <Alert color="yellow">This AI draft expired or was created for an older Actor definition. Ask the Agent to prepare a new draft.</Alert> : null}
       {enabled && canUseConnection && maps && selected.adapter_status === "ready" ? <ActionForm key={`${selected.id}-${reuse?.id || "new"}`} action={startMapsScrapeAction} submitLabel={t("start")} redirectTo="/app/leads/scrape/{id}">
         <SimpleGrid cols={{ base: 1, sm: 2, xl: 3 }} spacing={{ base: "sm", md: "md" }}>
           <TextInput name="query" label={t("industry")} placeholder={t("industryPlaceholder")} required defaultValue={reuse?.query} />
@@ -77,13 +88,14 @@ async function SelectedActor({ selected, reuse, workspaceId, enabled, connected,
         sourceId={selected.id}
         sourceSlug={selected.slug}
         schema={contract.inputSchema}
-        example={reuse?.filters || contract.exampleInput}
+        example={draftInput || reuse?.filters || contract.exampleInput}
         readmeMarkdown={contract.readmeMarkdown}
         buildNumber={contract.buildNumber}
         contractHash={contract.contractHash}
         fetchedAt={contract.fetchedAt}
         stale={contract.stale}
         canManage={canManage}
+        draftApplied={Boolean(draftInput)}
       /> : <Text size="sm" c="dimmed">{!canUseConnection ? t("connectFirst") : contract?.error || t("notReady")}</Text>}
     </SectionPanel>;
 }

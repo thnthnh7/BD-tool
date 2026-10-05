@@ -83,6 +83,10 @@ export async function executeReadTool(ctx: ReadContext, name: string, args: Reco
     const input = args.input && typeof args.input === "object" && !Array.isArray(args.input) ? args.input as Record<string, unknown> : {};
     return validateActor(ctx, text("sourceId"), text("contractHash"), input, name === "preview_actor_run");
   }
+  if (name === "create_actor_draft") {
+    const input = args.input && typeof args.input === "object" && !Array.isArray(args.input) ? args.input as Record<string, unknown> : {};
+    return createActorDraft(ctx, text("sourceId"), text("contractHash"), input);
+  }
   if (name === "search_companies") return searchNamed(ctx, "company", text("query"));
   if (name === "search_contacts") return searchNamed(ctx, "contact", text("query"));
   if (name === "search_deals") return searchNamed(ctx, "deal", text("query"));
@@ -340,6 +344,29 @@ async function validateActor(ctx: ReadContext, sourceId: string, expectedContrac
     build: { id: actor.actor_build_id, number: actor.actor_build_number },
     warning: preview ? "This is a non-billable preview. Review the input and Actor pricing before starting a run from the scrape page." : undefined,
     href: `/app/leads/scrape/new?source=${actor.id}`,
+  };
+}
+
+async function createActorDraft(ctx: ReadContext, sourceId: string, expectedContractHash: string, input: Record<string, unknown>) {
+  const validation = await validateActor(ctx, sourceId, expectedContractHash, input, true);
+  if (!validation.valid || !("normalizedInput" in validation)) return validation;
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString();
+  const { data, error } = await ctx.supabase.from("actor_input_drafts").insert({
+    workspace_id: ctx.workspaceId,
+    user_id: ctx.userId,
+    source_id: sourceId,
+    contract_hash: expectedContractHash,
+    input: validation.normalizedInput as never,
+    expires_at: expiresAt,
+  }).select("id").single();
+  if (error || !data) throw new Error("The Actor draft could not be saved.");
+  return {
+    ok: true,
+    draftId: data.id,
+    expiresAt,
+    startsRun: false,
+    href: `/app/leads/scrape/new?source=${encodeURIComponent(sourceId)}&draft=${encodeURIComponent(data.id)}`,
+    preview: validation,
   };
 }
 

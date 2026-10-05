@@ -15,7 +15,7 @@ const READ_TOOLS = [
   "get_overdue_work", "get_stale_deals", "get_team_workload", "get_lead_source_performance", "get_sales_activity_summary",
   "get_unviewed_sent_quotes", "get_monthly_forecast",
   "search_actors", "get_actor_contract", "get_actor_guide", "get_actor_field_help", "get_actor_pricing",
-  "get_actor_run_input", "get_actor_run_status", "get_actor_run_error", "resolve_actor_input_mode", "validate_actor_input", "preview_actor_run",
+  "get_actor_run_input", "get_actor_run_status", "get_actor_run_error", "resolve_actor_input_mode", "validate_actor_input", "preview_actor_run", "create_actor_draft",
 ].map((name) => ({ name, tier: 1 as const }));
 
 type ToolCall = { id: string; name: string; arguments: string; raw?: unknown };
@@ -38,7 +38,7 @@ function toolSchema(name: string) {
     required: ["sourceId", "fieldName"],
     additionalProperties: false,
   };
-  if (name === "validate_actor_input" || name === "preview_actor_run") return {
+  if (name === "validate_actor_input" || name === "preview_actor_run" || name === "create_actor_draft") return {
     type: "object",
     properties: { sourceId: { type: "string" }, contractHash: { type: "string" }, input: { type: "object", additionalProperties: true } },
     required: ["sourceId", "contractHash", "input"],
@@ -85,6 +85,7 @@ function toolDescription(name: string) {
   if (name === "resolve_actor_input_mode") return "Deterministically identify URL mode versus field/filter mode from the current Actor schema and the user's goal. Use the returned fields and override notes before drafting input.";
   if (name === "validate_actor_input") return "Validate a proposed Actor input against its current schema and exact contractHash without starting a run. Do not include API keys, passwords, cookies or other secrets.";
   if (name === "preview_actor_run") return "Preview the normalized Actor input, validation result and pricing warning against an exact contractHash without starting a billable run. This tool never executes the Actor.";
+  if (name === "create_actor_draft") return "Save a validated, secret-free Actor input as a private 24-hour draft and return a link that applies it to the run form. Creating or applying a draft never starts an Actor run.";
   return name.replaceAll("_", " ");
 }
 

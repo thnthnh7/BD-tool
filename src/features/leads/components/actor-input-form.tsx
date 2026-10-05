@@ -100,7 +100,7 @@ function FieldGrid({ fields }: { fields: ActorField[] }) {
   </SimpleGrid>;
 }
 
-export function ActorInputForm({ sourceId, sourceSlug, schema, example, readmeMarkdown = "", buildNumber = null, contractHash = null, fetchedAt = null, stale = false, canManage = false }: {
+export function ActorInputForm({ sourceId, sourceSlug, schema, example, readmeMarkdown = "", buildNumber = null, contractHash = null, fetchedAt = null, stale = false, canManage = false, draftApplied = false }: {
   sourceId: string;
   sourceSlug: string;
   schema: Json;
@@ -111,6 +111,7 @@ export function ActorInputForm({ sourceId, sourceSlug, schema, example, readmeMa
   fetchedAt?: string | null;
   stale?: boolean;
   canManage?: boolean;
+  draftApplied?: boolean;
 }) {
   const t = useTranslations("Scrape");
   const guide = actorInputGuide(schema);
@@ -121,6 +122,7 @@ export function ActorInputForm({ sourceId, sourceSlug, schema, example, readmeMa
   const actorUrl = `https://apify.com/${sourceSlug.split("/").map(encodeURIComponent).join("/")}`;
 
   return <Stack gap="md">
+    {draftApplied ? <Alert color="blue" icon={<Info size={18} />} title="AI draft applied">Review every value below. The Actor will run only after you confirm and select Start run.</Alert> : null}
     <ActorGuideDrawer
       sourceId={sourceId}
       actorTitle={guide.title || sourceSlug}

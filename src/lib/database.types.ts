@@ -1917,6 +1917,12 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["scrape_sources"]["Insert"]>;
         Relationships: Rel;
       };
+      actor_input_drafts: {
+        Row: { id: string; workspace_id: string; user_id: string; source_id: string; contract_hash: string; input: Json; expires_at: string; created_at: string };
+        Insert: { id?: string; workspace_id: string; user_id: string; source_id: string; contract_hash: string; input?: Json; expires_at?: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["actor_input_drafts"]["Insert"]>;
+        Relationships: Rel;
+      };
       scrape_source_contract_versions: {
         Row: {
           id: string;
