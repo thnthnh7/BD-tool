@@ -46,7 +46,7 @@ export default async function NewScrapePage({ searchParams }: { searchParams: Pr
     <ApifyAccountStatus connection={apify.connection} canManage={apify.canManage} oauthReady={apify.oauthReady} compact />
     {rerunUnavailable && <Alert color="yellow">{t("oldSourceUnavailable")}</Alert>}
     {!context.plan.features.lead_scrape && <Alert color="yellow">{t("planUnavailable")}</Alert>}
-    {sources.length ? <SectionPanel><SourceChooser sources={sources} selectedId={selected?.id || ""} /></SectionPanel> : <SectionPanel><EmptyState icon={<Radar size={20} />} title={t("noSources")} description={t("noSourcesHelp")} /></SectionPanel>}
+    {sources.length ? <SourceChooser sources={sources} selectedId={selected?.id || ""} /> : <SectionPanel><EmptyState icon={<Radar size={20} />} title={t("noSources")} description={t("noSourcesHelp")} /></SectionPanel>}
     <Suspense key={`${selected?.id}-${reuse?.id || actorDraft?.id || params.example || "new"}`} fallback={<Skeleton height={260} radius="md" />}><SelectedActor selected={selected} reuse={reuse} actorDraft={actorDraft} draftRequested={Boolean(params.draft)} useExample={params.example === "1"} locale={locale} workspaceId={context.workspaceId} enabled={Boolean(context.plan.features.lead_scrape)} connected={apify.connection?.status === "active"} canManage={context.memberRole !== "member"} /></Suspense>
     {selected && <Group><Text size="xs" c="dimmed">{t("storageNote")}</Text></Group>}
   </Stack>;
