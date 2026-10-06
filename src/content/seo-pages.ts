@@ -93,7 +93,7 @@ export const seoPages: Record<string, SeoPageContent> = {
       ["Can I add existing customer data too?", "Bizcraw supports structured imports alongside data collected from supported sources."],
       ["Does Bizcraw provide contact details for every company?", "Available fields depend on the selected source and the public data returned by that actor. Bizcraw does not promise that every record contains every field."],
     ],
-    related: ["web-scraping-for-lead-generation", "features/data-library", "data-to-crm"],
+    related: ["web-scraping-for-lead-generation", "features/scraping", "data-to-crm"],
   },
   "google-maps-lead-scraper": {
     path: "/google-maps-lead-scraper",
@@ -147,7 +147,7 @@ export const seoPages: Record<string, SeoPageContent> = {
       ["Can records connect to deals and tasks?", "Yes. CRM records can provide context for deals, tasks and other supported sales workflows."],
       ["Can Bizcraw synchronize with another CRM?", "CRM connections are managed by provider and workspace. Availability and supported objects are shown in the product."],
     ],
-    related: ["web-scraping", "features/data-library", "features/ai-sales-agent"],
+    related: ["web-scraping", "features/scraping", "features/ai-sales-agent"],
   },
   "features/scraping": {
     path: "/features/scraping",
@@ -174,34 +174,7 @@ export const seoPages: Record<string, SeoPageContent> = {
       ["Where are results stored?", "Results stay associated with the run and workspace so they can be reviewed before CRM import."],
       ["Can teammates use the same source?", "Installed sources belong to the workspace, subject to plan permissions and workspace roles."],
     ],
-    related: ["web-scraping", "features/data-library", "integrations/apify"],
-  },
-  "features/data-library": {
-    path: "/features/data-library",
-    eyebrow: "DATA LIBRARY",
-    title: "Review and Organize Scraped Data | Bizcraw",
-    description: "Keep collected records organized by run and source, then review and select useful data before it enters your CRM.",
-    intro: "The data library separates collected results from approved customer records. Teams can inspect what a source returned, preserve provenance and decide what should move forward.",
-    image: "/landing/bizcraw-source-library.png",
-    imageAlt: "Bizcraw source library and structured scraping records",
-    benefits: [
-      { title: "Run-level context", text: "Understand which actor and configuration produced each result set." },
-      { title: "Structured review", text: "Inspect relevant fields before choosing records for the sales workspace." },
-      { title: "Cleaner CRM", text: "Reduce unnecessary imports by keeping raw results outside customer records until approved." },
-    ],
-    steps: [
-      { title: "Open a completed run", text: "Access the result set from the scrape history." },
-      { title: "Inspect records", text: "Review the fields returned by the selected actor." },
-      { title: "Select useful data", text: "Choose records that match the team’s qualification criteria." },
-      { title: "Import with context", text: "Create or connect workspace records while preserving their source." },
-    ],
-    useCases: ["Result QA", "Source comparison", "Selective CRM import", "Research archives"],
-    faq: [
-      ["Why keep a data library separate from the CRM?", "Raw collection and customer operations have different purposes. Separating them lets users review data before it affects active records."],
-      ["Does the library preserve the source?", "Results remain connected to their run and selected source."],
-      ["Can I search collected records?", "Available result views support reviewing the records returned by each run."],
-    ],
-    related: ["features/scraping", "data-to-crm", "scrape-business-leads"],
+    related: ["web-scraping", "data-to-crm", "integrations/apify"],
   },
   "features/ai-sales-agent": {
     path: "/features/ai-sales-agent",
@@ -282,7 +255,7 @@ export const seoPages: Record<string, SeoPageContent> = {
       ["Which fields should I collect?", "Collect the minimum fields needed to identify, qualify and follow up with a prospect."],
       ["What happens after import?", "Assign an owner, list, status or task so approved data enters a defined sales process."],
     ],
-    related: ["web-scraping-for-lead-generation", "scrape-business-leads", "features/data-library"],
+    related: ["web-scraping-for-lead-generation", "scrape-business-leads", "features/scraping"],
   },
   "guides/web-scraping-vs-data-enrichment": {
     path: "/guides/web-scraping-vs-data-enrichment",
@@ -309,7 +282,7 @@ export const seoPages: Record<string, SeoPageContent> = {
       ["Should enrichment happen before CRM import?", "It depends on the qualification workflow. Some teams qualify the source record first and enrich only approved prospects."],
       ["Why preserve provenance?", "Source context helps users understand when and where a field was collected and whether it should be refreshed."],
     ],
-    related: ["web-scraping", "data-to-crm", "features/data-library"],
+    related: ["web-scraping", "data-to-crm", "features/scraping"],
   },
 };
 

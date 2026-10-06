@@ -28,7 +28,7 @@ export function MarketingFooter() {
   return (
     <footer className={styles.footer}>
       <div className={styles.footerBrand}><AppLogo tagline /><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div>
-      <div><b>Product</b><Link href="/features">All features</Link><Link href="/features/scraping">Scraping runs</Link><Link href="/features/data-library">Data library</Link><Link href="/features/ai-sales-agent">AI sales agent</Link><Link href="/pricing">Pricing</Link></div>
+      <div><b>Product</b><Link href="/features">All features</Link><Link href="/features/scraping">Scraping runs</Link><Link href="/features/ai-sales-agent">AI sales agent</Link><Link href="/pricing">Pricing</Link></div>
       <div><b>Solutions</b><Link href="/solutions">All solutions</Link><Link href="/web-scraping">Web scraping</Link><Link href="/web-scraping-for-lead-generation">Lead generation</Link><Link href="/google-maps-lead-scraper">Google Maps leads</Link><Link href="/data-to-crm">Data to CRM</Link></div>
       <div><b>Resources</b><Link href="/guides">All guides</Link><Link href="/guides/how-to-build-a-prospect-list-with-web-scraping">Prospect list guide</Link><Link href="/guides/web-scraping-vs-data-enrichment">Scraping vs enrichment</Link><Link href="/integrations">Integrations</Link><Link href="/integrations/apify">Apify</Link></div>
       <div><b>Company</b><Link href="/what-is-bizcraw">What is Bizcraw?</Link><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/security">Security</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div>

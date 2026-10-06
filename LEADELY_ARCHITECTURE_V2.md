@@ -2475,6 +2475,6 @@ All four tables are isolated by `workspace_id` with RLS. Raw actor data is prese
 
 ### Product surface
 
-`/app/data` provides collection and type filters, search, pagination, localized labels, raw-payload inspection and explicit CRM promotion. Unsafe external URL schemes are never rendered as links. Sources remains the actor catalog; Scrape remains run orchestration; Data Library is the durable workspace for all retrieved output.
+The scrape run detail provides filtering, search, pagination, raw-payload inspection and explicit CRM promotion in the same context as status, inputs and cost. `/app/data` redirects to run history. The normalized Data Library remains an internal workspace store for AI and MCP retrieval rather than a separate navigation destination. Unsafe external URL schemes are never rendered as links. Sources remains the actor catalog and Scrape owns run orchestration and result review.
 
 The first production slice synchronizes the default dataset returned by each run. The asset and relationship tables establish the contract for later ingestion of Apify key-value-store files, named datasets and record-to-record relationship extraction without another storage redesign.

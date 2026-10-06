@@ -165,7 +165,8 @@ Gate: authenticated + `kind === workspace`. Layout `src/app/app/layout.tsx` + `A
 | `/app/leads/sources` | all; install/remove: owner/admin + plan | PPE-only catalog, responsive cards, pricing, search and filters |
 | `/app/leads/scrape` | workspace + plan checks on actions | Run history, actor/status/date/search filters |
 | `/app/leads/scrape/new` | workspace + plan | Actor selector, input form, optional `?rerun={jobId}` |
-| `/app/leads/scrape/[jobId]` | workspace | Dataset explorer, inputs/processing, Maps CRM import |
+| `/app/leads/scrape/[jobId]` | workspace | Dataset explorer, inputs/processing and CRM import |
+| `/app/data` | workspace | Legacy redirect to scrape run history; normalized records remain available to AI/MCP internally |
 | `/app/companies`, `/app/companies/[id]` | workspace | Company records and related CRM context |
 | `/app/contacts`, `/app/contacts/[id]` | workspace | Contacts and relationships |
 | `/app/leads`, `/app/leads/[id]` | workspace | Lead management and qualification |

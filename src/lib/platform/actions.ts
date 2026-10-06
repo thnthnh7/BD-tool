@@ -30,7 +30,10 @@ export async function updatePlanAction(formData: FormData) {
   const nextFeatures = {
     ...currentFeatures,
     ...Object.fromEntries(
-      [...MODULE_KEYS, ...CAPABILITY_OPTIONS.map(([key]) => key)].map((key) => [key, String(formData.get(`feature_${key}`) || "") === "on"]),
+      [...MODULE_KEYS, ...CAPABILITY_OPTIONS.map(([key]) => key)].map((key) => [
+        key,
+        key === "data_library" || String(formData.get(`feature_${key}`) || "") === "on",
+      ]),
     ),
   };
   const entitlementsChanged = JSON.stringify(current.quotas) !== JSON.stringify(nextQuotas)

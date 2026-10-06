@@ -27,7 +27,6 @@ export const marketingHubs: Record<string, MarketingHubContent> = {
     sectionText: "Each feature is designed around a clear handoff from public data to a reviewable sales workflow.",
     cards: [
       { href: "/features/scraping", label: "SCRAPING", title: "Managed web scraping runs", description: "Configure supported sources, monitor progress and review results before they enter your CRM." },
-      { href: "/features/data-library", label: "DATA LIBRARY", title: "Structured data review", description: "Keep collected records organized by source and run while your team checks relevance and quality." },
       { href: "/features/ai-sales-agent", label: "AI SALES AGENT", title: "Workspace-aware assistance", description: "Ask about accessible workspace records and prepare supported sales actions with review boundaries." },
     ],
   },

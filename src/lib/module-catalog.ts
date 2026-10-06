@@ -5,7 +5,6 @@ export const MODULE_GROUPS = [
     modules: [
       ["sources", "Sources"],
       ["scraping", "Scraping"],
-      ["data_library", "Data Library"],
       ["leads", "Leads"],
       ["lists", "Lists"],
     ],
@@ -49,9 +48,19 @@ export const MODULE_GROUPS = [
   },
 ] as const;
 
-export type ModuleKey = (typeof MODULE_GROUPS)[number]["modules"][number][0];
+// These capabilities remain part of the entitlement contract for existing
+// subscriptions and internal services, but do not represent standalone UI
+// modules that customers need to configure.
+export const INTERNAL_MODULE_KEYS = ["data_library"] as const;
 
-export const MODULE_KEYS = MODULE_GROUPS.flatMap((group) => group.modules.map(([key]) => key)) as ModuleKey[];
+export type ModuleKey =
+  | (typeof MODULE_GROUPS)[number]["modules"][number][0]
+  | (typeof INTERNAL_MODULE_KEYS)[number];
+
+export const MODULE_KEYS = [
+  ...MODULE_GROUPS.flatMap((group) => group.modules.map(([key]) => key)),
+  ...INTERNAL_MODULE_KEYS,
+] as ModuleKey[];
 
 export const CAPABILITY_OPTIONS = [
   ["byok_ai", "BYOK AI"],
