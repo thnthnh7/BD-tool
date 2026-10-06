@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Checkbox, Group, Stack, Text } from "@mantine/core";
 import { ScrapeSelectCheckbox } from "@/features/leads/components/scrape-select";
 import { setScrapeBulkSelectionAction } from "@/features/leads/server/scrape-actions";
+import { useTranslations } from "next-intl";
 
 type BulkTarget = "places" | "people";
 
@@ -42,29 +43,30 @@ export function ScrapeSelectionControls({
   selectedPlaces: number;
 }) {
   const bulk = useBulkSelection(jobId, query);
+  const t = useTranslations("Scrape");
   return (
     <Stack gap={4}>
       <Group gap="lg" wrap="wrap">
         <Group gap={6}>
           <Text size="sm" c="dimmed">
-            Chọn place
+            {t("selectPlaces")}
           </Text>
           <Button variant="subtle" color="gray" h={28} px="xs" disabled={bulk.pending || eligiblePlaces === 0} onClick={() => bulk.run("places", true)}>
-            Tất cả
+            {t("selectAll")}
           </Button>
           <Button variant="subtle" color="gray" h={28} px="xs" disabled={bulk.pending || selectedPlaces === 0} onClick={() => bulk.run("places", false)}>
-            Bỏ hết
+            {t("selectNone")}
           </Button>
         </Group>
         <Group gap={6}>
           <Text size="sm" c="dimmed">
-            Chọn người
+            {t("selectPeople")}
           </Text>
           <Button variant="subtle" color="gray" h={28} px="xs" disabled={bulk.pending || eligiblePlaces === 0} onClick={() => bulk.run("people", true)}>
-            Tất cả
+            {t("selectAll")}
           </Button>
           <Button variant="subtle" color="gray" h={28} px="xs" disabled={bulk.pending || eligiblePlaces === 0} onClick={() => bulk.run("people", false)}>
-            Bỏ hết
+            {t("selectNone")}
           </Button>
         </Group>
       </Group>
@@ -114,6 +116,7 @@ export function PlacePeople({
   locked: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("Scrape");
   if (!people.length) {
     return (
       <Text size="sm" c="dimmed">
@@ -129,7 +132,7 @@ export function PlacePeople({
         ))}
         {people.length > 1 ? (
           <Button variant="subtle" color="gray" h={24} px={0} w="fit-content" onClick={() => setOpen(false)}>
-            Thu gọn
+            {t("collapse")}
           </Button>
         ) : null}
       </Stack>
@@ -137,7 +140,7 @@ export function PlacePeople({
   }
   return (
     <Button variant="subtle" color="gray" h={28} px={0} onClick={() => setOpen(true)}>
-      {people[0].name} · +{people.length - 1} người
+      {t("morePeople", { name: people[0].name, count: people.length - 1 })}
     </Button>
   );
 }

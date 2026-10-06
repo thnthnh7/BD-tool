@@ -19,10 +19,13 @@ import { getScrapeJob, importScrapeResultsAction, refreshScrapeJobAction } from 
 import { listSourceTitles } from "@/features/leads/server/source-actions";
 import { scrapePlaceMatches } from "@/features/leads/scrape-match";
 import { listLeadLists } from "@/features/lists/server/actions";
+import type { AppLocale } from "@/i18n/config";
+import { formatDate } from "@/i18n/format";
 import { readListQuery, slicePage } from "@/lib/list-page";
+import { getLocale, getTranslations } from "next-intl/server";
 
-function personLabel(person: { full_name: string | null; job_title: string | null; email: string | null; linkedin_url: string | null }) {
-  return [person.full_name || "Unknown", person.job_title, person.email || person.linkedin_url].filter(Boolean).join(" · ");
+function personLabel(person: { full_name: string | null; job_title: string | null; email: string | null; linkedin_url: string | null }, unknown: string) {
+  return [person.full_name || unknown, person.job_title, person.email || person.linkedin_url].filter(Boolean).join(" · ");
 }
 
 export default async function ScrapeJobPage({ params, searchParams }: {
@@ -30,10 +33,15 @@ export default async function ScrapeJobPage({ params, searchParams }: {
   searchParams: Promise<{ q?: string; page?: string; view?: string }>;
 }) {
   await requireModule("scraping");
-  const { jobId } = await params;
-  const search = await searchParams;
+  const [{ jobId }, search] = await Promise.all([params, searchParams]);
   const { q, page } = readListQuery(search);
-  const payload = await getScrapeJob(jobId);
+  const [t, common, locale, payload] = await Promise.all([
+    getTranslations("Scrape"),
+    getTranslations("Common"),
+    getLocale(),
+    getScrapeJob(jobId),
+  ]);
+  const appLocale = locale as AppLocale;
   if (!payload) notFound();
   const generic = Boolean(payload.job.source_id) && !isMapsActor(payload.job.apify_actor_id);
   const [lists, sourceTitles] = await Promise.all([
@@ -72,23 +80,23 @@ export default async function ScrapeJobPage({ params, searchParams }: {
     max_results: payload.job.max_results, enrich_people: payload.job.enrich_people,
     max_people_per_place: payload.job.max_people_per_place, verify_emails: payload.job.verify_emails,
   };
-  const timestamp = (value: string | null) => value ? new Date(value).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "—";
+  const timestamp = (value: string | null) => value ? formatDate(value, appLocale, { dateStyle: "short", timeStyle: "medium" }) : "—";
   const creator = payload.job.creator?.display_name?.trim() || payload.job.creator?.email || "—";
   const apifyCost = payload.job.apify_usage_usd == null ? "—" : `$${Number(payload.job.apify_usage_usd).toFixed(4)} USD`;
   const crm = generic ? undefined : (
-      <SectionPanel title="Chọn địa điểm và liên hệ để import" padded={false}>
+      <SectionPanel title={t("selectPlacesTitle")} padded={false}>
         <Box px="md" pt={4} pb="sm">
           <Stack gap="sm">
             <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
-              <ListSearch path={jobPath} q={q} extra={{ view: "crm" }} placeholder="Tên, địa chỉ, website, SĐT hoặc người" />
+              <ListSearch path={jobPath} q={q} extra={{ view: "crm" }} placeholder={t("crmSearch")} submitLabel={common("search")} clearLabel={common("clear")} />
             </Group>
             <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
               <Text size="sm" c="dimmed">
-                Sẽ import {selectedPlaces.length} place · {importContacts} contact
+                {t("importSummary", { places: selectedPlaces.length, contacts: importContacts })}
               </Text>
               <ActionForm
                 action={importScrapeResultsAction}
-                submitLabel="Import vào CRM"
+                submitLabel={t("importCrm")}
                 redirectTo="/app/lists/{id}"
                 redirectFallback="/app/companies"
                 layout="inline"
@@ -96,11 +104,11 @@ export default async function ScrapeJobPage({ params, searchParams }: {
                 <input type="hidden" name="job_id" value={payload.job.id} />
                 <NativeSelect
                   name="list_id"
-                  aria-label="List có sẵn"
-                  data={[{ value: "", label: "List có sẵn" }, ...lists.map((item) => ({ value: item.id, label: item.name }))]}
+                  aria-label={t("existingList")}
+                  data={[{ value: "", label: t("existingList") }, ...lists.map((item) => ({ value: item.id, label: item.name }))]}
                   w={200}
                 />
-                <TextInput name="list_name" aria-label="Hoặc tạo list mới" placeholder="Hoặc tạo list mới" w={200} />
+                <TextInput name="list_name" aria-label={t("newList")} placeholder={t("newList")} w={200} />
               </ActionForm>
             </Group>
           </Stack>
@@ -114,7 +122,9 @@ export default async function ScrapeJobPage({ params, searchParams }: {
                 {...paged}
                 singular="place"
                 plural="places"
-                note={eligible.length ? `Đã chọn ${selectedPlaces.length}/${eligible.length} place` : "Đã import hết"}
+                ofLabel={common("of")}
+                extra={{ view: "crm" }}
+                note={eligible.length ? t("selectedPlaces", { selected: selectedPlaces.length, eligible: eligible.length }) : t("allImported")}
               />
             }
           >
@@ -122,14 +132,14 @@ export default async function ScrapeJobPage({ params, searchParams }: {
               <TableThead>
                 <TableTr>
                   <TableTh w={48}>
-                    <ScrapeHeaderCheckbox jobId={payload.job.id} query={q} eligible={eligible.length} selected={selectedPlaces.length} target="places" label="Chọn hết place đang lọc" />
+                    <ScrapeHeaderCheckbox jobId={payload.job.id} query={q} eligible={eligible.length} selected={selectedPlaces.length} target="places" label={t("selectAllPlaces")} />
                   </TableTh>
-                  <TableTh>Place</TableTh>
-                  <TableTh>Match</TableTh>
+                  <TableTh>{t("place")}</TableTh>
+                  <TableTh>{t("match")}</TableTh>
                   <TableTh>
                     <Group gap={8} wrap="nowrap">
-                      <ScrapeHeaderCheckbox jobId={payload.job.id} query={q} eligible={eligiblePeople.length} selected={selectedPeople.length} target="people" label="Chọn hết người đang lọc" />
-                      People
+                      <ScrapeHeaderCheckbox jobId={payload.job.id} query={q} eligible={eligiblePeople.length} selected={selectedPeople.length} target="people" label={t("selectAllPeople")} />
+                      {t("people")}
                     </Group>
                   </TableTh>
                 </TableTr>
@@ -139,14 +149,14 @@ export default async function ScrapeJobPage({ params, searchParams }: {
                   const imported = result.match_status === "imported";
                   const people = (peopleByResult.get(result.id) || []).map((person) => ({
                     id: person.id,
-                    name: person.full_name || "Unknown",
-                    label: personLabel(person),
+                    name: person.full_name || t("unknownPerson"),
+                    label: personLabel(person, t("unknownPerson")),
                     selected: person.selected,
                   }));
                   return (
                     <TableTr key={result.id}>
                       <TableTd>
-                        <ScrapeSelectCheckbox resultId={result.id} selected={result.selected} ariaLabel={`Import ${result.name}`} locked={imported} />
+                        <ScrapeSelectCheckbox resultId={result.id} selected={result.selected} ariaLabel={t("importNamed", { name: result.name })} locked={imported} />
                       </TableTd>
                       <TableTd>
                         <Text fw={600} size="sm">
@@ -171,26 +181,26 @@ export default async function ScrapeJobPage({ params, searchParams }: {
           </ListTable>
         ) : (
           <Text size="sm" c="dimmed" px="md" pb="md">
-            {q ? "Không thấy place khớp." : "Chưa có place nào."}
+            {q ? t("noPlaceMatch") : t("noPlaces")}
           </Text>
         )}
       </SectionPanel>
   );
   return <Stack gap="md">
-    <PageHeader back={{ href: "/app/leads/scrape", label: "Lịch sử scrape" }} title={payload.job.query || "Kết quả scrape"} subtitle={actorTitle}
+    <PageHeader back={{ href: "/app/leads/scrape", label: t("historyBack") }} title={payload.job.query || t("resultsTitle")} subtitle={actorTitle}
       action={<Group gap="xs">
-        {payload.job.apify_dataset_id && payload.job.status !== "ingesting" && <ActionForm action={refreshScrapeJobAction} submitLabel="Đồng bộ kết quả" variant="light"><input type="hidden" name="job_id" value={payload.job.id} /></ActionForm>}
-        <LinkButton href={`/app/leads/scrape/new?rerun=${payload.job.id}`} variant="default">Chạy lại…</LinkButton>
+        {payload.job.apify_dataset_id && payload.job.status !== "ingesting" && <ActionForm action={refreshScrapeJobAction} submitLabel={t("syncResults")} variant="light"><input type="hidden" name="job_id" value={payload.job.id} /></ActionForm>}
+        <LinkButton href={`/app/leads/scrape/new?rerun=${payload.job.id}`} variant="default">{t("rerun")}</LinkButton>
       </Group>} />
-    <Group gap="md"><ScrapeStatus status={payload.job.status} /><Text size="sm" c="dimmed">{rows.length.toLocaleString("vi-VN")} bản ghi đã nhận</Text><Text size="sm" c="dimmed">{timestamp(payload.job.created_at)}</Text></Group>
-    {payload.job.error_message && <Alert color="red" title="Lần chạy gặp lỗi">{payload.job.error_message}</Alert>}
-    {["running", "queued", "ingesting"].includes(payload.job.status) && <Alert color="blue">{payload.job.status === "ingesting" ? "Đang đồng bộ dữ liệu. Trang sẽ tự cập nhật khi hoàn tất." : "Đang chờ actor hoàn tất. Bạn có thể rời trang và quay lại, hoặc đồng bộ kết quả sau khi actor chạy xong."}</Alert>}
+    <Group gap="md"><ScrapeStatus status={payload.job.status} /><Text size="sm" c="dimmed">{t("recordsCount", { count: rows.length })}</Text><Text size="sm" c="dimmed">{timestamp(payload.job.created_at)}</Text></Group>
+    {payload.job.error_message && <Alert color="red" title={t("runFailed")}>{payload.job.error_message}</Alert>}
+    {["running", "queued", "ingesting"].includes(payload.job.status) && <Alert color="blue">{payload.job.status === "ingesting" ? t("syncingData") : t("waitingActor")}</Alert>}
     <ScrapeJobTabs key={payload.job.id} status={payload.job.status} initialTab={!generic && (search.view === "crm" || q || page > 1) ? "crm" : "results"} crm={crm}
-      results={<SectionPanel padded={false}><DatasetExplorer rows={rows} filename={`scrape-${payload.job.id}`} emptyMessage={payload.job.status === "succeeded" ? "Actor đã hoàn tất nhưng không trả về bản ghi nào." : undefined} /></SectionPanel>}
-      input={<SectionPanel title="Thông số đã dùng"><Text size="sm" c="dimmed" mb="sm">Chạy lại sẽ mở form để bạn kiểm tra trước khi bắt đầu lượt mới.</Text><Code block style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(input, null, 2)}</Code></SectionPanel>}
-      processing={<SectionPanel title="Thông tin lần chạy"><SimpleGrid cols={{ base: 1, sm: 2 }}>
-        {[["Actor", actorTitle], ["Người chạy", creator], ["Chi phí Apify", apifyCost], ["Run ID", payload.job.apify_run_id || "—"], ["Dataset ID", payload.job.apify_dataset_id || "—"], ["Bắt đầu", timestamp(payload.job.started_at)], ["Kết thúc", timestamp(payload.job.finished_at)], ["Khả năng CRM", generic ? "Chưa hỗ trợ import. Có thể xem và xuất dữ liệu." : "Import địa điểm và người liên hệ vào CRM."]].map(([label, value]) => <Box key={label}><Text size="xs" c="dimmed">{label}</Text><Text size="sm" style={{ overflowWrap: "anywhere" }}>{value}</Text></Box>)}
+      results={<SectionPanel padded={false}><DatasetExplorer rows={rows} filename={`scrape-${payload.job.id}`} emptyMessage={payload.job.status === "succeeded" ? t("emptyActor") : undefined} /></SectionPanel>}
+      input={<SectionPanel title={t("inputUsed")}><Text size="sm" c="dimmed" mb="sm">{t("rerunHint")}</Text><Code block style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(input, null, 2)}</Code></SectionPanel>}
+      processing={<SectionPanel title={t("runInfo")}><SimpleGrid cols={{ base: 1, sm: 2 }}>
+        {[[t("actor"), actorTitle], [t("runBy"), creator], [t("apifyCost"), apifyCost], [t("runId"), payload.job.apify_run_id || "—"], [t("datasetId"), payload.job.apify_dataset_id || "—"], [t("started"), timestamp(payload.job.started_at)], [t("finished"), timestamp(payload.job.finished_at)], [t("crmCapability"), generic ? t("crmUnsupportedDetail") : t("crmSupportedDetail")]].map(([label, value]) => <Box key={label}><Text size="xs" c="dimmed">{label}</Text><Text size="sm" style={{ overflowWrap: "anywhere" }}>{value}</Text></Box>)}
       </SimpleGrid></SectionPanel>} />
-    {generic && <Text size="xs" c="dimmed">Dữ liệu từ actor được giữ riêng. Nguồn này chưa hỗ trợ import vào CRM.</Text>}
+    {generic && <Text size="xs" c="dimmed">{t("genericStorageNote")}</Text>}
   </Stack>;
 }

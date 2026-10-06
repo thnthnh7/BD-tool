@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Group, ScrollArea, Stack, Text, TextInput } from "@mantine/core";
 import { LinkButton } from "@/components/mantine-link";
+import { useTranslations } from "next-intl";
 
 const SCROLL_FROM = 6;
 
@@ -19,11 +20,8 @@ function sourceHref(id: string, query: string) {
   return `/app/leads/scrape?${params.toString()}`;
 }
 
-function statusText(ready: boolean) {
-  return ready ? "Chạy được" : "Chưa chạy";
-}
-
 function SourceRow({ source, selected, query }: { source: PickerSource; selected: boolean; query: string }) {
+  const t = useTranslations("Scrape");
   return (
     <LinkButton
       href={sourceHref(source.id, query)}
@@ -39,7 +37,7 @@ function SourceRow({ source, selected, query }: { source: PickerSource; selected
           {source.title}
         </Text>
         <Text size="xs" c={source.ready ? "teal" : "dimmed"} style={{ flexShrink: 0 }}>
-          {statusText(source.ready)}
+          {source.ready ? t("sourceReady") : t("sourceNotReady")}
         </Text>
       </Group>
     </LinkButton>
@@ -55,6 +53,7 @@ export function InstalledSourcePicker({
   selectedId: string;
   query: string;
 }) {
+  const t = useTranslations("Scrape");
   const [filter, setFilter] = useState("");
   const scroll = sources.length >= SCROLL_FROM;
   const visible = useMemo(() => {
@@ -67,7 +66,7 @@ export function InstalledSourcePicker({
     visible.map((source) => <SourceRow key={source.id} source={source} selected={source.id === selectedId} query={query} />)
   ) : (
     <Text size="sm" c="dimmed">
-      Không có nguồn khớp.
+      {t("noSourceMatch")}
     </Text>
   );
 
@@ -77,8 +76,8 @@ export function InstalledSourcePicker({
         <TextInput
           value={filter}
           onChange={(event) => setFilter(event.currentTarget.value)}
-          placeholder="Tìm trong nguồn đã cài"
-          aria-label="Tìm trong nguồn đã cài"
+          placeholder={t("searchSources")}
+          aria-label={t("searchSources")}
         />
       ) : null}
       {scroll ? (

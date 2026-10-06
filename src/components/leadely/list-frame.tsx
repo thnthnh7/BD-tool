@@ -9,12 +9,16 @@ export function ListSearch({
   placeholder,
   name = "q",
   extra,
+  submitLabel = "Search",
+  clearLabel = "Xóa",
 }: {
   path: string;
   q: string;
   placeholder: string;
   name?: string;
   extra?: Record<string, string>;
+  submitLabel?: string;
+  clearLabel?: string;
 }) {
   return (
     <form action={path}>
@@ -26,11 +30,11 @@ export function ListSearch({
       <Group gap="xs" wrap="nowrap">
         <TextInput name={name} defaultValue={q} placeholder={placeholder} aria-label={placeholder} w={300} />
         <Button type="submit" variant="light">
-          Search
+          {submitLabel}
         </Button>
         {q ? (
           <LinkAnchor href={listHref(path, "", 1, name, extra)} size="sm">
-            Xóa
+            {clearLabel}
           </LinkAnchor>
         ) : null}
       </Group>

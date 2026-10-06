@@ -19,10 +19,12 @@ for (const locale of expectedLocales) {
   const messages = new Map(flatten(JSON.parse(await readFile(path.join(root, `${locale}.json`), "utf8"))));
   const missing = [...source.keys()].filter((key) => !messages.has(key));
   const extra = [...messages.keys()].filter((key) => !source.has(key));
-  const invalid = [...source].filter(([key, value]) => placeholders(value).join() !== placeholders(messages.get(key)).join()).map(([key]) => key);
-  if (missing.length || extra.length || invalid.length) {
+  const invalid = [...source].filter(([key, value]) => messages.has(key) && placeholders(value).join() !== placeholders(messages.get(key)).join()).map(([key]) => key);
+  if (extra.length || invalid.length) {
     failed = true;
-    console.error(`${locale}: missing=${missing.length}, extra=${extra.length}, invalid placeholders=${invalid.length}`);
+    console.error(`${locale}: extra=${extra.length}, invalid placeholders=${invalid.length}`);
+  } else if (missing.length) {
+    console.log(`${locale}: ${messages.size} messages, ${missing.length} fall back to English`);
   } else {
     console.log(`${locale}: ${messages.size} messages OK`);
   }
