@@ -273,7 +273,9 @@
     "onePerLine": "1 行に 1 つの値",
     "runConfirmed": "このアクターを実行する権限があることを確認します",
     "actorInputHelp": "アクターのパラメータを入力します。検索して列を選択し、結果をエクスポートできます。このソースは CRM インポートをまだサポートしていません。",
-    "moreOptions": "その他のオプション ({count})"
+    "moreOptions": "その他のオプション ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "タスク",

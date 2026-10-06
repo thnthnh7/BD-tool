@@ -273,7 +273,9 @@
     "onePerLine": "प्रति पंक्ति एक मान",
     "runConfirmed": "मैं पुष्टि करता हूं कि मैं इस अभिनेता को चलाने के लिए अधिकृत हूं",
     "actorInputHelp": "अभिनेता पैरामीटर दर्ज करें. आप खोज सकते हैं, कॉलम चुन सकते हैं और परिणाम निर्यात कर सकते हैं; यह स्रोत अभी तक CRM आयात का समर्थन नहीं करता है।",
-    "moreOptions": "अधिक विकल्प ({count})"
+    "moreOptions": "अधिक विकल्प ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "कार्य",

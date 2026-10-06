@@ -273,7 +273,9 @@
     "onePerLine": "Satır başına bir değer",
     "runConfirmed": "Bu aktörü yönetme yetkisine sahip olduğumu onaylıyorum",
     "actorInputHelp": "Aktör parametrelerini girin. Arama yapabilir, sütunları seçebilir ve sonuçları dışa aktarabilirsiniz; bu kaynak henüz CRM içe aktarmayı desteklemiyor.",
-    "moreOptions": "Daha fazla seçenek ({count})"
+    "moreOptions": "Daha fazla seçenek ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "Görevler",

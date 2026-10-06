@@ -273,7 +273,9 @@
     "onePerLine": "Одно значение в строке",
     "runConfirmed": "Я подтверждаю, что у меня есть полномочия управлять этим актером",
     "actorInputHelp": "Введите параметры актера. Вы можете искать, выбирать столбцы и экспортировать результаты; этот источник пока не поддерживает импорт CRM.",
-    "moreOptions": "Дополнительные параметры ({count})"
+    "moreOptions": "Дополнительные параметры ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "Задачи",

@@ -273,7 +273,9 @@
     "onePerLine": "Mỗi dòng một giá trị",
     "runConfirmed": "Tôi xác nhận được phép chạy actor này",
     "actorInputHelp": "Điền thông số cho actor. Kết quả có thể tìm kiếm, chọn cột và xuất dữ liệu; nguồn này chưa hỗ trợ import CRM.",
-    "moreOptions": "Tùy chọn thêm ({count})"
+    "moreOptions": "Tùy chọn thêm ({count})",
+    "tokenUnreadable": "Không đọc được token Apify đã lưu trên server này. Vào Settings và nhập lại API token.",
+    "reconnectApify": "Kết nối Apify cần được xác thực lại. Vào Settings và nhập lại API token."
   },
   "Tasks": {
     "title": "Công việc",

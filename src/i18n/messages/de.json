@@ -273,7 +273,9 @@
     "onePerLine": "Ein Wert pro Zeile",
     "runConfirmed": "Ich bestätige, dass ich berechtigt bin, diesen Schauspieler zu leiten",
     "actorInputHelp": "Geben Sie die Aktorparameter ein. Sie können suchen, Spalten auswählen und die Ergebnisse exportieren; Diese Quelle unterstützt den CRM-Import noch nicht.",
-    "moreOptions": "Weitere Optionen ({count})"
+    "moreOptions": "Weitere Optionen ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "Aufgaben",

@@ -273,7 +273,9 @@
     "onePerLine": "每行一个值",
     "runConfirmed": "我确认我有权运行该演员",
     "actorInputHelp": "输入演员参数。您可以搜索、选择列并导出结果；该源尚不支持 CRM 导入。",
-    "moreOptions": "更多选项（{count}）"
+    "moreOptions": "更多选项（{count}）",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "任务",

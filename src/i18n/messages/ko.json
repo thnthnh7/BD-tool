@@ -273,7 +273,9 @@
     "onePerLine": "한 줄에 하나의 값",
     "runConfirmed": "나는 이 배우를 연기할 권한이 있음을 확인합니다.",
     "actorInputHelp": "행위자 매개변수를 입력합니다. 검색하고, 열을 선택하고, 결과를 내보낼 수 있습니다. 이 소스는 아직 CRM 가져오기를 지원하지 않습니다.",
-    "moreOptions": "추가 옵션({count})"
+    "moreOptions": "추가 옵션({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "작업",

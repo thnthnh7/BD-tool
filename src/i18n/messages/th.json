@@ -273,7 +273,9 @@
     "onePerLine": "หนึ่งค่าต่อบรรทัด",
     "runConfirmed": "ฉันยืนยันว่าฉันได้รับอนุญาตให้ดำเนินการนักแสดงคนนี้",
     "actorInputHelp": "ป้อนพารามิเตอร์นักแสดง คุณสามารถค้นหา เลือกคอลัมน์ และส่งออกผลลัพธ์ได้ แหล่งที่มานี้ยังไม่รองรับการนำเข้า CRM",
-    "moreOptions": "ตัวเลือกเพิ่มเติม ({count})"
+    "moreOptions": "ตัวเลือกเพิ่มเติม ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "งาน",

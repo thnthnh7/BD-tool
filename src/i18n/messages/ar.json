@@ -273,7 +273,9 @@
     "onePerLine": "قيمة واحدة لكل سطر",
     "runConfirmed": "أؤكد أنني مفوض بتشغيل هذا الممثل",
     "actorInputHelp": "أدخل معلمات الممثل. يمكنك البحث واختيار الأعمدة وتصدير النتائج؛ هذا المصدر لا يدعم استيراد CRM حتى الآن.",
-    "moreOptions": "المزيد من الخيارات ({count})"
+    "moreOptions": "المزيد من الخيارات ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "المهام",

@@ -273,7 +273,9 @@
     "onePerLine": "Satu nilai per baris",
     "runConfirmed": "Saya mengonfirmasi bahwa saya berwenang untuk menjalankan aktor ini",
     "actorInputHelp": "Masukkan parameter aktor. Anda dapat mencari, memilih kolom dan mengekspor hasilnya; sumber ini belum mendukung impor CRM.",
-    "moreOptions": "Opsi lainnya ({count})"
+    "moreOptions": "Opsi lainnya ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "Tugas",

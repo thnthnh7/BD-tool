@@ -52,6 +52,13 @@ export default async function NewScrapePage({ searchParams }: { searchParams: Pr
   </Stack>;
 }
 
+function describeApifyConnectionError(error: unknown, t: Awaited<ReturnType<typeof getTranslations>>) {
+  const message = error instanceof Error ? error.message : "";
+  if (/authenticate data|Unsupported state|authentication tag|bad decrypt|WORKSPACE_SECRETS_KEY|SUPABASE_SERVICE_ROLE_KEY/i.test(message)) return t("tokenUnreadable");
+  if (/xác thực lại|hết hạn|expired/i.test(message)) return t("reconnectApify");
+  return message || t("connectFirst");
+}
+
 async function SelectedActor({ selected, reuse, actorDraft, draftRequested, useExample, locale, workspaceId, enabled, connected, canManage }: {
   selected: Awaited<ReturnType<typeof listInstalledSources>>[number] | undefined;
   reuse: NonNullable<Awaited<ReturnType<typeof getScrapeInput>>>["job"] | null;
@@ -69,7 +76,15 @@ async function SelectedActor({ selected, reuse, actorDraft, draftRequested, useE
   if (!selected) return null;
   // Showing the Maps form needs connection status only. The submit action
   // resolves and validates credentials again when the user actually starts a run.
-  const apifyCredential = enabled && connected && !maps ? await requireWorkspaceApifyConnection(workspaceId).catch(() => null) : null;
+  let connectionError: string | null = null;
+  let apifyCredential: Awaited<ReturnType<typeof requireWorkspaceApifyConnection>> | null = null;
+  if (enabled && connected && !maps) {
+    try {
+      apifyCredential = await requireWorkspaceApifyConnection(workspaceId);
+    } catch (error) {
+      connectionError = describeApifyConnectionError(error, t);
+    }
+  }
   const canUseConnection = connected && (maps || Boolean(apifyCredential));
   const contract = !maps && enabled && apifyCredential ? await ensureSourceContract(selected.id, apifyCredential.token) : null;
   const generatedGuide = contract?.contractHash ? await getOrCreateActorGuide({
@@ -113,6 +128,6 @@ async function SelectedActor({ selected, reuse, actorDraft, draftRequested, useE
         draftApplied={Boolean(draftInput)}
         pricingModel={selected.pricing_model}
         structuredGuide={generatedGuide?.guide}
-      /> : <Text size="sm" c="dimmed">{!canUseConnection ? t("connectFirst") : contract?.error || t("notReady")}</Text>}
+      /> : connectionError ? <Alert color="yellow">{connectionError}</Alert> : <Text size="sm" c="dimmed">{!canUseConnection ? (!enabled ? t("planUnavailable") : t("connectFirst")) : contract?.error || t("notReady")}</Text>}
     </SectionPanel>;
 }

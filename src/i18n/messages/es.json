@@ -273,7 +273,9 @@
     "onePerLine": "Un valor por línea",
     "runConfirmed": "Confirmo que estoy autorizado para ejecutar este actor.",
     "actorInputHelp": "Ingrese los parámetros del actor. Puedes buscar, elegir columnas y exportar los resultados; esta fuente aún no admite la importación de CRM.",
-    "moreOptions": "Más opciones ({count})"
+    "moreOptions": "Más opciones ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "Tareas",

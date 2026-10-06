@@ -273,7 +273,9 @@
     "onePerLine": "Одне значення на рядок",
     "runConfirmed": "Я підтверджую, що маю право керувати цим актором",
     "actorInputHelp": "Введіть параметри актора. Ви можете шукати, вибирати стовпці та експортувати результати; це джерело ще не підтримує імпорт CRM.",
-    "moreOptions": "Більше опцій ({count})"
+    "moreOptions": "Більше опцій ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "завдання",

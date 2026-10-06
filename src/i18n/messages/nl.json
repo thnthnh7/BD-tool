@@ -273,7 +273,9 @@
     "onePerLine": "Eén waarde per regel",
     "runConfirmed": "Ik bevestig dat ik bevoegd ben om deze acteur te leiden",
     "actorInputHelp": "Voer de actorparameters in. U kunt zoeken, kolommen kiezen en de resultaten exporteren; deze bron ondersteunt nog geen CRM-import.",
-    "moreOptions": "Meer opties ({count})"
+    "moreOptions": "Meer opties ({count})",
+    "tokenUnreadable": "The saved Apify token cannot be read on this server. Open Settings and save the API token again.",
+    "reconnectApify": "The Apify connection needs to be authenticated again. Open Settings and save the API token again."
   },
   "Tasks": {
     "title": "Taken",
