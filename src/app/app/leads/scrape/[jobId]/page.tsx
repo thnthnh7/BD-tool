@@ -15,7 +15,7 @@ import { ScrapeSelectCheckbox } from "@/features/leads/components/scrape-select"
 import { PlacePeople, ScrapeHeaderCheckbox } from "@/features/leads/components/scrape-places";
 import { isMapsActor } from "@/features/leads/maps-source";
 import { datasetRaw, type DatasetRow } from "@/features/leads/dataset";
-import { getScrapeJob, importScrapeResultsAction, refreshScrapeJobAction } from "@/features/leads/server/scrape-actions";
+import { cancelScrapeJobAction, getScrapeJob, importScrapeResultsAction, refreshScrapeJobAction } from "@/features/leads/server/scrape-actions";
 import { listSourceTitles } from "@/features/leads/server/source-actions";
 import { scrapePlaceMatches } from "@/features/leads/scrape-match";
 import { listLeadLists } from "@/features/lists/server/actions";
@@ -32,7 +32,7 @@ export default async function ScrapeJobPage({ params, searchParams }: {
   params: Promise<{ jobId: string }>;
   searchParams: Promise<{ q?: string; page?: string; view?: string }>;
 }) {
-  await requireModule("scraping");
+  const context = await requireModule("scraping");
   const [{ jobId }, search] = await Promise.all([params, searchParams]);
   const { q, page } = readListQuery(search);
   const [t, common, locale, payload] = await Promise.all([
@@ -49,6 +49,7 @@ export default async function ScrapeJobPage({ params, searchParams }: {
     listSourceTitles(payload.job.source_id ? [payload.job.source_id] : []),
   ]);
   const actorTitle = sourceTitles[0]?.title || (generic ? payload.job.apify_actor_id : "Google Maps Scraper");
+  const canManage = context.memberRole !== "member";
   const peopleByResult = new Map<string, typeof payload.people>();
   for (const person of payload.people) {
     const current = peopleByResult.get(person.result_id) || [];
@@ -189,7 +190,8 @@ export default async function ScrapeJobPage({ params, searchParams }: {
   return <Stack gap="md">
     <PageHeader back={{ href: "/app/leads/scrape", label: t("historyBack") }} title={payload.job.query || t("resultsTitle")} subtitle={actorTitle}
       action={<Group gap="xs">
-        {payload.job.apify_dataset_id && payload.job.status !== "ingesting" && <ActionForm action={refreshScrapeJobAction} submitLabel={t("syncResults")} variant="light"><input type="hidden" name="job_id" value={payload.job.id} /></ActionForm>}
+        {canManage && ["queued", "running"].includes(payload.job.status) && <ActionForm action={cancelScrapeJobAction} submitLabel={t("cancelRun")} variant="light"><input type="hidden" name="job_id" value={payload.job.id} /></ActionForm>}
+        {payload.job.apify_dataset_id && !["ingesting", "canceled"].includes(payload.job.status) && <ActionForm action={refreshScrapeJobAction} submitLabel={t("syncResults")} variant="light"><input type="hidden" name="job_id" value={payload.job.id} /></ActionForm>}
         <LinkButton href={`/app/leads/scrape/new?rerun=${payload.job.id}`} variant="default">{t("rerun")}</LinkButton>
       </Group>} />
     <Group gap="md"><ScrapeStatus status={payload.job.status} /><Text size="sm" c="dimmed">{t("recordsCount", { count: rows.length })}</Text><Text size="sm" c="dimmed">{timestamp(payload.job.created_at)}</Text></Group>

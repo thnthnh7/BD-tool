@@ -8,7 +8,7 @@ import { recordActivity, withWorkspace } from "@/lib/events";
 import { incrementUsage } from "@/lib/usage";
 import { buildActorInput, readableActorFields, unsupportedActorFields } from "@/features/leads/actor-input";
 import { isMapsActor, MAPS_SLUG } from "@/features/leads/maps-source";
-import { claimScrapeIngest, fetchApifyRun, runScrapeIngest, startApifyMapsRun } from "@/features/leads/server/apify";
+import { abortApifyRun, claimScrapeIngest, fetchApifyRun, runScrapeIngest, startApifyMapsRun } from "@/features/leads/server/apify";
 import { readAllPages } from "@/features/leads/server/read-pages";
 import { isPlatformFlagEnabled } from "@/lib/platform/flags";
 import { scrapePlaceMatches } from "@/features/leads/scrape-match";
@@ -249,6 +249,59 @@ export async function startActorScrapeAction(formData: FormData) {
     normalizedInput: built.body,
     pricingBasis: { model: source.pricing_model, info: source.pricing_info || null, contractHash: source.contract_hash },
   });
+}
+
+export async function cancelScrapeJobAction(formData: FormData) {
+  const { context, supabase } = await withWorkspace();
+  if (context.memberRole === "member") return { error: "Only workspace owners and admins can cancel scrape runs." };
+  const id = formText(formData, "job_id");
+  if (!id) return { error: "Missing scrape run." };
+
+  const { data: job, error: jobError } = await supabase
+    .from("lead_scrape_jobs")
+    .select("id, status, apify_run_id, apify_connection_id")
+    .eq("id", id)
+    .eq("workspace_id", context.workspaceId)
+    .maybeSingle();
+  if (jobError) return { error: jobError.message };
+  if (!job) return { error: "Scrape run not found." };
+  if (job.status === "canceled") return { ok: true as const, id: job.id };
+  if (!(["queued", "running"] as string[]).includes(job.status)) {
+    return { error: job.status === "ingesting" ? "This run is already syncing results and can no longer be canceled." : "This scrape run is no longer active." };
+  }
+
+  let usageTotalUsd: number | null = null;
+  if (job.apify_run_id) {
+    if (!job.apify_connection_id) return { error: "This run has no Apify connection." };
+    try {
+      const token = await getApifyConnectionToken(job.apify_connection_id);
+      const aborted = await abortApifyRun(job.apify_run_id, token);
+      usageTotalUsd = aborted.usageTotalUsd;
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Could not cancel the Apify run." };
+    }
+  }
+
+  const { data: canceled, error } = await supabase
+    .from("lead_scrape_jobs")
+    .update({
+      status: "canceled",
+      error_message: null,
+      finished_at: new Date().toISOString(),
+      ...(usageTotalUsd == null ? {} : { apify_usage_usd: usageTotalUsd }),
+    })
+    .eq("id", job.id)
+    .eq("workspace_id", context.workspaceId)
+    .in("status", ["queued", "running", "failed"])
+    .select("id")
+    .maybeSingle();
+  if (error) return { error: error.message };
+  if (!canceled) return { error: "The scrape run changed status before it could be canceled." };
+
+  revalidatePath("/app/leads/scrape");
+  revalidatePath(`/app/leads/scrape/${job.id}`);
+  revalidatePath("/app/leads/sources");
+  return { ok: true as const, id: job.id };
 }
 
 export async function refreshScrapeJobAction(formData: FormData) {

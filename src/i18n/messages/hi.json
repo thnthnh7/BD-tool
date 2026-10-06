@@ -239,6 +239,7 @@
     "succeeded": "पुरा होना।",
     "failed": "असफल",
     "canceled": "रद्द कर दिया गया",
+    "cancelRun": "Cancel run",
     "historyBack": "इतिहास को खंगालो",
     "rerunTitle": "पिछले मापदंडों के साथ फिर से चलाएँ",
     "newTitle": "नया स्क्रैप रन",

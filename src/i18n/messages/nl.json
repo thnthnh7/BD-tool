@@ -239,6 +239,7 @@
     "succeeded": "Voltooid",
     "failed": "Mislukt",
     "canceled": "Geannuleerd",
+    "cancelRun": "Cancel run",
     "historyBack": "Geschiedenis schrappen",
     "rerunTitle": "Voer opnieuw uit met eerdere parameters",
     "newTitle": "Nieuwe scraprun",

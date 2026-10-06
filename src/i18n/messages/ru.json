@@ -239,6 +239,7 @@
     "succeeded": "Завершенный",
     "failed": "Неуспешный",
     "canceled": "Отменено",
+    "cancelRun": "Cancel run",
     "historyBack": "Очистить историю",
     "rerunTitle": "Запустить еще раз с предыдущими параметрами",
     "newTitle": "Новый цикл очистки",

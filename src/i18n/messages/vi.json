@@ -242,6 +242,7 @@
     "succeeded": "Hoàn tất",
     "failed": "Thất bại",
     "canceled": "Đã hủy",
+    "cancelRun": "Hủy lượt chạy",
     "historyBack": "Lịch sử scrape",
     "rerunTitle": "Chạy lại với thông số cũ",
     "newTitle": "Chạy scrape mới",

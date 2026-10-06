@@ -239,6 +239,7 @@
     "succeeded": "Selesai",
     "failed": "Gagal",
     "canceled": "Dibatalkan",
+    "cancelRun": "Cancel run",
     "historyBack": "Mengikis sejarah",
     "rerunTitle": "Jalankan kembali dengan parameter sebelumnya",
     "newTitle": "Pengikisan baru dijalankan",

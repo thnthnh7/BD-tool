@@ -239,6 +239,7 @@
     "succeeded": "Tamamlanmış",
     "failed": "Arızalı",
     "canceled": "İptal edildi",
+    "cancelRun": "Cancel run",
     "historyBack": "Geçmişi kazı",
     "rerunTitle": "Önceki parametrelerle tekrar çalıştır",
     "newTitle": "Yeni kazıma çalışması",

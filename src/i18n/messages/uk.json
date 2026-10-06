@@ -239,6 +239,7 @@
     "succeeded": "Виконано",
     "failed": "Не вдалося",
     "canceled": "Скасовано",
+    "cancelRun": "Cancel run",
     "historyBack": "Історія зіскрібків",
     "rerunTitle": "Запустіть знову з попередніми параметрами",
     "newTitle": "Новий скрап",

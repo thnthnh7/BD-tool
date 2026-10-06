@@ -435,6 +435,24 @@ export async function fetchApifyRun(runId: string, token: string) {
   return { status: payload.data.status, usageTotalUsd: typeof usageTotalUsd === "number" && Number.isFinite(usageTotalUsd) ? usageTotalUsd : null };
 }
 
+// https://docs.apify.com/api/v2/actor-run-abort-post
+export async function abortApifyRun(runId: string, token: string) {
+  const response = await fetch(`https://api.apify.com/v2/actor-runs/${encodeURIComponent(runId)}/abort?gracefully=false`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "x-apify-integration-platform": "leadely" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(15000),
+  });
+  const raw = await response.text();
+  if (!response.ok) throw new Error(`Apify abort ${response.status}: ${raw.slice(0, 200)}`);
+  const payload = raw ? JSON.parse(raw) as { data?: { status?: string; usageTotalUsd?: number } } : {};
+  const usageTotalUsd = payload.data?.usageTotalUsd;
+  return {
+    status: payload.data?.status || "ABORTING",
+    usageTotalUsd: typeof usageTotalUsd === "number" && Number.isFinite(usageTotalUsd) ? usageTotalUsd : null,
+  };
+}
+
 export async function startApifyActorRun(input: { actorSlug: string; body: Record<string, unknown>; webhookUrl: string; token: string }) {
   const webhooks = Buffer.from(
     JSON.stringify([

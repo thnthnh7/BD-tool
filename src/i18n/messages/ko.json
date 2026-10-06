@@ -239,6 +239,7 @@
     "succeeded": "완전한",
     "failed": "실패한",
     "canceled": "취소",
+    "cancelRun": "Cancel run",
     "historyBack": "스크랩 기록",
     "rerunTitle": "이전 매개변수로 다시 실행",
     "newTitle": "새로운 스크랩 실행",

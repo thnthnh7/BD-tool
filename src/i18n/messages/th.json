@@ -239,6 +239,7 @@
     "succeeded": "สมบูรณ์",
     "failed": "ล้มเหลว",
     "canceled": "ยกเลิก",
+    "cancelRun": "Cancel run",
     "historyBack": "ขูดประวัติ",
     "rerunTitle": "รันอีกครั้งด้วยพารามิเตอร์ก่อนหน้า",
     "newTitle": "วิ่งขูดใหม่",

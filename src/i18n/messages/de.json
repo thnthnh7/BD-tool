@@ -239,6 +239,7 @@
     "succeeded": "Vollendet",
     "failed": "Fehlgeschlagen",
     "canceled": "Abgesagt",
+    "cancelRun": "Cancel run",
     "historyBack": "Scrape-Geschichte",
     "rerunTitle": "Führen Sie den Vorgang erneut mit den vorherigen Parametern aus",
     "newTitle": "Neue Schürfstrecke",

@@ -239,6 +239,7 @@
     "succeeded": "Zakończony",
     "failed": "Przegrany",
     "canceled": "Odwołany",
+    "cancelRun": "Cancel run",
     "historyBack": "Zdrap historię",
     "rerunTitle": "Uruchom ponownie z poprzednimi parametrami",
     "newTitle": "Nowy bieg złomowania",

@@ -239,6 +239,7 @@
     "succeeded": "完全的",
     "failed": "失敗的",
     "canceled": "取消",
+    "cancelRun": "Cancel run",
     "historyBack": "抓取歷史記錄",
     "rerunTitle": "使用先前的參數再次運行",
     "newTitle": "新的刮擦運行",

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Database, Json } from "@/lib/database.types";
-import { ingestDatasetItems, mapPlaceItem } from "../server/apify";
+import { abortApifyRun, ingestDatasetItems, mapPlaceItem } from "../server/apify";
 
 type Stored = { raw: Json; workspace_id: string; job_id: string };
 function fakeDatabase(initial: Stored[] = [], failBatch = 0) {
@@ -64,4 +64,28 @@ test("Maps mapping still retains enriched contacts and original output", () => {
   assert.equal(place.google_place_id, "p1");
   assert.equal(place.people[0].email, "an@example.com");
   assert.equal(place.people[0].job_title, "Manager");
+});
+
+test("canceling a run calls the Apify abort endpoint immediately", async () => {
+  const originalFetch = globalThis.fetch;
+  let request: { url: string; method?: string; authorization?: string | null } | null = null;
+  globalThis.fetch = async (input, init) => {
+    request = {
+      url: String(input),
+      method: init?.method,
+      authorization: new Headers(init?.headers).get("authorization"),
+    };
+    return new Response(JSON.stringify({ data: { status: "ABORTING", usageTotalUsd: 0.125 } }), { status: 200 });
+  };
+  try {
+    const result = await abortApifyRun("run / id", "secret-token");
+    assert.deepEqual(result, { status: "ABORTING", usageTotalUsd: 0.125 });
+    assert.deepEqual(request, {
+      url: "https://api.apify.com/v2/actor-runs/run%20%2F%20id/abort?gracefully=false",
+      method: "POST",
+      authorization: "Bearer secret-token",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

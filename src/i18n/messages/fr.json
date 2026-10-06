@@ -239,6 +239,7 @@
     "succeeded": "Complété",
     "failed": "Échoué",
     "canceled": "Annulé",
+    "cancelRun": "Cancel run",
     "historyBack": "Gratter l'historique",
     "rerunTitle": "Exécuter à nouveau avec les paramètres précédents",
     "newTitle": "Nouvelle course de grattage",

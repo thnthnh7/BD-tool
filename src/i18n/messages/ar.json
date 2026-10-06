@@ -239,6 +239,7 @@
     "succeeded": "مكتمل",
     "failed": "فشل",
     "canceled": "تم الإلغاء",
+    "cancelRun": "Cancel run",
     "historyBack": "كشط التاريخ",
     "rerunTitle": "قم بالتشغيل مرة أخرى باستخدام المعلمات السابقة",
     "newTitle": "تشغيل كشط جديد",

@@ -14,6 +14,8 @@ import Form from "next/form";
 import { readListQuery } from "@/lib/list-page";
 import { ApifyAccountStatus } from "@/features/leads/components/apify-account-status";
 import { getCurrentWorkspaceApifyStatus } from "@/features/leads/server/apify-connection";
+import { ActionForm } from "@/features/crm/components/action-form";
+import { cancelScrapeJobAction } from "@/features/leads/server/scrape-actions";
 import { getLocale, getTranslations } from "next-intl/server";
 
 function jobSourceName(job: { source_id: string | null; apify_actor_id: string | null }, titles: Map<string, string>, legacySource: string) {
@@ -29,7 +31,7 @@ function creatorLabel(job: { creator: { display_name: string | null; email: stri
 export default async function LeadScrapePage({ searchParams }: {
   searchParams: Promise<{ q?: string; page?: string; source?: string; status?: string; period?: string }>;
 }) {
-  await requireModule("scraping");
+  const context = await requireModule("scraping");
   const params = await searchParams;
   const [t, locale] = await Promise.all([getTranslations("Scrape"), getLocale()]);
   const { q, page } = readListQuery(params);
@@ -39,6 +41,7 @@ export default async function LeadScrapePage({ searchParams }: {
   const { sources, titles, actorOptions, source, status, period, statuses, paged, summary } = history;
   const extra = { source, status, period };
   const active = summary.active;
+  const canManage = context.memberRole !== "member";
   const filtered = Boolean(q || source || status || period);
 
   return <Stack gap="md">
@@ -66,7 +69,7 @@ export default async function LeadScrapePage({ searchParams }: {
             <TableTd ta="right"><Text size="sm" fw={600}>{job.places_found.toLocaleString(locale)}</Text>{job.people_found > 0 && <Text size="xs" c="dimmed">{t("contactsAdded", { count: job.people_found })}</Text>}</TableTd>
             <TableTd ta="right"><Text size="sm">{job.apify_usage_usd == null ? "—" : `$${Number(job.apify_usage_usd).toFixed(4)}`}</Text></TableTd>
             <TableTd><Text size="xs" c="dimmed">{new Date(job.created_at).toLocaleString(locale, { timeZone: "Asia/Ho_Chi_Minh", dateStyle: "short", timeStyle: "short" })}</Text></TableTd>
-            <TableTd><LinkButton size="compact-sm" variant="subtle" href={`/app/leads/scrape/${job.id}`} rightSection={<ArrowUpRight size={14} />}>{t("open")}</LinkButton></TableTd>
+            <TableTd><Group gap={4} wrap="nowrap">{canManage && ["queued", "running"].includes(job.status) && <ActionForm action={cancelScrapeJobAction} submitLabel={t("cancelRun")} layout="inline" variant="light"><input type="hidden" name="job_id" value={job.id} /></ActionForm>}<LinkButton size="compact-sm" variant="subtle" href={`/app/leads/scrape/${job.id}`} rightSection={<ArrowUpRight size={14} />}>{t("open")}</LinkButton></Group></TableTd>
           </TableTr>)}</TableTbody>
         </Table>
       </ListTable> : <Stack p="xl"><EmptyState icon={<Radar size={20} />} title={filtered ? t("noMatches") : t("startTitle")} description={filtered ? t("noMatchesHelp") : t("startHelp")} />{!filtered && <LinkButton href="/app/leads/scrape/new" w="fit-content">{t("newRun")}</LinkButton>}</Stack>}

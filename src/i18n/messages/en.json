@@ -242,6 +242,7 @@
     "succeeded": "Completed",
     "failed": "Failed",
     "canceled": "Canceled",
+    "cancelRun": "Cancel run",
     "historyBack": "Scrape history",
     "rerunTitle": "Run again with previous parameters",
     "newTitle": "New scrape run",

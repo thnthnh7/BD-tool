@@ -239,6 +239,7 @@
     "succeeded": "完了",
     "failed": "失敗した",
     "canceled": "キャンセル",
+    "cancelRun": "Cancel run",
     "historyBack": "スクレイピング履歴",
     "rerunTitle": "以前のパラメータを使用して再実行します",
     "newTitle": "新しいスクレイピングの実行",

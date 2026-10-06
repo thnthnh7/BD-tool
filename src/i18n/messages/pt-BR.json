@@ -239,6 +239,7 @@
     "succeeded": "Concluído",
     "failed": "Fracassado",
     "canceled": "Cancelado",
+    "cancelRun": "Cancel run",
     "historyBack": "Raspar histórico",
     "rerunTitle": "Execute novamente com os parâmetros anteriores",
     "newTitle": "Nova corrida de raspagem",
