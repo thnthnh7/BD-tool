@@ -94,6 +94,69 @@ export type MarketingInfoContent = {
 };
 
 export const marketingInfoPages: Record<string, MarketingInfoContent> = {
+  whatIsBizcraw: {
+    path: "/what-is-bizcraw",
+    eyebrow: "WHAT IS BIZCRAW?",
+    title: "Bizcraw turns web data into sales work.",
+    description: "Learn what Bizcraw is, how its web scraping and AI sales workspace works, and where it fits between data collection and CRM execution.",
+    intro: "Bizcraw is a web scraping and AI sales workspace that helps teams collect public business data, review structured results, turn approved records into CRM data and manage the sales work that follows.",
+    updated: "October 6, 2026",
+    sections: [
+      {
+        title: "Bizcraw in one sentence",
+        paragraphs: [
+          "Bizcraw connects web scraping, structured data review, CRM records and AI-assisted sales operations in one workspace.",
+          "Instead of ending a scraping job with a disconnected export, teams can keep the source, run history and selected records attached as the data moves into companies, contacts, lists, deals, tasks, quotes and contracts.",
+        ],
+      },
+      {
+        title: "What Bizcraw does",
+        paragraphs: [
+          "Teams start by choosing a supported data source or actor, configuring a targeted run and reviewing the returned records. Useful records can then continue into the workspace without losing where they came from.",
+        ],
+        bullets: [
+          "Browse supported scraping sources and understand their inputs",
+          "Run targeted data collection and monitor status and usage",
+          "Review structured results before CRM import",
+          "Manage connected companies, contacts, deals, tasks, quotes and contracts",
+          "Ask the AI agent about accessible workspace data and prepare supported actions",
+        ],
+      },
+      {
+        title: "How Bizcraw differs from a standalone scraper",
+        paragraphs: [
+          "A standalone scraper primarily collects data. Bizcraw adds the review and operational layer around that collection: source discovery, guided actor inputs, result review, CRM activation and the sales workflow after import.",
+          "Bizcraw does not hide the underlying source. Runs retain their context so users can assess data quality, control what enters the CRM and understand how a record was discovered.",
+        ],
+      },
+      {
+        title: "How Bizcraw fits with a CRM",
+        paragraphs: [
+          "Bizcraw includes workspace-native records and sales workflows for teams that want a connected path from discovery to execution. It can also connect with external CRM platforms as supported connectors become available.",
+          "The goal is to reduce the manual handoff between prospect research, spreadsheets and sales systems while keeping users in control of every imported record.",
+        ],
+      },
+      {
+        title: "Who Bizcraw is for",
+        paragraphs: [
+          "Bizcraw is designed for sales, business development, growth and market-research teams that regularly collect public business information and need a repeatable process for turning it into accountable follow-up.",
+        ],
+        bullets: [
+          "Teams building targeted B2B prospect lists",
+          "Sales operations teams reviewing and routing collected data",
+          "Agencies managing repeatable research workflows",
+          "Small teams that want scraping and CRM execution in one workspace",
+        ],
+      },
+      {
+        title: "Control stays with the user",
+        paragraphs: [
+          "Bizcraw is designed around workspace boundaries, roles, plan permissions and reviewable operations. Scraped records do not need to enter the CRM automatically, and supported high-impact AI actions can require approval before execution.",
+          "Users remain responsible for choosing lawful data sources, configuring collection appropriately and using the resulting data in accordance with applicable rules and provider terms.",
+        ],
+      },
+    ],
+  },
   about: {
     path: "/about",
     eyebrow: "ABOUT BIZCRAW",

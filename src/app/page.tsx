@@ -11,7 +11,7 @@ import classes from "@/styles/landing.module.css";
 
 const siteUrl = "https://bizcraw.com";
 const title = "Bizcraw — Web Scraping and AI Sales Workspace";
-const description = "Scrape fresh business leads from the web, turn results into structured CRM records, and manage deals, quotes and sales actions in one AI workspace.";
+const description = "Bizcraw is a web scraping and AI sales workspace that helps teams collect public business data, turn approved results into CRM records, and manage sales workflows.";
 const faqs = [
   ["What is Bizcraw?", "Bizcraw is a web scraping and AI sales workspace. It helps teams collect fresh business data, turn scrape results into CRM records, and manage deals, tasks, quotes and contracts in one system."],
   ["What can I scrape with Bizcraw?", "Bizcraw provides a source library for supported web scraping actors, including workflows for business locations, search results, public professional profiles, jobs and social profiles. Available sources and usage costs are shown before a run."],
@@ -32,9 +32,10 @@ export const metadata: Metadata = {
 };
 
 const jsonLd = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Bizcraw", url: siteUrl, logo: `${siteUrl}/brand/bizcraw-logo.png` },
-  { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: `${siteUrl}/`, name: "Bizcraw", alternateName: ["Bizcraw", "bizcraw.com"], publisher: { "@id": `${siteUrl}/#organization` } },
-  { "@type": "SoftwareApplication", name: "Bizcraw", applicationCategory: "BusinessApplication", operatingSystem: "Web", description, url: siteUrl, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+  { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "Bizcraw", url: siteUrl, logo: `${siteUrl}/brand/bizcraw-logo.png`, description: "The organization behind the Bizcraw web scraping and AI sales workspace." },
+  { "@type": "WebSite", "@id": `${siteUrl}/#website`, url: `${siteUrl}/`, name: "Bizcraw", alternateName: ["Bizcraw", "bizcraw.com"], inLanguage: "en", publisher: { "@id": `${siteUrl}/#organization` }, about: { "@id": `${siteUrl}/#software` } },
+  { "@type": "WebPage", "@id": `${siteUrl}/#webpage`, url: `${siteUrl}/`, name: title, description, inLanguage: "en", isPartOf: { "@id": `${siteUrl}/#website` }, about: { "@id": `${siteUrl}/#software` } },
+  { "@type": "SoftwareApplication", "@id": `${siteUrl}/#software`, name: "Bizcraw", applicationCategory: "BusinessApplication", applicationSubCategory: "Web scraping and sales intelligence", operatingSystem: "Web", description, url: siteUrl, publisher: { "@id": `${siteUrl}/#organization` }, creator: { "@id": `${siteUrl}/#organization` }, mainEntityOfPage: { "@id": `${siteUrl}/#webpage` }, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
   { "@type": "FAQPage", mainEntity: faqs.map(([question, answer]) => ({ "@type": "Question", name: question, acceptedAnswer: { "@type": "Answer", text: answer } })) },
 ] };
 
@@ -101,7 +102,7 @@ export default async function LandingPage() {
       </div>
     </section>
     <section className={classes.finalCta}><div><span><Sparkles size={16}/> Your sales workspace is ready</span><h2>Give your team one place to find, understand and act on every opportunity.</h2><p>Create a workspace and start organizing your sales process today.</p><Link href={startHref} className={classes.lightButtonLarge}>Start free <ArrowRight size={18}/></Link></div></section>
-    <footer className={classes.footer}><div className={classes.footerBrand}><AppLogo tagline/><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div><div><b>Product</b><Link href="/features">All features</Link><Link href="/features/scraping">Scraping runs</Link><Link href="/features/data-library">Data library</Link><Link href="/features/ai-sales-agent">AI sales agent</Link><Link href="/pricing">Pricing</Link></div><div><b>Solutions</b><Link href="/solutions">All solutions</Link><Link href="/web-scraping">Web scraping</Link><Link href="/web-scraping-for-lead-generation">Lead generation</Link><Link href="/google-maps-lead-scraper">Google Maps leads</Link><Link href="/data-to-crm">Data to CRM</Link></div><div><b>Resources</b><Link href="/guides">All guides</Link><Link href="/guides/how-to-build-a-prospect-list-with-web-scraping">Prospect list guide</Link><Link href="/integrations">Integrations</Link><Link href="/integrations/apify">Apify</Link></div><div><b>Company</b><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/security">Security</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div><div className={classes.footerMeta}><span>© {new Date().getFullYear()} Bizcraw</span><span><Link href="/login">Sign in</Link> · Built for focused sales teams.</span></div></footer>
+    <footer className={classes.footer}><div className={classes.footerBrand}><AppLogo tagline/><p>Web scraping and AI sales workspace for lead discovery, CRM operations and sales execution.</p></div><div><b>Product</b><Link href="/features">All features</Link><Link href="/features/scraping">Scraping runs</Link><Link href="/features/data-library">Data library</Link><Link href="/features/ai-sales-agent">AI sales agent</Link><Link href="/pricing">Pricing</Link></div><div><b>Solutions</b><Link href="/solutions">All solutions</Link><Link href="/web-scraping">Web scraping</Link><Link href="/web-scraping-for-lead-generation">Lead generation</Link><Link href="/google-maps-lead-scraper">Google Maps leads</Link><Link href="/data-to-crm">Data to CRM</Link></div><div><b>Resources</b><Link href="/guides">All guides</Link><Link href="/guides/how-to-build-a-prospect-list-with-web-scraping">Prospect list guide</Link><Link href="/integrations">Integrations</Link><Link href="/integrations/apify">Apify</Link></div><div><b>Company</b><Link href="/what-is-bizcraw">What is Bizcraw?</Link><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/security">Security</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div><div className={classes.footerMeta}><span>© {new Date().getFullYear()} Bizcraw</span><span><Link href="/login">Sign in</Link> · Built for focused sales teams.</span></div></footer>
   </main></LandingMotion>;
 }
 
