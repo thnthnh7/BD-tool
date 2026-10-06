@@ -7,7 +7,7 @@ export function MarketingHeader() {
   return (
     <header className={styles.header}>
       <div className={styles.headerInner}>
-        <Link href="/" aria-label="Bizcraw home" className={styles.logo}><AppLogo tagline /></Link>
+        <Link href="/#hero" aria-label="Bizcraw home" className={styles.logo}><AppLogo tagline /></Link>
         <nav aria-label="Primary navigation">
           <Link href="/features">Product</Link>
           <Link href="/solutions">Solutions</Link>
