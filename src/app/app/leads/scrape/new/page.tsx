@@ -18,11 +18,14 @@ import { ApifyAccountStatus } from "@/features/leads/components/apify-account-st
 import { getCurrentWorkspaceApifyStatus, requireWorkspaceApifyConnection } from "@/features/leads/server/apify-connection";
 import { getTranslations } from "next-intl/server";
 import { getActorInputDraft } from "@/features/leads/server/actor-drafts";
+import { getOrCreateActorGuide } from "@/features/leads/server/actor-guide-cache";
+import { getLocale } from "next-intl/server";
 
-export default async function NewScrapePage({ searchParams }: { searchParams: Promise<{ source?: string; rerun?: string; draft?: string }> }) {
+export default async function NewScrapePage({ searchParams }: { searchParams: Promise<{ source?: string; rerun?: string; draft?: string; example?: string }> }) {
   await requireModule("scraping");
   const params = await searchParams;
   const t = await getTranslations("Scrape");
+  const locale = await getLocale();
   const context = await requireWorkspace();
   const [sources, apify, previous, actorDraft] = await Promise.all([
     listInstalledSources(),
@@ -44,16 +47,18 @@ export default async function NewScrapePage({ searchParams }: { searchParams: Pr
     {rerunUnavailable && <Alert color="yellow">{t("oldSourceUnavailable")}</Alert>}
     {!context.plan.features.lead_scrape && <Alert color="yellow">{t("planUnavailable")}</Alert>}
     {sources.length ? <SectionPanel><SourceChooser sources={sources} selectedId={selected?.id || ""} /></SectionPanel> : <SectionPanel><EmptyState icon={<Radar size={20} />} title={t("noSources")} description={t("noSourcesHelp")} /></SectionPanel>}
-    <Suspense key={`${selected?.id}-${reuse?.id || actorDraft?.id || "new"}`} fallback={<Skeleton height={260} radius="md" />}><SelectedActor selected={selected} reuse={reuse} actorDraft={actorDraft} draftRequested={Boolean(params.draft)} workspaceId={context.workspaceId} enabled={Boolean(context.plan.features.lead_scrape)} connected={apify.connection?.status === "active"} canManage={context.memberRole !== "member"} /></Suspense>
+    <Suspense key={`${selected?.id}-${reuse?.id || actorDraft?.id || params.example || "new"}`} fallback={<Skeleton height={260} radius="md" />}><SelectedActor selected={selected} reuse={reuse} actorDraft={actorDraft} draftRequested={Boolean(params.draft)} useExample={params.example === "1"} locale={locale} workspaceId={context.workspaceId} enabled={Boolean(context.plan.features.lead_scrape)} connected={apify.connection?.status === "active"} canManage={context.memberRole !== "member"} /></Suspense>
     {selected && <Group><Text size="xs" c="dimmed">{t("storageNote")}</Text></Group>}
   </Stack>;
 }
 
-async function SelectedActor({ selected, reuse, actorDraft, draftRequested, workspaceId, enabled, connected, canManage }: {
+async function SelectedActor({ selected, reuse, actorDraft, draftRequested, useExample, locale, workspaceId, enabled, connected, canManage }: {
   selected: Awaited<ReturnType<typeof listInstalledSources>>[number] | undefined;
   reuse: NonNullable<Awaited<ReturnType<typeof getScrapeInput>>>["job"] | null;
   actorDraft: Awaited<ReturnType<typeof getActorInputDraft>>;
   draftRequested: boolean;
+  useExample: boolean;
+  locale: string;
   workspaceId: string;
   enabled: boolean;
   connected: boolean;
@@ -67,7 +72,16 @@ async function SelectedActor({ selected, reuse, actorDraft, draftRequested, work
   const apifyCredential = enabled && connected && !maps ? await requireWorkspaceApifyConnection(workspaceId).catch(() => null) : null;
   const canUseConnection = connected && (maps || Boolean(apifyCredential));
   const contract = !maps && enabled && apifyCredential ? await ensureSourceContract(selected.id, apifyCredential.token) : null;
+  const generatedGuide = contract?.contractHash ? await getOrCreateActorGuide({
+    sourceId: selected.id,
+    contractHash: contract.contractHash,
+    locale,
+    schema: contract.inputSchema,
+    example: contract.exampleInput,
+    readmeMarkdown: contract.readmeMarkdown || "",
+  }).catch(() => null) : null;
   const draftInput = contract?.contractHash && actorDraft?.source_id === selected.id && actorDraft.contract_hash === contract.contractHash ? actorDraft.input : null;
+  const initialInput = draftInput || reuse?.filters || (useExample ? contract?.exampleInput : null) || null;
   const draftUnavailable = draftRequested && !draftInput;
 
   return <SectionPanel title={selected.title} action={<Badge color={maps ? "teal" : "gray"}>{maps ? t("crmSupported") : t("datasetOnly")}</Badge>}>
@@ -88,7 +102,8 @@ async function SelectedActor({ selected, reuse, actorDraft, draftRequested, work
         sourceId={selected.id}
         sourceSlug={selected.slug}
         schema={contract.inputSchema}
-        example={draftInput || reuse?.filters || contract.exampleInput}
+        initialInput={initialInput}
+        exampleAvailable={Boolean(contract.exampleInput)}
         readmeMarkdown={contract.readmeMarkdown}
         buildNumber={contract.buildNumber}
         contractHash={contract.contractHash}
@@ -96,6 +111,8 @@ async function SelectedActor({ selected, reuse, actorDraft, draftRequested, work
         stale={contract.stale}
         canManage={canManage}
         draftApplied={Boolean(draftInput)}
+        pricingModel={selected.pricing_model}
+        structuredGuide={generatedGuide?.guide}
       /> : <Text size="sm" c="dimmed">{!canUseConnection ? t("connectFirst") : contract?.error || t("notReady")}</Text>}
     </SectionPanel>;
 }

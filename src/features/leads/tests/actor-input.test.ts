@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Json } from "@/lib/database.types";
-import { actorInputGuide, buildActorInput, readableActorFields, unsupportedActorFields, validateActorInputObject } from "@/features/leads/actor-input";
+import { actorInputGuide, buildActorInput, readableActorFields, unsupportedActorFields, validateActorInputObject, validateActorJsonInput } from "@/features/leads/actor-input";
 import { readableActorMarkdown } from "@/features/leads/actor-guide";
 
 const schema = {
@@ -127,4 +127,46 @@ test("renders remote README as inert text while preserving useful links", () => 
   assert.equal(rendered.includes("<script>"), false);
   assert.equal(rendered.includes("Docs — https://docs.apify.com"), true);
   assert.equal(rendered.includes("Required"), true);
+});
+
+test("honors explicit property order and keeps default, prefill and example distinct", () => {
+  const ordered = {
+    type: "object",
+    propertyOrder: ["second", "first"],
+    properties: {
+      first: { type: "string", default: "submitted", prefill: "suggested", example: "illustrative" },
+      second: { type: "string" },
+    },
+  } as unknown as Json;
+  const fields = readableActorFields(ordered, null);
+  assert.deepEqual(fields.map((field) => field.name), ["second", "first"]);
+  assert.equal(fields[1].schemaDefaultValue, "submitted");
+  assert.equal(fields[1].prefillValue, "suggested");
+  assert.equal(fields[1].exampleValue, "illustrative");
+});
+
+test("does not silently discard fields beyond the readable form limit", () => {
+  const properties = Object.fromEntries(Array.from({ length: 81 }, (_, index) => [`field${index}`, { type: "string" }]));
+  const large = { type: "object", properties } as unknown as Json;
+  assert.equal(readableActorFields(large, null).length, 80);
+  const unsupported = unsupportedActorFields(large);
+  assert.equal(unsupported.some((field) => field.name === "field80"), true);
+});
+
+test("validates complete JSON fallback for required unsupported editors", () => {
+  const proxySchema = {
+    type: "object",
+    required: ["proxy"],
+    properties: {
+      proxy: {
+        type: "object",
+        editor: "proxy",
+        required: ["useApifyProxy"],
+        properties: { useApifyProxy: { type: "boolean" } },
+      },
+    },
+  } as unknown as Json;
+  assert.equal(validateActorJsonInput(proxySchema, { proxy: { useApifyProxy: true } }).valid, true);
+  const invalid = validateActorJsonInput(proxySchema, { proxy: {} });
+  assert.equal(invalid.valid, false);
 });

@@ -10,6 +10,8 @@ export type ActorField = {
   editor: string;
   required: boolean;
   defaultValue: string;
+  schemaDefaultValue: string;
+  prefillValue: string;
   exampleValue: string;
   options: Array<{ value: string; label: string }>;
   suggestions: Array<{ value: string; label: string }>;
@@ -24,6 +26,8 @@ export type ActorField = {
   pattern: string;
   unit: string;
   secret: boolean;
+  nullable: boolean;
+  advanced: boolean;
   dateType: string;
   uniqueItems: boolean;
   rawSchema: Json;
@@ -38,6 +42,7 @@ type SchemaProperty = {
   sectionCaption?: string; sectionDescription?: string; groupCaption?: string; groupDescription?: string;
   minimum?: number; maximum?: number; minLength?: number; maxLength?: number; minItems?: number; maxItems?: number;
   pattern?: string; unit?: string; isSecret?: boolean; dateType?: string; uniqueItems?: boolean;
+  nullable?: boolean; isAdvanced?: boolean; order?: number;
 };
 
 const MAX_FIELDS = 80;
@@ -74,25 +79,46 @@ export function readableActorFields(schema: Json | null, example: Json | null): 
   const required = requiredNames(root);
   const sample = asRecord(example);
   const fields: ActorField[] = [];
-  for (const [name, raw] of Object.entries(properties)) {
+  const propertyOrder = Array.isArray(root.propertyOrder)
+    ? root.propertyOrder.filter((item): item is string => typeof item === "string")
+    : [];
+  const entries = Object.entries(properties).sort(([leftName, left], [rightName, right]) => {
+    const leftExplicit = propertyOrder.indexOf(leftName);
+    const rightExplicit = propertyOrder.indexOf(rightName);
+    if (leftExplicit !== -1 || rightExplicit !== -1) {
+      if (leftExplicit === -1) return 1;
+      if (rightExplicit === -1) return -1;
+      return leftExplicit - rightExplicit;
+    }
+    const leftOrder = finite(asRecord(left).order);
+    const rightOrder = finite(asRecord(right).order);
+    return leftOrder != null && rightOrder != null ? leftOrder - rightOrder : 0;
+  });
+  for (const [name, raw] of entries) {
     if (fields.length >= MAX_FIELDS) break;
     const property = asRecord(raw) as SchemaProperty;
     const editor = text(property.editor);
     const title = text(property.title) || name;
-    if (/add-on/i.test(title) || title.includes("$") || property.isSecret === true || UNSUPPORTED_EDITORS.has(editor)) continue;
+    if (property.isSecret === true || UNSUPPORTED_EDITORS.has(editor)) continue;
     const kind = fieldKind(property, editor);
     if (!kind) continue;
     const options = kind === "enum" ? enumOptions(property.enum, property.enumTitles) : kind === "multiEnum" ? enumOptions(property.items?.enum, property.items?.enumTitles) : [];
     if (kind === "enum" && options.length === 0) continue;
     fields.push({
       name, label: title, description: text(property.description).slice(0, 1600), kind, editor,
-      required: required.has(name), defaultValue: defaultFor(property, sample[name], kind), exampleValue: exampleFor(property, kind), options,
+      required: required.has(name),
+      defaultValue: submittedDefaultFor(property, sample[name], kind),
+      schemaDefaultValue: formatValue(property.default, kind),
+      prefillValue: formatValue(property.prefill, kind),
+      exampleValue: exampleFor(property, kind), options,
       suggestions: enumOptions(property.enumSuggestedValues || property.items?.enumSuggestedValues, property.enumTitles || property.items?.enumTitles),
       sectionCaption: text(property.sectionCaption || property.groupCaption),
       sectionDescription: text(property.sectionDescription || property.groupDescription).slice(0, 1200),
       minimum: finite(property.minimum), maximum: finite(property.maximum), minLength: finite(property.minLength), maxLength: finite(property.maxLength),
       minItems: finite(property.minItems), maxItems: finite(property.maxItems), pattern: text(property.pattern), unit: text(property.unit), secret: false,
       dateType: text(property.dateType) || "absolute", uniqueItems: property.uniqueItems === true,
+      nullable: property.nullable === true,
+      advanced: property.isAdvanced === true || /advanced/i.test(text(property.sectionCaption || property.groupCaption)),
       rawSchema: JSON.parse(JSON.stringify(property)) as Json,
     });
   }
@@ -104,14 +130,20 @@ export function unsupportedActorFields(schema: Json | null): UnsupportedActorFie
   const properties = asRecord(root.properties);
   const required = requiredNames(root);
   const unsupported: UnsupportedActorField[] = [];
-  for (const [name, raw] of Object.entries(properties)) {
+  for (const [index, [name, raw]] of Object.entries(properties).entries()) {
     const property = asRecord(raw) as SchemaProperty;
     const editor = text(property.editor);
     const label = text(property.title) || name;
-    if (/add-on/i.test(label) || label.includes("$")) continue;
-    if (!fieldKind(property, editor) || property.isSecret === true || UNSUPPORTED_EDITORS.has(editor)) unsupported.push({
+    const overflow = index >= MAX_FIELDS;
+    if (overflow || !fieldKind(property, editor) || property.isSecret === true || UNSUPPORTED_EDITORS.has(editor)) unsupported.push({
       name, label, editor, type: text(property.type), required: required.has(name),
-      reason: property.isSecret === true ? "Secret input must not be stored in a scrape job." : editor ? `Unsupported Apify editor: ${editor}` : `Unsupported input type: ${text(property.type) || "unknown"}`,
+      reason: overflow
+        ? `This Actor publishes more than ${MAX_FIELDS} fields; use validated JSON mode for this field.`
+        : property.isSecret === true
+          ? "Secret input must not be stored in a scrape job."
+          : editor
+            ? `Unsupported Apify editor: ${editor}`
+            : `Unsupported input type: ${text(property.type) || "unknown"}`,
     });
   }
   return unsupported;
@@ -134,7 +166,7 @@ function fieldKind(property: SchemaProperty, editor: string): ActorFieldKind | n
   if (type === "array" && editor === "select" && Array.isArray(property.items?.enum)) return "multiEnum";
   if (type === "array" && editor === "select" && Array.isArray(property.items?.enumSuggestedValues)) return "stringTags";
   if (editor === "stringList" || (type === "array" && property.items?.type === "string")) return "stringList";
-  if ((type === "array" || type === "object") && (editor === "json" || editor === "schemaBased")) return "json";
+  if (type === "object" || type === "array") return "json";
   return null;
 }
 
@@ -153,12 +185,12 @@ function formatValue(value: unknown, kind: ActorFieldKind) {
   return text(value);
 }
 
-function defaultFor(property: SchemaProperty, sample: unknown, kind: ActorFieldKind) {
+function submittedDefaultFor(property: SchemaProperty, sample: unknown, kind: ActorFieldKind) {
   return formatValue(sample ?? property.default ?? property.prefill, kind);
 }
 
 function exampleFor(property: SchemaProperty, kind: ActorFieldKind) {
-  return formatValue(property.example ?? property.prefill, kind).slice(0, 500);
+  return formatValue(property.example, kind).slice(0, 500);
 }
 
 function listValues(raw: string, maxItems: number | null) {
@@ -188,6 +220,7 @@ function matchesSchemaType(value: unknown, expected: unknown) {
 
 function validateJsonField(field: ActorField, value: unknown) {
   const schema = asRecord(field.rawSchema);
+  if (value === null && field.nullable) return null;
   if (!matchesSchemaType(value, schema.type)) return `${field.label} must be valid ${text(schema.type) || "JSON"}.`;
   if (Array.isArray(value)) {
     if (field.minItems != null && value.length < field.minItems) return `${field.label} needs at least ${field.minItems} values.`;
@@ -258,4 +291,56 @@ export function validateActorInputObject(fields: ActorField[], input: Record<str
     values[field.name] = Object.prototype.hasOwnProperty.call(input, field.name) ? formatValue(input[field.name], field.kind) : field.defaultValue;
   }
   return buildActorInput(fields, values);
+}
+
+export function actorExampleInput(fields: ActorField[]) {
+  return Object.fromEntries(fields.flatMap((field) => {
+    const value = field.exampleValue || field.prefillValue || field.schemaDefaultValue;
+    return value ? [[field.name, value]] : [];
+  }));
+}
+
+function validateJsonNode(schemaValue: unknown, value: unknown, path: string): string | null {
+  const schema = asRecord(schemaValue);
+  if (value === null && schema.nullable === true) return null;
+  if (!matchesSchemaType(value, schema.type)) return `${path} must be ${text(schema.type) || "valid JSON"}.`;
+  if (Array.isArray(schema.enum) && !schema.enum.some((item) => JSON.stringify(item) === JSON.stringify(value))) return `${path} is not an accepted value.`;
+  if (typeof value === "number") {
+    if (finite(schema.minimum) != null && value < Number(schema.minimum)) return `${path} must be at least ${schema.minimum}.`;
+    if (finite(schema.maximum) != null && value > Number(schema.maximum)) return `${path} must be at most ${schema.maximum}.`;
+  }
+  if (typeof value === "string") {
+    if (finite(schema.minLength) != null && value.length < Number(schema.minLength)) return `${path} is too short.`;
+    if (finite(schema.maxLength) != null && value.length > Number(schema.maxLength)) return `${path} is too long.`;
+    if (typeof schema.pattern === "string") {
+      try { if (!new RegExp(schema.pattern).test(value)) return `${path} does not match the required format.`; }
+      catch { /* Invalid remote patterns are ignored. */ }
+    }
+  }
+  if (Array.isArray(value)) {
+    if (finite(schema.minItems) != null && value.length < Number(schema.minItems)) return `${path} needs at least ${schema.minItems} items.`;
+    if (finite(schema.maxItems) != null && value.length > Number(schema.maxItems)) return `${path} allows at most ${schema.maxItems} items.`;
+    for (let index = 0; index < value.length; index += 1) {
+      const error = validateJsonNode(schema.items, value[index], `${path}[${index}]`);
+      if (error) return error;
+    }
+  }
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const required = Array.isArray(schema.required) ? schema.required.filter((item): item is string => typeof item === "string") : [];
+    const missing = required.find((name) => !Object.prototype.hasOwnProperty.call(record, name));
+    if (missing) return `${path}.${missing} is required.`;
+    for (const [name, child] of Object.entries(asRecord(schema.properties))) {
+      if (Object.prototype.hasOwnProperty.call(record, name)) {
+        const error = validateJsonNode(child, record[name], `${path}.${name}`);
+        if (error) return error;
+      }
+    }
+  }
+  return null;
+}
+
+export function validateActorJsonInput(schema: Json | null, input: unknown) {
+  const error = validateJsonNode(schema, input, "input");
+  return error ? { valid: false as const, error } : { valid: true as const, input: input as Json };
 }

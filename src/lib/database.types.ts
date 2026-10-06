@@ -1143,6 +1143,12 @@ export type Database = {
           finished_at: string | null;
           created_at: string;
           updated_at: string;
+          actor_contract_hash: string | null;
+          actor_build_id: string | null;
+          actor_input_hash: string | null;
+          pricing_basis: Json | null;
+          actor_validation_result: Json | null;
+          guide_source_versions: Json | null;
         };
         Insert: Partial<Database["public"]["Tables"]["lead_scrape_jobs"]["Row"]> & { workspace_id: string; query: string };
         Update: Partial<Database["public"]["Tables"]["lead_scrape_jobs"]["Row"]>;
@@ -1921,6 +1927,18 @@ export type Database = {
         Row: { id: string; workspace_id: string; user_id: string; source_id: string; contract_hash: string; input: Json; expires_at: string; created_at: string };
         Insert: { id?: string; workspace_id: string; user_id: string; source_id: string; contract_hash: string; input?: Json; expires_at?: string; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["actor_input_drafts"]["Insert"]>;
+        Relationships: Rel;
+      };
+      actor_generated_guides: {
+        Row: { id: string; source_id: string; contract_hash: string; locale: string; prompt_version: string; provider: string; model: string; guide: Json; generated_at: string };
+        Insert: { id?: string; source_id: string; contract_hash: string; locale: string; prompt_version: string; provider: string; model: string; guide: Json; generated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["actor_generated_guides"]["Insert"]>;
+        Relationships: Rel;
+      };
+      actor_guidance_events: {
+        Row: { id: string; workspace_id: string; user_id: string | null; source_id: string | null; event_type: string; metadata: Json; created_at: string };
+        Insert: { id?: string; workspace_id: string; user_id?: string | null; source_id?: string | null; event_type: string; metadata?: Json; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["actor_guidance_events"]["Insert"]>;
         Relationships: Rel;
       };
       scrape_source_contract_versions: {

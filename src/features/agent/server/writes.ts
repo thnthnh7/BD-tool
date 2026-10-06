@@ -4,7 +4,10 @@ import { createHash, randomUUID } from "node:crypto";
 import type { Json } from "@/lib/database.types";
 import { contactDisplayName, isRecordId, mentionedCompany, pickUniqueName, writeActionLine, writeCompletedText } from "@/features/agent/logic";
 import { startMapsScrapeAction } from "@/features/leads/server/scrape-actions";
+import { startActorScrapeWithInput } from "@/features/leads/server/actor-run";
 import type { ReadContext } from "@/features/agent/server/read";
+import { actorSecretFieldNames, readableActorFields, unsupportedActorFields, validateActorInputObject, validateActorJsonInput } from "@/features/leads/actor-input";
+import { ACTOR_GUIDE_PROMPT_VERSION } from "@/features/leads/actor-guide";
 
 export const WRITE_TOOLS = [
   { name: "create_company", tier: 2 as const },
@@ -24,6 +27,7 @@ export const WRITE_TOOLS = [
   { name: "create_quote_draft", tier: 2 as const },
   { name: "add_note", tier: 2 as const },
   { name: "start_maps_scrape", tier: 3 as const },
+  { name: "start_actor_scrape", tier: 3 as const },
   { name: "start_crm_sync", tier: 3 as const },
 ];
 
@@ -189,13 +193,64 @@ async function normalizeCreateContact(ctx: ReadContext, args: Record<string, unk
   return { payload, createCompanyName };
 }
 
+async function prepareActorScrapeApproval(ctx: ReadContext, args: Record<string, unknown>) {
+  const sourceId = text(args, "sourceId");
+  const expectedHash = text(args, "contractHash");
+  const rawInput = args.input && typeof args.input === "object" && !Array.isArray(args.input) ? args.input as Record<string, unknown> : {};
+  if (!sourceId || !expectedHash) return { error: "Actor sourceId and contractHash are required." };
+  const { data: installed } = await ctx.supabase.from("workspace_scrape_sources")
+    .select("source_id")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("source_id", sourceId)
+    .maybeSingle();
+  if (!installed) return { error: "This Actor is not installed in the workspace." };
+  const { data: source, error } = await ctx.supabase.from("scrape_sources")
+    .select("id, title, slug, input_schema, contract_hash, actor_build_id, actor_build_number, pricing_model, pricing_info")
+    .eq("id", sourceId)
+    .is("archived_at", null)
+    .maybeSingle();
+  if (error || !source?.input_schema || !source.contract_hash || !source.actor_build_id) return { error: "The Actor definition is unavailable." };
+  if (source.contract_hash !== expectedHash) return { error: "The Actor definition changed. Load the current contract and rebuild the preview." };
+  const secretNames = new Set(actorSecretFieldNames(source.input_schema));
+  if (Object.keys(rawInput).some((name) => secretNames.has(name))) return { error: "Actor approvals cannot contain secret input values." };
+  const unsupportedRequired = unsupportedActorFields(source.input_schema).filter((field) => field.required);
+  const jsonFallback = unsupportedRequired.length > 0 && unsupportedRequired.every((field) => !["fileupload", "resourcePicker"].includes(field.editor) && !/secret/i.test(field.reason));
+  if (unsupportedRequired.length && !jsonFallback) return { error: `Required Actor controls are unsupported: ${unsupportedRequired.map((field) => field.label).join(", ")}.` };
+  let normalized: Record<string, unknown>;
+  if (jsonFallback) {
+    const validation = validateActorJsonInput(source.input_schema, rawInput);
+    if (!validation.valid) return { error: validation.error || "The Actor input is invalid." };
+    normalized = rawInput;
+  } else {
+    const validation = validateActorInputObject(readableActorFields(source.input_schema, null), rawInput);
+    if ("error" in validation) return { error: validation.error || "The Actor input is invalid." };
+    normalized = validation.body;
+  }
+  return {
+    payload: {
+      sourceId,
+      actorTitle: source.title,
+      actorSlug: source.slug,
+      contractHash: source.contract_hash,
+      actorBuildId: source.actor_build_id,
+      actorBuildNumber: source.actor_build_number,
+      normalizedInput: normalized,
+      inputHash: payloadHash(normalized),
+      jsonFallback,
+      pricingBasis: { model: source.pricing_model, info: source.pricing_info || null, contractHash: source.contract_hash },
+      guideSourceVersions: { contractHash: source.contract_hash, promptVersion: ACTOR_GUIDE_PROMPT_VERSION },
+    },
+  };
+}
+
 export async function proposeWrite(ctx: ReadContext, conversationId: string | null, name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
   const tool = WRITE_TOOLS.find((item) => item.name === name);
   if (!tool) return { error: "Unsupported action." };
   if (tool.tier === 3 && ctx.role === "member") return { error: "An owner or admin must confirm this action." };
   let priorApprovals: Record<string, unknown>[] = [];
   let prepared: { payload: Record<string, unknown> } | { error: string };
-  if (name === "create_deal") prepared = await normalizeCreateDeal(ctx, args);
+  if (name === "start_actor_scrape") prepared = await prepareActorScrapeApproval(ctx, args);
+  else if (name === "create_deal") prepared = await normalizeCreateDeal(ctx, args);
   else if (name === "create_contact") {
     const normalized = await normalizeCreateContact(ctx, args);
     if ("error" in normalized) return { error: normalized.error };
@@ -216,7 +271,7 @@ export async function proposeWrite(ctx: ReadContext, conversationId: string | nu
     fields: payload,
     lines,
     undo: tool.tier === 3 ? "External effects cannot be undone from chat." : "A later undo milestone can reverse this record change.",
-    cost: name === "start_maps_scrape" ? "This starts a paid scrape after you confirm." : null,
+    cost: name === "start_maps_scrape" || name === "start_actor_scrape" ? "This starts paid Apify usage after you confirm." : null,
   };
   const existing = await ctx.supabase
     .from("agent_approvals")
@@ -412,6 +467,23 @@ async function runWrite(ctx: ReadContext, name: string, args: Record<string, unk
     const scrape = await startMapsScrapeAction(form);
     if ("error" in scrape && scrape.error) throw new Error(scrape.error);
     if (!("id" in scrape)) throw new Error("Scrape was not started.");
+    return { id: scrape.id, href: `/app/leads/scrape/${scrape.id}` };
+  }
+  if (name === "start_actor_scrape") {
+    const normalizedInput = args.normalizedInput && typeof args.normalizedInput === "object" && !Array.isArray(args.normalizedInput)
+      ? args.normalizedInput as Record<string, unknown>
+      : {};
+    const scrape = await startActorScrapeWithInput({
+      sourceId: text(args, "sourceId"),
+      contractHash: text(args, "contractHash"),
+      actorBuildId: text(args, "actorBuildId"),
+      normalizedInput,
+      pricingBasis: (args.pricingBasis || {}) as Json,
+      guideSourceVersions: (args.guideSourceVersions || {}) as Json,
+      jsonFallback: args.jsonFallback === true,
+    });
+    if ("error" in scrape && scrape.error) throw new Error(scrape.error);
+    if (!("id" in scrape)) throw new Error("Actor run was not started.");
     return { id: scrape.id, href: `/app/leads/scrape/${scrape.id}` };
   }
   if (name === "start_crm_sync") {

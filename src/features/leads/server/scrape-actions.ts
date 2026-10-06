@@ -1,7 +1,6 @@
 "use server";
 
 import { after } from "next/server";
-import type { Json } from "@/lib/database.types";
 import { revalidatePath } from "next/cache";
 import { requireOwnerOrAdmin } from "@/lib/auth/session";
 import { contactDisplayName, formInt, formOptionalId, formText } from "@/lib/crm";
@@ -9,11 +8,12 @@ import { recordActivity, withWorkspace } from "@/lib/events";
 import { incrementUsage } from "@/lib/usage";
 import { buildActorInput, readableActorFields, unsupportedActorFields } from "@/features/leads/actor-input";
 import { isMapsActor, MAPS_SLUG } from "@/features/leads/maps-source";
-import { claimScrapeIngest, fetchApifyRun, runScrapeIngest, startApifyActorRun, startApifyMapsRun } from "@/features/leads/server/apify";
+import { claimScrapeIngest, fetchApifyRun, runScrapeIngest, startApifyMapsRun } from "@/features/leads/server/apify";
 import { readAllPages } from "@/features/leads/server/read-pages";
 import { isPlatformFlagEnabled } from "@/lib/platform/flags";
 import { scrapePlaceMatches } from "@/features/leads/scrape-match";
 import { getApifyConnectionToken, requireWorkspaceApifyConnection } from "@/features/leads/server/apify-connection";
+import { startActorScrapeWithInput } from "@/features/leads/server/actor-run";
 
 function siteUrl() {
   const raw = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || "http://localhost:3000";
@@ -188,19 +188,21 @@ export async function startActorScrapeAction(formData: FormData) {
     return { error: "Scrape đang tạm dừng." };
   }
   const { context, supabase } = await withWorkspace();
-  let apify;
-  try { apify = await requireWorkspaceApifyConnection(context.workspaceId); }
+  try { await requireWorkspaceApifyConnection(context.workspaceId); }
   catch (error) { return { error: error instanceof Error ? error.message : "Workspace chưa kết nối Apify." }; }
   if (!context.plan.features.lead_scrape) return { error: "Gói hiện tại không gồm lead scrape." };
   if (formText(formData, "run_confirmed") !== "on") return { error: "Cần xác nhận được phép chạy actor này." };
   const sourceId = formText(formData, "source_id");
   const { data: source } = await supabase
     .from("scrape_sources")
-    .select("id, slug, title, archived_at, input_schema, example_input, schema_fetched_at")
+    .select("id, slug, title, archived_at, input_schema, example_input, schema_fetched_at, contract_hash, actor_build_id, pricing_model, pricing_info")
     .eq("id", sourceId)
     .maybeSingle();
   if (!source || source.archived_at || !source.schema_fetched_at || !source.input_schema) {
     return { error: "Nguồn này chưa có form từ Apify." };
+  }
+  if (!source.contract_hash || source.contract_hash !== formText(formData, "contract_hash")) {
+    return { error: "Actor definition changed. Reload the form before confirming this run." };
   }
   if (isMapsActor(source.slug)) return { error: "Google Maps dùng form riêng." };
   const { data: installed } = await supabase
@@ -210,12 +212,28 @@ export async function startActorScrapeAction(formData: FormData) {
     .eq("source_id", source.id)
     .maybeSingle();
   if (!installed) return { error: "Hãy cài nguồn này trước." };
+  const jsonFallback = formText(formData, "actor_json_input");
+  if (jsonFallback) {
+    if (!source.actor_build_id) return { error: "Actor build identity is unavailable. Refresh the definition." };
+    let parsed: unknown;
+    try { parsed = JSON.parse(jsonFallback); }
+    catch { return { error: "Complete Actor input must be valid JSON." }; }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { error: "Complete Actor input must be a JSON object." };
+    return startActorScrapeWithInput({
+      sourceId: source.id,
+      contractHash: source.contract_hash,
+      actorBuildId: source.actor_build_id,
+      normalizedInput: parsed as Record<string, unknown>,
+      pricingBasis: { model: source.pricing_model, info: source.pricing_info || null, contractHash: source.contract_hash },
+      jsonFallback: true,
+    });
+  }
 
   const unsupportedRequired = unsupportedActorFields(source.input_schema).filter((field) => field.required);
   if (unsupportedRequired.length) {
     return { error: `Actor này có trường bắt buộc chưa được hỗ trợ: ${unsupportedRequired.map((field) => field.label).join(", ")}.` };
   }
-  const fields = readableActorFields(source.input_schema, source.example_input);
+  const fields = readableActorFields(source.input_schema, null);
   if (!fields.length) return { error: "Input schema của actor không có trường nào chạy được." };
   const values = Object.fromEntries(fields.map((field) => [field.name, formText(formData, `in_${field.name}`)]));
   for (const field of fields) {
@@ -223,56 +241,14 @@ export async function startActorScrapeAction(formData: FormData) {
   }
   const built = buildActorInput(fields, values);
   if ("error" in built) return { error: built.error };
-
-  const { data: job, error } = await supabase
-    .from("lead_scrape_jobs")
-    .insert({
-      workspace_id: context.workspaceId,
-      created_by: context.userId,
-      source_id: source.id,
-      apify_actor_id: source.slug,
-      apify_connection_id: apify.connection.id,
-      apify_account_id: apify.connection.apify_user_id,
-      apify_account_username: apify.connection.apify_username,
-      query: built.summary || source.title,
-      location: "",
-      language: "vi",
-      max_results: 20,
-      filters: built.body as Json,
-      status: "queued",
-      pdpa_confirmed: true,
-    })
-    .select("*")
-    .single();
-  if (error?.code === "23505") return { error: "Workspace đang có một lượt scrape chưa xong." };
-  if (error || !job) return { error: error?.message || "Không tạo được job." };
-
-  const quota = await incrementUsage(supabase, context.workspaceId, "maps_scrapes", 1, -1);
-  if (quota.error) {
-    await supabase.from("lead_scrape_jobs").delete().eq("id", job.id).eq("workspace_id", context.workspaceId);
-    return quota;
-  }
-
-  try {
-    const webhookUrl = `${siteUrl()}/api/integrations/apify/webhook?jobId=${job.id}&secret=${job.webhook_secret}`;
-    const run = await startApifyActorRun({ actorSlug: source.slug, body: built.body, webhookUrl, token: apify.token });
-    await supabase
-      .from("lead_scrape_jobs")
-      .update({
-        status: "running",
-        apify_run_id: run.runId,
-        apify_dataset_id: run.datasetId,
-        started_at: new Date().toISOString(),
-      })
-      .eq("id", job.id);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Không start được Apify.";
-    await supabase.from("lead_scrape_jobs").update({ status: "failed", error_message: message }).eq("id", job.id);
-    return { error: message, id: job.id };
-  }
-
-  revalidatePath("/app/leads/scrape");
-  return { ok: true as const, id: job.id };
+  if (!source.actor_build_id) return { error: "Actor build identity is unavailable. Refresh the definition." };
+  return startActorScrapeWithInput({
+    sourceId: source.id,
+    contractHash: source.contract_hash,
+    actorBuildId: source.actor_build_id,
+    normalizedInput: built.body,
+    pricingBasis: { model: source.pricing_model, info: source.pricing_info || null, contractHash: source.contract_hash },
+  });
 }
 
 export async function refreshScrapeJobAction(formData: FormData) {

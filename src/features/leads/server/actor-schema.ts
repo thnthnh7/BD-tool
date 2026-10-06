@@ -93,7 +93,7 @@ export async function fetchActorContract(slug: string, token?: string): Promise<
       buildId,
       buildNumber,
       buildTag,
-      contractHash: contractHash([buildId, buildNumber, inputSchema, outputSchema, readmeMarkdown]),
+      contractHash: contractHash([buildId, buildNumber, inputSchema, outputSchema, readmeMarkdown, pricingSnapshot]),
       readmeMarkdown,
       rootDescription,
       pricingSnapshot,

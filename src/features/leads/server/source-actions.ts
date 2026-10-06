@@ -147,12 +147,12 @@ export async function listInstalledSources() {
   if (error) throw new Error(error.message);
   const ids = (installs || []).map((row) => row.source_id);
   if (!ids.length) return [];
-  const rows: Array<{ id: string; title: string; slug: string; adapter_status: string; schema_fetched_at: string | null }> = [];
+  const rows: Array<{ id: string; title: string; slug: string; adapter_status: string; schema_fetched_at: string | null; pricing_model: string | null }> = [];
   for (let index = 0; index < ids.length; index += 100) {
     const chunk = ids.slice(index, index + 100);
     const { data, error: sourceError } = await supabase
       .from("scrape_sources")
-      .select("id, title, slug, adapter_status, schema_fetched_at")
+      .select("id, title, slug, adapter_status, schema_fetched_at, pricing_model")
       .eq("pricing_model", "PAY_PER_EVENT")
       .in("id", chunk)
       .is("archived_at", null);

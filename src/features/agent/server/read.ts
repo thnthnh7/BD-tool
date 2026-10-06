@@ -4,7 +4,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { bindWorkspace, quoteViewFact, rankNameMatches, METRIC_VERSION } from "@/features/agent/logic";
 import { retrieveKnowledge } from "@/features/knowledge/server/retrieve";
-import { actorInputGuide, actorSecretFieldNames, readableActorFields, unsupportedActorFields, validateActorInputObject } from "@/features/leads/actor-input";
+import { actorInputGuide, actorSecretFieldNames, readableActorFields, unsupportedActorFields, validateActorInputObject, validateActorJsonInput } from "@/features/leads/actor-input";
+import { getOrCreateActorGuide } from "@/features/leads/server/actor-guide-cache";
+import { LINKEDIN_JOBS_SLUG, resolveLinkedInJobsMode } from "@/features/leads/actors/linkedin-jobs-scraper";
+import { recordActorGuidanceEvent } from "@/features/leads/server/actor-telemetry";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Dynamic table and projection names are constrained by the tool allowlist below; Supabase's generated client cannot express their shared query shape. */
 
@@ -72,7 +75,7 @@ export async function executeReadTool(ctx: ReadContext, name: string, args: Reco
   const text = (key: string) => (typeof args[key] === "string" ? args[key] : "");
   if (name === "search_actors") return searchActors(ctx, text("query"));
   if (name === "get_actor_contract") return actorContract(ctx, text("sourceId"));
-  if (name === "get_actor_guide") return actorGuide(ctx, text("sourceId"));
+  if (name === "get_actor_guide") return actorGuide(ctx, text("sourceId"), text("language") || ctx.locale);
   if (name === "get_actor_field_help") return actorFieldHelp(ctx, text("sourceId"), text("fieldName"));
   if (name === "get_actor_pricing") return actorPricing(ctx, text("sourceId"));
   if (name === "get_actor_run_input") return actorRun(ctx, text("jobId"), "input");
@@ -131,7 +134,7 @@ async function installedActor(ctx: ReadContext, sourceId: string) {
   if (!installed) return null;
   const { data, error } = await (ctx.supabase as any)
     .from("scrape_sources")
-    .select("id, title, slug, description, pricing_model, pricing_info, input_schema, example_input, schema_fetched_at, archived_at, actor_build_id, actor_build_number, actor_build_tag, contract_hash, readme_markdown, contract_fetch_status, contract_fetch_error, actor_store_url")
+    .select("id, title, slug, description, pricing_model, pricing_info, input_schema, example_input, output_schema, schema_fetched_at, archived_at, actor_build_id, actor_build_number, actor_build_tag, contract_hash, readme_markdown, contract_fetch_status, contract_fetch_error, actor_store_url")
     .eq("id", sourceId)
     .is("archived_at", null)
     .maybeSingle();
@@ -188,6 +191,7 @@ async function actorContract(ctx: ReadContext, sourceId: string) {
     guide: actorInputGuide(actor.input_schema),
     fields: safeActorFields(actor),
     unsupportedFields: unsupportedActorFields(actor.input_schema),
+    expectedOutput: actor.output_schema || null,
     schemaFetchedAt: actor.schema_fetched_at,
     build: { id: actor.actor_build_id, number: actor.actor_build_number, tag: actor.actor_build_tag },
     contractHash: actor.contract_hash,
@@ -196,14 +200,25 @@ async function actorContract(ctx: ReadContext, sourceId: string) {
   };
 }
 
-async function actorGuide(ctx: ReadContext, sourceId: string) {
+async function actorGuide(ctx: ReadContext, sourceId: string, language: string) {
   const actor = await installedActor(ctx, sourceId);
   if (!actor) return { found: false, limitation: "This Actor is not installed in the current workspace." };
+  if (!actor.contract_hash) return { found: false, limitation: "Refresh the Actor definition before generating a guide." };
+  const generated = await getOrCreateActorGuide({
+    sourceId: actor.id,
+    contractHash: actor.contract_hash,
+    locale: language,
+    schema: actor.input_schema,
+    example: actor.example_input,
+    readmeMarkdown: actor.readme_markdown || "",
+  });
   return {
     found: true,
     actor: { id: actor.id, title: actor.title, slug: actor.slug },
     sourceType: "default-build-readme",
     readmeMarkdown: actor.readme_markdown || "",
+    guide: generated.guide,
+    guideIdentity: { promptVersion: generated.promptVersion, provider: generated.provider, model: generated.model, cached: generated.cached, language },
     build: { id: actor.actor_build_id, number: actor.actor_build_number, tag: actor.actor_build_tag },
     contractHash: actor.contract_hash,
     fetchedAt: actor.schema_fetched_at,
@@ -293,6 +308,18 @@ async function resolveActorInputMode(ctx: ReadContext, sourceId: string, goal: s
   const actor = await installedActor(ctx, sourceId);
   if (!actor) return { found: false, limitation: "This Actor is not installed in the current workspace." };
   const fields = readableActorFields(actor.input_schema, actor.example_input);
+  if (actor.slug === LINKEDIN_JOBS_SLUG) {
+    const linkedIn = resolveLinkedInJobsMode(fields, goal);
+    return {
+      found: true,
+      actor: { id: actor.id, title: actor.title, slug: actor.slug },
+      ...linkedIn,
+      fields: safeActorFields(actor),
+      sourceType: "schema-and-product-reference",
+      contractHash: actor.contract_hash,
+      build: { id: actor.actor_build_id, number: actor.actor_build_number },
+    };
+  }
   const urls = goal.match(/https?:\/\/[^\s)]+/g) || [];
   const urlFields = fields.filter((field) => field.kind === "urlList" || /(?:^|_)(?:url|urls|starturls)(?:$|_)/i.test(field.name));
   const urlField = urlFields[0];
@@ -327,19 +354,51 @@ async function validateActor(ctx: ReadContext, sourceId: string, expectedContrac
   };
   const fields = readableActorFields(actor.input_schema, actor.example_input);
   const unsupportedRequired = unsupportedActorFields(actor.input_schema).filter((field) => field.required);
-  if (unsupportedRequired.length) return { valid: false, unsupportedRequired, limitation: "Bizcraw cannot safely prepare this Actor until these required controls are supported." };
-  const secretNames = fields.filter((field) => field.secret).map((field) => field.name);
+  const jsonFallback = unsupportedRequired.length > 0 && unsupportedRequired.every((field) => !["fileupload", "resourcePicker"].includes(field.editor) && !/secret/i.test(field.reason));
+  if (unsupportedRequired.length && !jsonFallback) return { valid: false, unsupportedRequired, limitation: "Bizcraw cannot safely prepare this Actor until these required controls are supported." };
+  const secretNames = actorSecretFieldNames(actor.input_schema);
   if (secretNames.some((name) => input[name] != null && input[name] !== "")) {
     return { valid: false, limitation: "Enter secret fields directly in the secure Actor form; the AI Agent does not accept or retain secret values.", secretFields: secretNames };
   }
-  const result = validateActorInputObject(fields, input);
-  if ("error" in result) return { valid: false, error: result.error, field: result.field };
+  let normalizedInput: Record<string, unknown>;
+  if (jsonFallback) {
+    const result = validateActorJsonInput(actor.input_schema, input);
+    if (!result.valid) {
+      await recordActorGuidanceEvent(ctx, { sourceId, eventType: "validation_error", metadata: { status: "invalid" } });
+      return { valid: false, error: result.error };
+    }
+    normalizedInput = input;
+  } else {
+    const result = validateActorInputObject(fields, input);
+    if ("error" in result) {
+      await recordActorGuidanceEvent(ctx, { sourceId, eventType: "validation_error", metadata: { field: result.field, status: "invalid" } });
+      return { valid: false, error: result.error, field: result.field };
+    }
+    normalizedInput = result.body;
+  }
+  await recordActorGuidanceEvent(ctx, { sourceId, eventType: preview ? "run_previewed" : "input_validated", metadata: { status: "valid" } });
+  const fieldNames = new Set(fields.map((field) => field.name));
+  const ignoredFields = Object.keys(input).filter((name) => !fieldNames.has(name));
+  const appliedDefaults = fields
+    .filter((field) => !Object.prototype.hasOwnProperty.call(input, field.name) && Boolean(field.schemaDefaultValue))
+    .map((field) => field.name);
+  const linkedInMode = actor.slug === LINKEDIN_JOBS_SLUG ? resolveLinkedInJobsMode(fields, JSON.stringify(input)) : null;
+  const overriddenFields = linkedInMode?.selectedMode === "linkedin-url"
+    ? fields.filter((field) => linkedInMode.primaryFields.includes(field.name) && !Object.keys(linkedInMode.draftInput).includes(field.name)).map((field) => field.name)
+    : [];
   return {
     valid: true,
-    normalizedInput: result.body,
+    normalizedInput,
+    jsonFallback,
     preview,
     startsRun: false,
     pricingModel: actor.pricing_model,
+    pricingBasis: { model: actor.pricing_model, info: actor.pricing_info || null, contractHash: actor.contract_hash },
+    submittedFields: Object.keys(normalizedInput),
+    appliedDefaults,
+    ignoredFields,
+    overriddenFields,
+    unsupportedFields: unsupportedActorFields(actor.input_schema),
     contractHash: actor.contract_hash,
     build: { id: actor.actor_build_id, number: actor.actor_build_number },
     warning: preview ? "This is a non-billable preview. Review the input and Actor pricing before starting a run from the scrape page." : undefined,
@@ -360,6 +419,7 @@ async function createActorDraft(ctx: ReadContext, sourceId: string, expectedCont
     expires_at: expiresAt,
   }).select("id").single();
   if (error || !data) throw new Error("The Actor draft could not be saved.");
+  await recordActorGuidanceEvent(ctx, { sourceId, eventType: "agent_draft_created", metadata: { status: "ready" } });
   return {
     ok: true,
     draftId: data.id,
