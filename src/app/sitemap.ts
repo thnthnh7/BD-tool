@@ -7,6 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: "https://bizcraw.com", lastModified, changeFrequency: "weekly", priority: 1, images: ["https://bizcraw.com/landing/bizcraw-source-library-hero.png"] },
     { url: "https://bizcraw.com/pricing", lastModified, changeFrequency: "weekly", priority: 0.8 },
+    { url: "https://bizcraw.com/lead-scraping-platform", lastModified, changeFrequency: "weekly", priority: 0.9, images: ["https://bizcraw.com/landing/bizcraw-source-library-hero.png"] },
     ...marketingIndexPaths.map((path) => ({
       url: `https://bizcraw.com${path}`,
       lastModified,

@@ -40,6 +40,7 @@ export const marketingHubs: Record<string, MarketingHubContent> = {
     sectionTitle: "Start from the outcome you need",
     sectionText: "Use a focused workflow for market discovery, lead generation, Google Maps research or CRM activation.",
     cards: [
+      { href: "/lead-scraping-platform", label: "B2B LEAD SCRAPING", title: "Lead scraping platform", description: "Collect public business data, review structured results and move approved leads into connected sales workflows." },
       { href: "/web-scraping", label: "WEB SCRAPING", title: "Web scraping for sales teams", description: "Collect structured public data with supported sources and preserve the context behind each record." },
       { href: "/web-scraping-for-lead-generation", label: "LEAD GENERATION", title: "Build qualified prospect lists", description: "Define a target market, collect relevant records and give every approved prospect a next action." },
       { href: "/google-maps-lead-scraper", label: "LOCAL BUSINESS DATA", title: "Google Maps lead workflow", description: "Research locations and business categories, then review returned companies before CRM import." },
