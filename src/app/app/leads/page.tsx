@@ -54,6 +54,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           </SimpleGrid>
         </ActionForm>
       </SectionPanel>
+      <div data-tutorial-id="leads-list">
       <SectionPanel
         title={t("allLeads")}
         padded={paged.total === 0}
@@ -72,7 +73,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
               </TableTr>
             </TableThead>
             <TableTbody>
-              {paged.rows.map((lead) => (
+              {paged.rows.map((lead, index) => (
                 <TableTr key={lead.id}>
                   <TableTd>
                     <Text size="sm" fw={600} lineClamp={1}>
@@ -87,7 +88,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   </TableTd>
                   <TableTd>{lead.source}</TableTd>
                   <TableTd ta="right">
-                    <LinkIcon href={`/app/leads/${lead.id}`} label={t("openRecord", { name: lead.contacts?.display_name || lead.companies?.name || t("lead") })} />
+                    <span data-tutorial-id={index === 0 ? "tutorial-open-first-lead" : undefined}>
+                      <LinkIcon href={`/app/leads/${lead.id}`} label={t("openRecord", { name: lead.contacts?.display_name || lead.companies?.name || t("lead") })} />
+                    </span>
                   </TableTd>
                 </TableTr>
               ))}
@@ -100,6 +103,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           <EmptyState icon={<UserPlus size={18} />} title={t("noLeads")} description={t("noLeadsHelp")} />
         )}
       </SectionPanel>
+      </div>
     </Stack>
   );
 }

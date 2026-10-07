@@ -14,8 +14,9 @@ import { AiProviderForm } from "@/features/ai/components/ai-provider-form";
 import { AiProviderOverview } from "@/features/ai/components/ai-provider-overview";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ section?: string }> }) {
   const t = await getTranslations("Settings");
+  const params = await searchParams;
   const { context, settings } = await loadWorkspaceAppData(["settings"]);
   const supabase = await createClient();
   const { data: agentSettings } = await supabase.from("workspace_agent_settings").select("enabled, write_enabled").eq("workspace_id", context.workspaceId).maybeSingle();
@@ -24,11 +25,13 @@ export default async function SettingsPage() {
 
   return (
       <SettingsPanel
+        key={params.section || "language"}
         initial={settings || defaultSettings}
         workspaceType={context.workspaceType}
         isOwner={context.memberRole === "owner"}
+        initialSection={params.section}
         languageProvider={<LocaleSettings locale={context.locale} />}
-        apifyProvider={<ApifyAccountStatus connection={apify.connection} canManage={apify.canManage} oauthReady={apify.oauthReady} showSetup />}
+        apifyProvider={<div data-tutorial-id="settings-apify"><ApifyAccountStatus connection={apify.connection} canManage={apify.canManage} oauthReady={apify.oauthReady} showSetup /></div>}
         aiProvider={
       <SectionPanel title={t("aiTitle")}>
         <AiProviderOverview

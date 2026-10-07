@@ -18,7 +18,6 @@ import {
   LayoutDashboard,
   ScrollText,
   Share2,
-  ListFilter,
   LogOut,
   Library,
   Mail,
@@ -31,6 +30,7 @@ import {
   Users,
 } from "lucide-react";
 import { AgentWidget } from "@/features/agent/components/agent-widget";
+import { TutorialBook } from "@/features/tutorial/components/tutorial-book";
 import { AppLogo } from "@/components/leadely/app-logo";
 import { LinkButton } from "@/components/mantine-link";
 import { ContentContainer } from "@/components/layout/content-container";
@@ -65,14 +65,13 @@ const workspaceGroups: NavGroup[] = [
     items: [
       { href: "/app/leads/sources", label: "sources", icon: Library, roles: ["owner", "admin", "member"], feature: "sources" },
       { href: "/app/leads/scrape", label: "scrape", icon: Radar, roles: ["owner", "admin", "member"], feature: "scraping" },
-      { href: "/app/leads", label: "leads", icon: UserPlus, roles: ["owner", "admin", "member"], feature: "leads" },
-      { href: "/app/lists", label: "lists", icon: ListFilter, roles: ["owner", "admin", "member"], feature: "lists" },
     ],
   },
   {
     id: "crm",
     label: "CRM",
     items: [
+      { href: "/app/leads", label: "leads", icon: UserPlus, roles: ["owner", "admin", "member"], feature: "leads" },
       { href: "/app/companies", label: "companies", icon: Building2, roles: ["owner", "admin", "member"], feature: "companies" },
       { href: "/app/contacts", label: "contacts", icon: Users, roles: ["owner", "admin", "member"], feature: "contacts" },
       { href: "/app/deals", label: "deals", icon: BriefcaseBusiness, roles: ["owner", "admin", "member"], feature: "deals" },
@@ -189,10 +188,10 @@ export function AppShellNav({
         <ScrollArea className={classes.nav} type="hover" offsetScrollbars={false} scrollbarSize={6}>
           <Stack gap={2}>
             {groups.map((group) => (
-              <div key={group.id} className={classes.navGroup}>
+              <div key={group.id} className={classes.navGroup} data-tutorial-id={`nav-group-${group.id}`}>
                 {group.label ? <Text className={classes.navSection}>{tNav(group.id)}</Text> : null}
                 {group.items.map((item) => (
-                  <ShellLink key={item.href} item={item} label={tNav(item.label)} pathname={pathname} onClick={close} />
+                  <ShellLink key={item.href} item={item} label={tNav(item.label)} pathname={pathname} onClick={close} tutorialId={`nav-${item.label}`} />
                 ))}
               </div>
             ))}
@@ -250,7 +249,7 @@ export function AppShellNav({
       </AppShell.Navbar>
 
       <AppShell.Main className={classes.main}>
-        <div className={classes.content}>
+        <div className={classes.content} data-tutorial-id="workspace-content">
           <ContentContainer>
             {locked ? (
               <Alert color="red" title={tShell("lockedTitle")} mb="md">
@@ -266,7 +265,18 @@ export function AppShellNav({
           </ContentContainer>
         </div>
       </AppShell.Main>
-      {context.kind === "workspace" && context.plan.features.ai_agent ? <AgentWidget workspaceId={context.workspaceId} userId={context.userId} /> : null}
+      {context.kind === "workspace" ? (
+        <>
+          <TutorialBook
+            workspaceId={context.workspaceId}
+            userId={context.userId}
+            role={context.memberRole}
+            features={{ ...context.plan.features }}
+            besideAgent={Boolean(context.plan.features.ai_agent)}
+          />
+          {context.plan.features.ai_agent ? <AgentWidget workspaceId={context.workspaceId} userId={context.userId} /> : null}
+        </>
+      ) : null}
     </AppShell>
   );
 }
@@ -276,11 +286,13 @@ function ShellLink({
   label,
   pathname,
   onClick,
+  tutorialId,
 }: {
   item: NavItem;
   label: string;
   pathname: string;
   onClick: () => void;
+  tutorialId: string;
 }) {
   const Icon = item.icon;
   const router = useRouter();
@@ -302,6 +314,7 @@ function ShellLink({
       active={navItemActive(pathname, item.href)}
       onClick={onClick}
       className={classes.navItem}
+      data-tutorial-id={tutorialId}
     />
   );
 }

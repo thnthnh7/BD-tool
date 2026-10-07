@@ -39,6 +39,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           </Group>
         }
       />
+      <div data-tutorial-id="quotes-list">
       <SectionPanel
         title={t("allQuotes")}
         padded={paged.total === 0}
@@ -58,7 +59,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
               </TableTr>
             </TableThead>
             <TableTbody>
-              {paged.rows.map((quote) => {
+            {paged.rows.map((quote, index) => {
                 const client = clients.find((item) => item.id === quote.clientId);
                 return (
                   <TableTr key={quote.id}>
@@ -81,7 +82,9 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                     <TableTd ta="right">
                       <Group gap={4} justify="flex-end" wrap="nowrap">
                         <DeleteQuoteButton quoteId={quote.id} label={quote.title || quote.publicId} appearance="icon" />
-                        <LinkIcon href={`/app/quotes/${quote.id}`} label={t("openQuote", { name: quote.title || quote.publicId })} />
+                        <span data-tutorial-id={index === 0 ? "tutorial-open-first-quote" : undefined}>
+                          <LinkIcon href={`/app/quotes/${quote.id}`} label={t("openQuote", { name: quote.title || quote.publicId })} />
+                        </span>
                       </Group>
                     </TableTd>
                   </TableTr>
@@ -96,6 +99,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           <EmptyState icon={<BriefcaseBusiness size={18} />} title={t("emptyTitle")} description={t("emptyDescription")} />
         )}
       </SectionPanel>
+      </div>
     </Stack>
   );
 }

@@ -30,6 +30,7 @@ export function SettingsPanel({
   apifyProvider,
   aiProvider,
   languageProvider,
+  initialSection,
 }: {
   initial: CompanySettings;
   workspaceType: "personal" | "company";
@@ -37,12 +38,16 @@ export function SettingsPanel({
   apifyProvider: ReactNode;
   aiProvider: ReactNode;
   languageProvider: ReactNode;
+  initialSection?: string;
 }) {
   const [settings, setSettings] = useState(initial);
   const t = useTranslations("Settings");
   const common = useTranslations("Common");
   const [message, setMessage] = useState("");
-  const [section, setSection] = useState<(typeof sections)[number]["id"]>("language");
+  const [section, setSection] = useState<(typeof sections)[number]["id"]>(() => {
+    const requested = sections.find((item) => item.id === initialSection);
+    return requested?.id || "language";
+  });
 
   function update(next: Partial<CompanySettings>) {
     setSettings({ ...settings, ...next });

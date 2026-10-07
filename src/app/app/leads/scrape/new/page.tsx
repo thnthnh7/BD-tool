@@ -46,7 +46,9 @@ export default async function NewScrapePage({ searchParams }: { searchParams: Pr
     <ApifyAccountStatus connection={apify.connection} canManage={apify.canManage} oauthReady={apify.oauthReady} compact />
     {rerunUnavailable && <Alert color="yellow">{t("oldSourceUnavailable")}</Alert>}
     {!context.plan.features.lead_scrape && <Alert color="yellow">{t("planUnavailable")}</Alert>}
-    {sources.length ? <SourceChooser sources={sources} selectedId={selected?.id || ""} /> : <SectionPanel><EmptyState icon={<Radar size={20} />} title={t("noSources")} description={t("noSourcesHelp")} /></SectionPanel>}
+    <div data-tutorial-id="scrape-source-picker">
+      {sources.length ? <SourceChooser sources={sources} selectedId={selected?.id || ""} /> : <SectionPanel><EmptyState icon={<Radar size={20} />} title={t("noSources")} description={t("noSourcesHelp")} /></SectionPanel>}
+    </div>
     <Suspense key={`${selected?.id}-${reuse?.id || actorDraft?.id || params.example || "new"}`} fallback={<Skeleton height={260} radius="md" />}><SelectedActor selected={selected} reuse={reuse} actorDraft={actorDraft} draftRequested={Boolean(params.draft)} useExample={params.example === "1"} locale={locale} workspaceId={context.workspaceId} enabled={Boolean(context.plan.features.lead_scrape)} connected={apify.connection?.status === "active"} canManage={context.memberRole !== "member"} /></Suspense>
     {selected && <Group><Text size="xs" c="dimmed">{t("storageNote")}</Text></Group>}
   </Stack>;
@@ -99,7 +101,7 @@ async function SelectedActor({ selected, reuse, actorDraft, draftRequested, useE
   const initialInput = draftInput || reuse?.filters || (useExample ? contract?.exampleInput : null) || null;
   const draftUnavailable = draftRequested && !draftInput;
 
-  return <SectionPanel title={selected.title} action={<Badge color={maps ? "teal" : "gray"}>{maps ? t("crmSupported") : t("datasetOnly")}</Badge>}>
+  return <div data-tutorial-id="scrape-actor-form"><SectionPanel title={selected.title} action={<Badge color={maps ? "teal" : "gray"}>{maps ? t("crmSupported") : t("datasetOnly")}</Badge>}>
       {draftUnavailable ? <Alert color="yellow">This AI draft expired or was created for an older Actor definition. Ask the Agent to prepare a new draft.</Alert> : null}
       {enabled && canUseConnection && maps && selected.adapter_status === "ready" ? <ActionForm key={`${selected.id}-${reuse?.id || "new"}`} action={startMapsScrapeAction} submitLabel={t("start")} redirectTo="/app/leads/scrape/{id}">
         <SimpleGrid cols={{ base: 1, sm: 2, xl: 3 }} spacing={{ base: "sm", md: "md" }}>
@@ -129,5 +131,5 @@ async function SelectedActor({ selected, reuse, actorDraft, draftRequested, useE
         pricingModel={selected.pricing_model}
         structuredGuide={generatedGuide?.guide}
       /> : connectionError ? <Alert color="yellow">{connectionError}</Alert> : <Text size="sm" c="dimmed">{!canUseConnection ? (!enabled ? t("planUnavailable") : t("connectFirst")) : contract?.error || t("notReady")}</Text>}
-    </SectionPanel>;
+    </SectionPanel></div>;
 }

@@ -103,14 +103,14 @@ export function ModulesPanel({
   return (
     <Stack gap="md">
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
-      <Tabs defaultValue="catalog" keepMounted={false}>
+      <Tabs defaultValue="catalog" keepMounted={false} data-tutorial-id="modules-tabs">
         <Tabs.List>
-          <Tabs.Tab value="catalog">{t("catalog")} ({modules.length})</Tabs.Tab>
-          <Tabs.Tab value="knowledge">{t("knowledgeFiles")} ({initialDocuments.length})</Tabs.Tab>
-          <Tabs.Tab value="review">{t("needsReview")} ({initialDrafts.length})</Tabs.Tab>
+          <Tabs.Tab value="catalog" data-tutorial-id="modules-tab-catalog">{t("catalog")} ({modules.length})</Tabs.Tab>
+          <Tabs.Tab value="knowledge" data-tutorial-id="modules-tab-knowledge">{t("knowledgeFiles")} ({initialDocuments.length})</Tabs.Tab>
+          <Tabs.Tab value="review" data-tutorial-id="modules-tab-review">{t("needsReview")} ({initialDrafts.length})</Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel value="catalog" pt="md">
+        <Tabs.Panel value="catalog" pt="md" data-tutorial-id="modules-catalog">
           <Stack gap="md">
       {canEdit ? (
         <SectionPanel title={t("addModule")}>
@@ -173,7 +173,7 @@ export function ModulesPanel({
           </Stack>
         </Tabs.Panel>
 
-        <Tabs.Panel value="knowledge" pt="md">
+        <Tabs.Panel value="knowledge" pt="md" data-tutorial-id="modules-knowledge">
           <Stack gap="md">
             <SectionPanel title={t("addKnowledge")}>
               <Text size="sm" c="dimmed">
@@ -218,7 +218,7 @@ export function ModulesPanel({
           </Stack>
         </Tabs.Panel>
 
-        <Tabs.Panel value="review" pt="md">
+        <Tabs.Panel value="review" pt="md" data-tutorial-id="modules-review">
           {initialDrafts.length === 0 ? (
             <SectionPanel><EmptyState icon={<Check size={18} />} title={t("noDrafts")} description={t("noDraftsHelp")} /></SectionPanel>
           ) : (

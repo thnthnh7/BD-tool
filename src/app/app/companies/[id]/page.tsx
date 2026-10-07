@@ -48,6 +48,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
       />
       <Grid>
         <GridCol span={{ base: 12, lg: 7 }}>
+          <div data-tutorial-id="company-detail-overview">
           <SectionPanel title="Overview">
             <ActionForm action={updateCompanyAction} submitLabel="Save company">
               <input type="hidden" name="id" value={company.id} />
@@ -72,15 +73,18 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
               <Textarea name="notes" label="Notes" defaultValue={company.notes} />
             </ActionForm>
           </SectionPanel>
+          </div>
         </GridCol>
         <GridCol span={{ base: 12, lg: 5 }}>
+          <div data-tutorial-id="company-detail-activity">
           <SectionPanel title="Activity" fill>
             <NoteForm companyId={company.id} />
             <ActivityList items={activities} />
           </SectionPanel>
+          </div>
         </GridCol>
       </Grid>
-      <Grid>
+      <Grid data-tutorial-id="company-detail-relations">
         <GridCol span={{ base: 12, md: 6 }}>
           <SectionPanel title="Contacts" fill action={<LinkAnchor href="/app/contacts" size="sm">All</LinkAnchor>}>
             {contacts.length ? (
@@ -125,6 +129,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
           </SectionPanel>
         </GridCol>
       </Grid>
+      <div data-tutorial-id="company-detail-plan">
       <SectionPanel title="Account plan">
         <ActionForm action={upsertAccountPlanAction} submitLabel="Save plan">
           <input type="hidden" name="company_id" value={company.id} />
@@ -134,6 +139,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
           <TextInput name="next_review_at" type="date" label="Next review" defaultValue={accountPlan?.next_review_at || ""} />
         </ActionForm>
       </SectionPanel>
+      </div>
     </Stack>
   );
 }

@@ -44,23 +44,25 @@ export default async function LeadSourcesPage({ searchParams }: {
   const usersFormat = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 0 });
   const canManage = context.memberRole !== "member" && Boolean(context.plan.features.lead_scrape);
   const extra = { installed, category };
-  return <Stack gap="lg">
+  return <Stack gap="lg" data-tutorial-id="sources-page">
     <PageHeader title={t("title")} subtitle={t("subtitle", { count: payload.catalogTotal.toLocaleString(locale) })}
       action={<LinkButton href="/app/leads/scrape" variant="light">{scrapeT("title")}</LinkButton>} />
     <Suspense fallback={<Skeleton height={92} radius="lg" />}><SourcesAccount installedCount={payload.installedIds.length} /></Suspense>
-    <Form key={`${q}:${installed}:${category}`} action="/app/leads/sources" prefetch={false}>
-      <Group gap="sm" wrap="wrap">
+    <div data-tutorial-id="sources-filters">
+      <Form key={`${q}:${installed}:${category}`} action="/app/leads/sources" prefetch={false}>
+        <Group gap="sm" wrap="wrap">
         <TextInput name="q" defaultValue={q} placeholder={t("search")} aria-label={t("searchLabel")} leftSection={<Search size={16} />} style={{ flex: "1 1 280px" }} />
         <NativeSelect name="installed" aria-label={t("installed")} defaultValue={installed}
           data={[{ value: "", label: t("all") }, { value: "yes", label: t("installed") }, { value: "no", label: t("notInstalled") }]} />
         <NativeSelect name="category" aria-label={t("category")} defaultValue={category}
           data={[{ value: "", label: t("allCategories") }, ...CATEGORIES.map((item) => ({ value: item, label: item.replaceAll("_", " ") }))]} />
         <Button type="submit" variant="light">{t("filter")}</Button>
-      </Group>
-    </Form>
+        </Group>
+      </Form>
+    </div>
     <Text size="xs" c="dimmed">{t("priceNote")}</Text>
     {payload.total === 0 ? <EmptyState icon={<Library size={18} />} title={t("emptyTitle")} description={t("emptyDescription")} /> : <>
-      <div className={classes.grid}>
+      <div className={classes.grid} data-tutorial-id="sources-catalog">
         {payload.rows.map((source) => {
           const pricing = summarizePricing(source.pricing_info as ActorPricing | undefined);
           const author = source.slug.split("/")[0];

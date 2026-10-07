@@ -55,6 +55,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
           <Textarea name="notes" label={t("notes")} />
         </ActionForm>
       </SectionPanel>
+      <div data-tutorial-id="contacts-list">
       <SectionPanel title={t("allContacts")} padded={rows.length === 0} action={<ContactSearch q={q} />}>
         {rows.length ? (
           <>
@@ -70,7 +71,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
                   </TableTr>
                 </TableThead>
                 <TableTbody>
-                  {rows.map((contact) => (
+                  {rows.map((contact, index) => (
                     <TableTr key={contact.id}>
                       <TableTd>
                         <Text fw={600} size="sm" lineClamp={1}>
@@ -94,7 +95,9 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
                         </Text>
                       </TableTd>
                       <TableTd ta="right">
-                        <LinkIcon href={`/app/contacts/${contact.id}`} label={t("openRecord", { name: contact.display_name })} />
+                        <span data-tutorial-id={index === 0 ? "tutorial-open-first-contact" : undefined}>
+                          <LinkIcon href={`/app/contacts/${contact.id}`} label={t("openRecord", { name: contact.display_name })} />
+                        </span>
                       </TableTd>
                     </TableTr>
                   ))}
@@ -116,6 +119,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
           <EmptyState icon={<Users size={18} />} title={t("noContacts")} description={t("noContactsHelp")} />
         )}
       </SectionPanel>
+      </div>
     </Stack>
   );
 }

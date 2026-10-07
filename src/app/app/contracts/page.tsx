@@ -28,6 +28,7 @@ export default async function ContractsPage({ searchParams }: { searchParams: Pr
   return (
     <Stack gap="md">
       <PageHeader title="Contracts" subtitle="Hợp đồng ký bằng DOCX, gắn với một deal và quote." />
+      <div data-tutorial-id="contracts-create">
       <SectionPanel title="New contract">
         <ActionForm action={createContractAction} submitLabel="Create contract">
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -60,6 +61,8 @@ export default async function ContractsPage({ searchParams }: { searchParams: Pr
           />
         </ActionForm>
       </SectionPanel>
+      </div>
+      <div data-tutorial-id="contracts-list">
       <SectionPanel
         title="All contracts"
         padded={paged.total === 0}
@@ -134,6 +137,7 @@ export default async function ContractsPage({ searchParams }: { searchParams: Pr
           <EmptyState icon={<FileSignature size={18} />} title="No contracts" description="Tạo contract từ form phía trên để gắn với một deal." />
         )}
       </SectionPanel>
+      </div>
     </Stack>
   );
 }

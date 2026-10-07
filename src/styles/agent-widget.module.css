@@ -47,6 +47,31 @@
   margin: 0;
 }
 
+.emptyState {
+  padding: 4px;
+}
+
+.starter {
+  width: 100%;
+  padding: 10px 12px;
+  color: var(--mantine-color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  background: var(--mantine-color-teal-0);
+  border: 1px solid var(--mantine-color-teal-2);
+  border-radius: 10px;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.starter:hover {
+  background: var(--mantine-color-teal-1);
+  border-color: var(--mantine-color-teal-4);
+  transform: translateX(2px);
+}
+
 .composer {
   display: flex;
   align-items: center;
@@ -71,7 +96,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .panel,
-  .launcher {
+  .launcher,
+  .starter {
     transition: none;
   }
 }

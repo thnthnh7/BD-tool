@@ -54,6 +54,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
           <Textarea name="notes" label={t("notes")} />
         </ActionForm>
       </SectionPanel>
+      <div data-tutorial-id="companies-list">
       <SectionPanel title={t("allCompanies")} padded={rows.length === 0} action={<CompanySearch q={q} />}>
         {rows.length ? (
           <>
@@ -71,7 +72,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
                   </TableTr>
                 </TableThead>
                 <TableTbody>
-                  {rows.map((company) => (
+                  {rows.map((company, index) => (
                     <TableTr key={company.id}>
                       <TableTd>
                         <CompanyMark name={company.name} logo={company.logo_path} fw={600} />
@@ -99,7 +100,9 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
                         </Text>
                       </TableTd>
                       <TableTd ta="right">
-                        <LinkIcon href={`/app/companies/${company.id}`} label={t("openRecord", { name: company.name })} />
+                        <span data-tutorial-id={index === 0 ? "tutorial-open-first-company" : undefined}>
+                          <LinkIcon href={`/app/companies/${company.id}`} label={t("openRecord", { name: company.name })} />
+                        </span>
                       </TableTd>
                     </TableTr>
                   ))}
@@ -121,6 +124,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
           <EmptyState icon={<Building2 size={18} />} title={t("noCompanies")} description={t("noCompaniesHelp")} />
         )}
       </SectionPanel>
+      </div>
     </Stack>
   );
 }

@@ -6,6 +6,7 @@ import { ActionIcon, Button, FileButton, Group, List, ScrollArea, Stack, Text, T
 import { Archive, Maximize2, Minimize2, Paperclip, Plus, Sparkles, Square, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { formatAssistantReply } from "@/features/agent/logic";
+import { AGENT_OPENED_EVENT, AGENT_PROMPT_EVENT, AGENT_TUTORIAL_OPEN_EVENT, TUTORIAL_OPENED_EVENT, openTutorial } from "@/features/tutorial/events";
 import classes from "@/styles/agent-widget.module.css";
 
 const conversationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,6 +22,7 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
   const inputRef = useRef<HTMLInputElement>(null);
   const storageKey = `bizcraw-agent:${workspaceId}:${userId}`;
   const [open, setOpen] = useState(false);
+  const [tutorialMode, setTutorialMode] = useState(false);
   const [full, setFull] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -59,6 +61,42 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+
+  useEffect(() => {
+    const onTutorialOpen = () => {
+      setOpen(false);
+      setTutorialMode(false);
+    };
+    const onAgentTutorialOpen = () => {
+      setOpen(true);
+      setUnread(false);
+      setTutorialMode(true);
+    };
+    const onAgentPrompt = (event: Event) => {
+      const prompt = (event as CustomEvent<{ prompt?: string }>).detail?.prompt;
+      setOpen(true);
+      setUnread(false);
+      setTutorialMode(false);
+      if (prompt) setDraft(prompt);
+      window.dispatchEvent(new Event(AGENT_OPENED_EVENT));
+    };
+    window.addEventListener(TUTORIAL_OPENED_EVENT, onTutorialOpen);
+    window.addEventListener(AGENT_TUTORIAL_OPEN_EVENT, onAgentTutorialOpen);
+    window.addEventListener(AGENT_PROMPT_EVENT, onAgentPrompt);
+    return () => {
+      window.removeEventListener(TUTORIAL_OPENED_EVENT, onTutorialOpen);
+      window.removeEventListener(AGENT_TUTORIAL_OPEN_EVENT, onAgentTutorialOpen);
+      window.removeEventListener(AGENT_PROMPT_EVENT, onAgentPrompt);
+    };
+  }, []);
+
+  function openAgent() {
+    const next = !open;
+    setOpen(next);
+    setTutorialMode(false);
+    setUnread(false);
+    if (next) window.dispatchEvent(new Event(AGENT_OPENED_EVENT));
+  }
 
   async function ensureConversation() {
     if (conversationId && conversationIdPattern.test(conversationId)) return conversationId;
@@ -204,7 +242,7 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
   return (
     <>
       {open ? (
-        <section id={panelId} role="dialog" aria-modal="false" aria-label={t("title")} className={`${classes.panel} ${full ? classes.full : ""}`}>
+        <section id={panelId} role="dialog" aria-modal="false" aria-label={t("title")} className={`${classes.panel} ${full ? classes.full : ""}`} data-tutorial-id="agent-panel">
           <Group justify="space-between" p="sm">
             <Text fw={700}>{t("title")}</Text>
             <Group gap={4}>
@@ -234,7 +272,18 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
             </Stack>
           ) : null}
           <ScrollArea className={classes.log}>
-            {messages.length === 0 ? <Text c="dimmed" size="sm">{t("empty")}</Text> : null}
+            {messages.length === 0 || tutorialMode ? (
+              <Stack gap="sm" className={classes.emptyState} data-tutorial-id="agent-starters">
+                <div>
+                  <Text fw={700} size="sm">How can I help you get started?</Text>
+                  <Text c="dimmed" size="xs" mt={3}>Choose a guided tour or ask about the page you are viewing.</Text>
+                </div>
+                <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "first-scrape" })}>Guide me through my first scrape</button>
+                <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "apify" })}>Help me connect Apify</button>
+                <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "workspace" })}>Show me how Bizcraw works</button>
+                <button type="button" className={classes.starter} onClick={() => void send(`Explain what I can do on ${pathname}. Give me the best next action and guide me step by step.`)}>What can I do on this page?</button>
+              </Stack>
+            ) : null}
             <Stack gap="xs">
               {messages.map((message) => (
                 message.role === "user" ? (
@@ -269,7 +318,7 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
             </Stack>
           </ScrollArea>
           {job ? <Text size="xs" px="sm">{t("importReady", { count: job.rowCount })}</Text> : null}
-          <form className={classes.composer} onSubmit={(event) => { event.preventDefault(); void send(draft); }}>
+          <form className={classes.composer} data-tutorial-id="agent-composer" onSubmit={(event) => { event.preventDefault(); void send(draft); }}>
             <FileButton accept=".txt,.csv,.xlsx" onChange={attachFile}>
               {(props) => (
                 <ActionIcon {...props} variant="subtle" aria-label={t("attach")}>
@@ -284,7 +333,7 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
         </section>
       ) : null}
       <div className={classes.launcher}>
-        <ActionIcon size={52} radius="xl" variant="filled" aria-label={t("open")} aria-expanded={open} aria-controls={panelId} onClick={() => { setOpen((value) => !value); setUnread(false); }}>
+        <ActionIcon size={52} radius="xl" variant="filled" aria-label={t("open")} aria-expanded={open} aria-controls={panelId} onClick={openAgent}>
           <Sparkles size={20} />
           {unread ? <span className={classes.srOnly}>{t("unread")}</span> : null}
         </ActionIcon>

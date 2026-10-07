@@ -49,7 +49,7 @@ export default async function LeadScrapePage({ searchParams }: {
       action={<Group gap="xs"><LinkButton href="/app/leads/sources" variant="default">{t("sources")}</LinkButton><LinkButton href="/app/leads/scrape/new" leftSection={<Plus size={16} />}>{t("newRun")}</LinkButton></Group>} />
     <ApifyAccountStatus connection={apify.connection} canManage={apify.canManage} oauthReady={apify.oauthReady} compact
       activitySummary={[t("installedCount", { count: sources.length }), t("runCount", { count: summary.total }), ...(active > 0 ? [t("activeCount", { count: active })] : [])]} />
-    <SectionPanel title={t("history")} padded={false}>
+    <div data-tutorial-id="scrape-history"><SectionPanel title={t("history")} padded={false}>
       <Form key={`${q}:${source}:${status}:${period}`} action="/app/leads/scrape" prefetch={false}>
         <Group gap="sm" p="md" align="flex-end">
           <TextInput name="q" defaultValue={q} placeholder={t("search")} aria-label={t("searchLabel")} leftSection={<Search size={15} />} style={{ flex: 1, minWidth: 180 }} />
@@ -73,6 +73,6 @@ export default async function LeadScrapePage({ searchParams }: {
           </TableTr>)}</TableTbody>
         </Table>
       </ListTable> : <Stack p="xl"><EmptyState icon={<Radar size={20} />} title={filtered ? t("noMatches") : t("startTitle")} description={filtered ? t("noMatchesHelp") : t("startHelp")} />{!filtered && <LinkButton href="/app/leads/scrape/new" w="fit-content">{t("newRun")}</LinkButton>}</Stack>}
-    </SectionPanel>
+    </SectionPanel></div>
   </Stack>;
 }

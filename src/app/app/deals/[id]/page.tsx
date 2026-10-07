@@ -60,7 +60,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         subtitle={`${deal.companies?.name || "No company"} · ${formatCurrency(deal.amount, deal.currency)}`}
       />
 
-      <Paper withBorder radius="lg" className={classes.panel} p="md">
+      <Paper withBorder radius="lg" className={classes.panel} p="md" data-tutorial-id="deal-detail-health">
         <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
           <StageMoveForm
             key={deal.stage_id}
@@ -88,12 +88,15 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
       <Grid>
         <GridCol span={{ base: 12, lg: 8 }}>
           <Stack gap="md">
+            <div data-tutorial-id="deal-detail-timeline">
             <SectionPanel title="Timeline">
               <CompactDisclosure label="Log activity">
                 <NoteForm compact dealId={deal.id} companyId={deal.company_id} contactId={deal.primary_contact_id || undefined} />
               </CompactDisclosure>
               <ActivityList items={activities} />
             </SectionPanel>
+            </div>
+            <div data-tutorial-id="deal-detail-commercial">
             <SectionPanel title="Commercial">
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl">
                 <Stack gap="xs">
@@ -147,6 +150,8 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                 </Stack>
               </SimpleGrid>
             </SectionPanel>
+            </div>
+            <div data-tutorial-id="deal-detail-people">
             <SectionPanel title="People">
               {stakeholders.length ? (
                 <Stack gap="xs" mb="sm">
@@ -197,11 +202,13 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                 </Text>
               )}
             </SectionPanel>
+            </div>
           </Stack>
         </GridCol>
 
         <GridCol span={{ base: 12, lg: 4 }}>
           <Stack gap="md">
+            <div data-tutorial-id="deal-detail-next">
             <SectionPanel title="Next step">
               {intel ? (
                 <Stack gap={4} mb="sm">
@@ -247,7 +254,9 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                 </CompactDisclosure>
               </Group>
             </SectionPanel>
+            </div>
 
+            <div data-tutorial-id="deal-detail-details">
             <SectionPanel
               title="Details"
               action={
@@ -288,6 +297,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                 {deal.lost_reason ? <SummaryRow label="Lost reason" value={deal.lost_reason} /> : null}
               </Stack>
             </SectionPanel>
+            </div>
           </Stack>
         </GridCol>
       </Grid>

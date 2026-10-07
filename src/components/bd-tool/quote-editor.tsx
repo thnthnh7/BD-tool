@@ -196,10 +196,14 @@ export function QuoteEditor({
           </Group>
         }
       />
-      <Tabs value={step} onChange={(value) => value && setStep(value)} variant="default">
+      <Tabs value={step} onChange={(value) => value && setStep(value)} variant="default" data-tutorial-id="quote-editor-tabs">
         <Tabs.List>
           {steps.map((item) => (
-            <Tabs.Tab key={item.value} value={item.value}>
+            <Tabs.Tab
+              key={item.value}
+              value={item.value}
+              data-tutorial-id={`quote-tab-${item.value === "1" ? "brief" : item.value === "2" ? "catalog" : item.value === "3" ? "commercial" : "preview"}`}
+            >
               {item.label}
             </Tabs.Tab>
           ))}
@@ -209,7 +213,7 @@ export function QuoteEditor({
       <Grid gap="md">
         <GridCol span={{ base: 12, lg: 8 }}>
           {step === "1" ? (
-            <Stack gap="md">
+            <Stack gap="md" data-tutorial-id="quote-step-brief">
               <AiBriefAssistant catalog={modules} onApply={applyAiBrief} />
               <SectionPanel title="Client & project">
                 <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
@@ -244,7 +248,7 @@ export function QuoteEditor({
           ) : null}
 
           {step === "2" ? (
-            <Stack gap="md">
+            <Stack gap="md" data-tutorial-id="quote-step-catalog">
               <SectionPanel title="Module catalog">
                 <TextInput mb="md" placeholder="Search modules" value={catalogQuery} onChange={(event) => setCatalogQuery(event.currentTarget.value)} />
                 <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
@@ -337,7 +341,7 @@ export function QuoteEditor({
           ) : null}
 
           {step === "3" ? (
-            <Stack gap="md">
+            <Stack gap="md" data-tutorial-id="quote-step-commercial">
               <SectionPanel title="Commercial">
                 <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
                   <div>
@@ -372,7 +376,7 @@ export function QuoteEditor({
           ) : null}
 
           {step === "4" ? (
-            <Stack gap="md">
+            <Stack gap="md" data-tutorial-id="quote-step-preview">
               {mode === "upload" ? (
                 <SectionPanel title="Presentation">
                   <SimpleGrid cols={{ base: 1, sm: 2 }}>

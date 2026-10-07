@@ -74,6 +74,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
         <DealBoard stages={stages} deals={matched} />
       </SectionPanel>
 
+      <div data-tutorial-id="deals-list">
       <SectionPanel title={t("table")} padded={paged.total === 0}>
         {paged.total ? (
           <ListTable
@@ -92,7 +93,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
               </TableTr>
             </TableThead>
             <TableTbody>
-              {paged.rows.map((deal) => (
+              {paged.rows.map((deal, index) => (
                 <TableTr key={deal.id}>
                   <TableTd>
                     <Text fw={600} size="sm">
@@ -107,7 +108,9 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
                   </TableTd>
                   <TableTd ta="right">{formatCurrency(deal.amount, deal.currency)}</TableTd>
                   <TableTd ta="right">
-                    <LinkIcon href={`/app/deals/${deal.id}`} label={t("openDeal", { name: deal.title })} />
+                    <span data-tutorial-id={index === 0 ? "tutorial-open-first-deal" : undefined}>
+                      <LinkIcon href={`/app/deals/${deal.id}`} label={t("openDeal", { name: deal.title })} />
+                    </span>
                   </TableTd>
                 </TableTr>
               ))}
@@ -120,6 +123,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
           <EmptyState icon={<BriefcaseBusiness size={18} />} title={t("emptyTitle")} description={t("emptyDescription")} />
         )}
       </SectionPanel>
+      </div>
     </Stack>
   );
 }

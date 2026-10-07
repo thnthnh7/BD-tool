@@ -38,6 +38,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
       <Grid>
         <GridCol span={{ base: 12, lg: 7 }}>
           <Stack gap="md">
+          <div data-tutorial-id="lead-detail-overview">
           <SectionPanel title="Lead">
             <ActionForm action={updateLeadAction}>
               <input type="hidden" name="id" value={lead.id} />
@@ -59,6 +60,8 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               </SimpleGrid>
             </ActionForm>
           </SectionPanel>
+          </div>
+          <div data-tutorial-id="lead-detail-qualify">
           <SectionPanel title="Qualify → Deal">
             <ActionForm action={qualifyLeadAction} submitLabel="Create deal" redirectTo="/app/deals/{id}">
               <input type="hidden" name="lead_id" value={lead.id} />
@@ -94,9 +97,11 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               </SimpleGrid>
             </ActionForm>
           </SectionPanel>
+          </div>
           </Stack>
         </GridCol>
         <GridCol span={{ base: 12, lg: 5 }}>
+          <div data-tutorial-id="lead-detail-activity">
           <SectionPanel title="Activity" fill>
             <NoteForm leadId={lead.id} companyId={lead.company_id || undefined} contactId={lead.contact_id || undefined} />
             <ActivityList items={activities} />
@@ -106,6 +111,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               </Text>
             ) : null}
           </SectionPanel>
+          </div>
         </GridCol>
       </Grid>
     </Stack>

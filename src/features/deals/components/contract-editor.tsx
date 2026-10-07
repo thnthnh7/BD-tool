@@ -31,11 +31,12 @@ export function ContractEditor({
   return (
     <Popover position="bottom-end" withArrow shadow="md" width={320} trapFocus>
       <Popover.Target>
-        <ActionIcon variant="subtle" color="gray" size={32} aria-label={`Edit ${title}`}>
+        <ActionIcon variant="subtle" color="gray" size={32} aria-label={`Edit ${title}`} data-tutorial-id="contract-edit-trigger">
           <Pencil size={16} />
         </ActionIcon>
       </Popover.Target>
       <Popover.Dropdown>
+        <div data-tutorial-id="contract-editor">
         <Stack gap="sm">
           <ActionForm action={updateContractAction} submitLabel="Save">
             <Stack gap="sm">
@@ -48,6 +49,7 @@ export function ContractEditor({
           <Divider />
           <ContractFiles contractId={id} docxName={docxName} settings={settings} quote={quote} client={client} />
         </Stack>
+        </div>
       </Popover.Dropdown>
     </Popover>
   );

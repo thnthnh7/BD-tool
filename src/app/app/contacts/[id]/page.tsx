@@ -23,6 +23,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
       <PageHeader back={{ href: "/app/contacts", label: "Contacts" }} title={contact.display_name} subtitle={contact.companies?.name || contact.email} />
       <Grid>
         <GridCol span={{ base: 12, lg: 7 }}>
+          <div data-tutorial-id="contact-detail-overview">
           <SectionPanel title="Overview">
             <ActionForm action={updateContactAction}>
               <input type="hidden" name="id" value={contact.id} />
@@ -50,16 +51,19 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               <Textarea name="notes" label="Notes" defaultValue={contact.notes} />
             </ActionForm>
           </SectionPanel>
+          </div>
         </GridCol>
         <GridCol span={{ base: 12, lg: 5 }}>
+          <div data-tutorial-id="contact-detail-activity">
           <SectionPanel title="Activity" fill>
             <NoteForm contactId={contact.id} companyId={contact.company_id || undefined} />
             <ActivityList items={activities} />
           </SectionPanel>
+          </div>
         </GridCol>
       </Grid>
       {contact.company_id ? (
-        <Text size="sm">
+        <Text component="div" size="sm">
           Company:{" "}
           <LinkAnchor href={`/app/companies/${contact.company_id}`} underline="never">
             <CompanyMark name={contact.companies?.name || "—"} logo={contact.companies?.logo_path} />

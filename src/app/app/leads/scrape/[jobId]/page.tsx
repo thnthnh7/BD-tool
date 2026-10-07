@@ -85,7 +85,7 @@ export default async function ScrapeJobPage({ params, searchParams }: {
   const creator = payload.job.creator?.display_name?.trim() || payload.job.creator?.email || "—";
   const apifyCost = payload.job.apify_usage_usd == null ? "—" : `$${Number(payload.job.apify_usage_usd).toFixed(4)} USD`;
   const crm = generic ? undefined : (
-      <SectionPanel title={t("selectPlacesTitle")} padded={false}>
+      <div data-tutorial-id="scrape-crm-import"><SectionPanel title={t("selectPlacesTitle")} padded={false}>
         <Box px="md" pt={4} pb="sm">
           <Stack gap="sm">
             <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
@@ -185,7 +185,7 @@ export default async function ScrapeJobPage({ params, searchParams }: {
             {q ? t("noPlaceMatch") : t("noPlaces")}
           </Text>
         )}
-      </SectionPanel>
+      </SectionPanel></div>
   );
   return <Stack gap="md">
     <PageHeader back={{ href: "/app/leads/scrape", label: t("historyBack") }} title={payload.job.query || t("resultsTitle")} subtitle={actorTitle}
@@ -198,7 +198,7 @@ export default async function ScrapeJobPage({ params, searchParams }: {
     {payload.job.error_message && <Alert color="red" title={t("runFailed")}>{payload.job.error_message}</Alert>}
     {["running", "queued", "ingesting"].includes(payload.job.status) && <Alert color="blue">{payload.job.status === "ingesting" ? t("syncingData") : t("waitingActor")}</Alert>}
     <ScrapeJobTabs key={payload.job.id} status={payload.job.status} initialTab={!generic && (search.view === "crm" || q || page > 1) ? "crm" : "results"} crm={crm}
-      results={<SectionPanel padded={false}><DatasetExplorer rows={rows} filename={`scrape-${payload.job.id}`} emptyMessage={payload.job.status === "succeeded" ? t("emptyActor") : undefined} /></SectionPanel>}
+      results={<div data-tutorial-id="scrape-results"><SectionPanel padded={false}><DatasetExplorer rows={rows} filename={`scrape-${payload.job.id}`} emptyMessage={payload.job.status === "succeeded" ? t("emptyActor") : undefined} /></SectionPanel></div>}
       input={<SectionPanel title={t("inputUsed")}><Text size="sm" c="dimmed" mb="sm">{t("rerunHint")}</Text><Code block style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(input, null, 2)}</Code></SectionPanel>}
       processing={<SectionPanel title={t("runInfo")}><SimpleGrid cols={{ base: 1, sm: 2 }}>
         {[[t("actor"), actorTitle], [t("runBy"), creator], [t("apifyCost"), apifyCost], [t("runId"), payload.job.apify_run_id || "—"], [t("datasetId"), payload.job.apify_dataset_id || "—"], [t("started"), timestamp(payload.job.started_at)], [t("finished"), timestamp(payload.job.finished_at)], [t("crmCapability"), generic ? t("crmUnsupportedDetail") : t("crmSupportedDetail")]].map(([label, value]) => <Box key={label}><Text size="xs" c="dimmed">{label}</Text><Text size="sm" style={{ overflowWrap: "anywhere" }}>{value}</Text></Box>)}
