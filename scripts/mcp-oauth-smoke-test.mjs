@@ -6,7 +6,7 @@ import { createMcpTestWorkspace } from "./mcp-test-fixture.mjs";
 
 nextEnv.loadEnvConfig(process.cwd());
 const base = process.env.MCP_TEST_BASE_URL || "http://localhost:3000";
-const resource = `${(process.env.NEXT_PUBLIC_SITE_URL || base).replace(/\/$/, "")}/api/mcp`;
+const resource = `${(process.env.MCP_TEST_RESOURCE_URL || process.env.NEXT_PUBLIC_SITE_URL || base).replace(/\/$/, "")}/api/mcp`;
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 const digest = (value) => createHash("sha256").update(value).digest("hex");
 const redirectUri = "http://127.0.0.1:9876/callback";
