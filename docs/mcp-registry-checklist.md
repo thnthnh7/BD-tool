@@ -2,9 +2,9 @@
 
 The official MCP Registry is still preview infrastructure. Do not publish the temporary Cloudflare tunnel URL.
 
-1. Deploy `/api/mcp` and both OAuth metadata endpoints on Bizcraw's permanent HTTPS domain.
+1. Confirm `/api/mcp` and both OAuth metadata endpoints remain healthy on `https://bizcraw.com`.
 2. Publish support, privacy, acceptable-use and security-reporting URLs.
-3. Choose and verify the reverse-DNS namespace, for example `app.leadely/mcp` only if Bizcraw controls `leadely.app`.
+3. Choose and verify a Bizcraw-owned reverse-DNS namespace based on `bizcraw.com`.
 4. Generate `server.json` with the current official schema using `mcp-publisher init`.
 5. Declare the remote transport as `streamable-http` and use the permanent `/api/mcp` URL.
 6. Validate OAuth discovery, consent, refresh, revocation, workspace isolation and approval-gated writes against production.

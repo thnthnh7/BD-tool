@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { mcpScopes } from "@/features/mcp/scopes";
+import { normalizeRequestedMcpScopes } from "@/features/mcp/scopes";
 
 export const oauthAccessTtlSeconds = 60 * 60;
 export const oauthRefreshTtlSeconds = 60 * 60 * 24 * 30;
@@ -37,8 +37,7 @@ export function verifyPkce(verifier: string, challenge: string) {
 }
 
 export function normalizeOAuthScopes(scope: string | null | undefined) {
-  const requested = new Set((scope || "").split(/\s+/).filter(Boolean));
-  return requested.size ? mcpScopes.filter((item) => requested.has(item)) : [...mcpScopes];
+  return normalizeRequestedMcpScopes(scope);
 }
 
 export function validateRedirectUri(value: string) {

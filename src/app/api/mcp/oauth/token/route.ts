@@ -4,7 +4,7 @@ import { normalizeOAuthScopes, oauthAccessTtlSeconds, oauthError, oauthRefreshTt
 export const runtime = "nodejs";
 
 function tokenResponse(accessToken: string, refreshToken: string, scopes: string[]) {
-  return Response.json({ access_token: accessToken, token_type: "Bearer", expires_in: oauthAccessTtlSeconds, refresh_token: refreshToken, scope: scopes.join(" ") }, { headers: { "Cache-Control": "no-store", Pragma: "no-cache" } });
+  return Response.json({ access_token: accessToken, token_type: "Bearer", expires_in: oauthAccessTtlSeconds, refresh_token: refreshToken, scope: [...scopes, "offline_access"].join(" ") }, { headers: { "Cache-Control": "no-store", Pragma: "no-cache" } });
 }
 
 export async function POST(request: Request) {

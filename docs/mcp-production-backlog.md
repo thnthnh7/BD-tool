@@ -4,12 +4,12 @@ This file tracks the remaining MCP work that cannot be completed entirely in the
 
 ## 1. Permanent production domain and HTTPS
 
-**Blocked by:** a permanent Bizcraw production domain and deployment.
+**Status:** implemented at `https://bizcraw.com`.
 
-- Deploy `/api/mcp` on the permanent HTTPS hostname.
-- Expose and verify `/.well-known/oauth-protected-resource/api/mcp` and `/.well-known/oauth-authorization-server` on the same public origin.
-- Configure the canonical application URL and confirm OAuth resource binding uses the production endpoint.
-- Confirm redirects never reference localhost, a preview deployment or a temporary tunnel.
+- `/api/mcp` is deployed on the permanent HTTPS hostname.
+- Both OAuth discovery endpoints are exposed on the same public origin.
+- The production metadata binds OAuth to `https://bizcraw.com/api/mcp`.
+- Dynamic client registration, authorization-code exchange and refresh have passed production smoke tests.
 
 **Done when:** OAuth discovery, authorization, token exchange, refresh, revocation and an MCP initialize request succeed against the permanent domain.
 
@@ -40,6 +40,7 @@ This file tracks the remaining MCP work that cannot be completed entirely in the
 **Blocked by:** access to the target MCP clients and their production OAuth configuration.
 
 - Test Streamable HTTP and OAuth with the supported versions of Claude, ChatGPT/Codex and any other launch client.
+- Confirm the `2025-11-25` compatibility path and `2026-07-28` modern path against the release candidate. Both paths are covered by automated SDK tests.
 - Verify tool, resource and prompt discovery.
 - Verify consent, scope display, token refresh, reconnect and user-initiated revocation.
 - Record client-specific configuration and known limitations in the public documentation.
@@ -112,6 +113,7 @@ npm run i18n:check
 npm run test:mcp
 npm run test:mcp:oauth
 npm run test:mcp:sdk
+npm run test:mcp:modern
 npm run test:mcp:write
 npm run test:mcp:load
 npm run test:mcp:contract

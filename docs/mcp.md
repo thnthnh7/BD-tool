@@ -4,10 +4,15 @@ Bizcraw exposes a workspace-scoped MCP server over Streamable HTTP at `/api/mcp`
 
 ## Connect
 
+MCP is available to invited Beta workspaces and paid plans while the rollout is controlled by the platform MCP switch. Read tools can be enabled independently from write tools.
+
 1. A workspace owner or admin opens **Workspace → MCP**.
-2. Select the minimum scopes required by the AI client.
-3. Create a token and copy it immediately. Bizcraw stores only its SHA-256 hash.
-4. Configure the client with the MCP endpoint and an `Authorization: Bearer <token>` header.
+2. Choose the target client in the setup guide.
+3. For ChatGPT, add `https://bizcraw.com/api/mcp` as a custom MCP app and complete the Bizcraw OAuth consent flow.
+4. For clients that use a static token, select the minimum scopes, create a connection and copy the token immediately. Bizcraw stores only its SHA-256 hash.
+5. Run the verification prompt shown in the setup guide. A successful call updates the connection's **Last used** time.
+
+New connections default to `workspace:read` and `crm:read`. Write scopes are never selected automatically.
 
 ```json
 {
@@ -83,13 +88,13 @@ All queries are restricted to the token's workspace. Every request rechecks the 
 
 ## OAuth 2.1 client connection
 
-Remote MCP clients can discover Bizcraw OAuth from `/.well-known/oauth-protected-resource/api/mcp` and `/.well-known/oauth-authorization-server`. Bizcraw supports public clients, dynamic client registration, authorization code with PKCE S256, rotating refresh tokens, and RFC 7009 revocation. Access tokens are opaque, stored only as SHA-256 hashes, expire after one hour, and are bound to the `/api/mcp` resource.
+Remote MCP clients can discover Bizcraw OAuth from `/.well-known/oauth-protected-resource/api/mcp` and `/.well-known/oauth-authorization-server`. Bizcraw supports public clients, dynamic client registration, authorization code with PKCE S256, rotating refresh tokens, `offline_access`, and RFC 7009 revocation. Access tokens are opaque, stored only as SHA-256 hashes, expire after one hour, and are bound to the `/api/mcp` resource.
 
 Personal access tokens remain available for clients that support static Bearer headers. OAuth is preferred for end-user clients because users approve scopes in Bizcraw and can revoke the resulting connection without copying a secret.
 
 ## Versioning and compatibility
 
-Clients can read the `server-capabilities` resource or call `get_server_capabilities`. Additive tools and optional fields may be released within the current major server version. Renaming or removing a tool, changing a required input, or changing response meaning requires a new major server version. Deprecations are announced in the capabilities payload for at least 90 days before removal. CI validates version syntax, schema ordering and deprecation metadata on every change.
+The endpoint accepts both the established `2025-11-25` Streamable HTTP protocol and the current `2026-07-28` protocol. Modern clients receive per-tool OAuth security-scheme metadata; compatibility tests pin both protocol generations in CI. Clients can read the `server-capabilities` resource or call `get_server_capabilities`. Additive tools and optional fields may be released within the current major server version. Renaming or removing a tool, changing a required input, or changing response meaning requires a new major server version. Deprecations are announced in the capabilities payload for at least 90 days before removal. CI validates version syntax, schema ordering and deprecation metadata on every change.
 
 Resource URIs use the `bizcraw://` namespace. The previous `leadely://` workspace-profile and CRM-schema URIs remain available as legacy aliases until 2026-12-29 so existing clients can migrate without downtime.
 

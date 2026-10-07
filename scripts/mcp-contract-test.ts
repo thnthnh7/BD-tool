@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { MCP_DEPRECATIONS, MCP_DEPRECATION_WINDOW_DAYS, MCP_MINIMUM_SUPPORTED_SCHEMA_VERSION, MCP_SERVER_VERSION, MCP_TOOL_SCHEMA_VERSION, mcpCapabilities } from "../src/features/mcp/server/version";
+import { mcpDefaultScopes, mcpOAuthScopes, normalizeRequestedMcpScopes } from "../src/features/mcp/scopes";
 
 assert.match(MCP_SERVER_VERSION, /^\d+\.\d+\.\d+$/);
 assert.match(MCP_TOOL_SCHEMA_VERSION, /^\d{4}-\d{2}-\d{2}$/);
@@ -16,4 +17,8 @@ for (const item of MCP_DEPRECATIONS) {
   assert.ok(item.replacement);
 }
 assert.deepEqual(mcpCapabilities().deprecations, MCP_DEPRECATIONS);
+assert.deepEqual(normalizeRequestedMcpScopes(undefined), mcpDefaultScopes);
+assert.deepEqual(normalizeRequestedMcpScopes("crm:write unknown workspace:read"), ["workspace:read", "crm:write"]);
+assert.ok(!mcpDefaultScopes.some((scope) => scope.endsWith(":write")));
+assert.ok(mcpOAuthScopes.includes("offline_access"));
 console.log(`MCP contract ${MCP_SERVER_VERSION} / ${MCP_TOOL_SCHEMA_VERSION} passed.`);

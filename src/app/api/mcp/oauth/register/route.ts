@@ -18,9 +18,10 @@ export async function POST(request: Request) {
   const redirectUris = Array.isArray(body.redirect_uris) ? body.redirect_uris.filter((item): item is string => typeof item === "string") : [];
   if (!redirectUris.length || redirectUris.length > 10 || redirectUris.some((uri) => uri.length > 2048 || !validateRedirectUri(uri))) return oauthError("invalid_redirect_uri", "Use 1-10 HTTPS redirect URIs; localhost HTTP is allowed for local clients.");
   if (body.token_endpoint_auth_method && body.token_endpoint_auth_method !== "none") return oauthError("invalid_client_metadata", "Only public clients with token_endpoint_auth_method=none are supported.");
+  const applicationType = body.application_type === "native" ? "native" : "web";
   const clientId = opaqueToken("ldclient_");
   const clientName = String(body.client_name || "MCP client").trim().slice(0, 120) || "MCP client";
   const { error } = await admin.from("mcp_oauth_clients").insert({ client_id: clientId, client_name: clientName, redirect_uris: [...new Set(redirectUris)], registration_fingerprint: fingerprint });
   if (error) return oauthError("server_error", "Could not register the client.", 500);
-  return Response.json({ client_id: clientId, client_name: clientName, redirect_uris: [...new Set(redirectUris)], grant_types: ["authorization_code", "refresh_token"], response_types: ["code"], token_endpoint_auth_method: "none" }, { status: 201, headers: { "Cache-Control": "no-store" } });
+  return Response.json({ client_id: clientId, client_name: clientName, redirect_uris: [...new Set(redirectUris)], grant_types: ["authorization_code", "refresh_token"], response_types: ["code"], token_endpoint_auth_method: "none", application_type: applicationType }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }

@@ -1,3 +1,4 @@
+import { createMcpHandler, isLegacyRequest } from "@modelcontextprotocol/server";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { authenticateMcpToken } from "@/features/mcp/server/service";
 import { createBizcrawMcpServer } from "@/features/mcp/server/mcp-server";
@@ -38,10 +39,15 @@ async function handle(request: Request) {
   const gate = await admit(admin, connection.id, "mcp_request", 120, 60);
   if (!("ok" in gate)) return Response.json({ error: gate.error }, { status: gate.status });
 
-  const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true, maxRequestBodySize: 256 * 1024 });
-  const server = createBizcrawMcpServer(connection, request.headers.get("x-request-id"), settings.write_tools_enabled);
-  await server.connect(transport);
-  return transport.handleRequest(request);
+  const factory = () => createBizcrawMcpServer(connection, request.headers.get("x-request-id"), settings.write_tools_enabled);
+  if (await isLegacyRequest(request, undefined, { maxRequestBodySize: 256 * 1024 })) {
+    const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true, maxRequestBodySize: 256 * 1024 });
+    const server = factory();
+    await server.connect(transport);
+    return transport.handleRequest(request);
+  }
+  const handler = createMcpHandler(factory, { legacy: "reject", responseMode: "json", maxRequestBodySize: 256 * 1024 });
+  return handler.fetch(request);
 }
 
 export const POST = handle;

@@ -6,7 +6,7 @@ import { Check, Copy, KeyRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createMcpConnectionAction, revokeMcpConnectionAction, rotateMcpConnectionAction } from "@/features/mcp/server/actions";
-import { mcpScopeLabelKeys, mcpScopes } from "@/features/mcp/scopes";
+import { mcpDefaultScopes, mcpScopeLabelKeys, mcpScopes } from "@/features/mcp/scopes";
 
 type Connection = { id: string; name: string; token_prefix: string; scopes: string[]; status: string; display_status: string; last_used_at: string | null; expires_at: string | null; created_at: string };
 
@@ -29,7 +29,7 @@ export function McpConnectionManager({ connections, endpoint, enabled }: { conne
           <Stack gap="sm">
             <TextInput name="name" label={t("connectionName")} placeholder={t("connectionPlaceholder")} required maxLength={80} />
             <NativeSelect name="expiry" label={t("tokenExpiry")} defaultValue="90" data={[{ value: "30", label: t("days30") }, { value: "90", label: t("days90") }, { value: "365", label: t("year1") }, { value: "never", label: t("noExpiry") }]} />
-            <div><Text size="sm" fw={500} mb={6}>{t("permissions")}</Text><Group>{mcpScopes.map((scope) => <Checkbox key={scope} name="scopes" value={scope} defaultChecked label={t(mcpScopeLabelKeys[scope])} />)}</Group></div>
+            <div><Text size="sm" fw={500} mb={6}>{t("permissions")}</Text><Text size="xs" c="dimmed" mb={8}>Start with the minimum access this client needs. Write permissions are never selected automatically.</Text><Group>{mcpScopes.map((scope) => <Checkbox key={scope} name="scopes" value={scope} defaultChecked={mcpDefaultScopes.includes(scope)} label={t(mcpScopeLabelKeys[scope])} />)}</Group></div>
             {error ? <Text c="red" size="sm">{error}</Text> : null}
             <Button type="submit" loading={pending} disabled={!enabled} w="fit-content">{t("createToken")}</Button>
           </Stack>

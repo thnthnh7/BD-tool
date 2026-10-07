@@ -1,6 +1,6 @@
 import "server-only";
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MCP_SERVER_VERSION, mcpCapabilities } from "@/features/mcp/server/version";
@@ -48,6 +48,7 @@ function registerAuditedTool<T extends Record<string, unknown>>(
     description: definition.description,
     inputSchema: definition.inputSchema,
     annotations: definition.annotations || { readOnlyHint: definition.scope.endsWith(":read"), destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    _meta: { securitySchemes: [{ type: "oauth2", scopes: [definition.scope] }] },
   }, async (input) => {
     const started = Date.now();
     try {

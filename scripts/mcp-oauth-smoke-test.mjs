@@ -33,6 +33,7 @@ try {
   const tokenResponse = await fetch(`${base}/api/mcp/oauth/token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "authorization_code", client_id: registration.client_id, code, code_verifier: verifier, redirect_uri: redirectUri, resource }) });
   const tokens = await tokenResponse.json();
   if (!tokenResponse.ok) throw new Error(JSON.stringify(tokens));
+  assert.ok(tokens.scope.split(" ").includes("offline_access"));
   const replayResponse = await fetch(`${base}/api/mcp/oauth/token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "authorization_code", client_id: registration.client_id, code, code_verifier: verifier, redirect_uri: redirectUri, resource }) });
   assert.equal(replayResponse.status, 400);
   const mcpResponse = await fetch(`${base}/api/mcp`, { method: "POST", headers: { authorization: `Bearer ${tokens.access_token}`, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "oauth-smoke", version: "1" } } }) });
@@ -50,7 +51,7 @@ try {
   await fetch(`${base}/api/mcp/oauth/revoke`, { method: "POST", body: new URLSearchParams({ client_id: registration.client_id, token: refreshed.access_token }) });
   const revokedTokenResponse = await fetch(`${base}/api/mcp`, { method: "POST", headers: { authorization: `Bearer ${refreshed.access_token}`, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "oauth-smoke", version: "1" } } }) });
   assert.equal(revokedTokenResponse.status, 401);
-  console.log(JSON.stringify({ registered: registration.client_id.startsWith("ldclient_"), tokenIssued: tokens.access_token.startsWith("ldaccess_"), mcp: initialized.result?.serverInfo?.name, refreshRotated: refreshed.refresh_token !== tokens.refresh_token, invalidRedirectRejected: true, invalidPkceRejected: true, codeReplayRejected: true, refreshReplayRejected: true, revokedClientRejected: true, revokedTokenRejected: true }, null, 2));
+  console.log(JSON.stringify({ registered: registration.client_id.startsWith("ldclient_"), tokenIssued: tokens.access_token.startsWith("ldaccess_"), offlineAccessAdvertised: tokens.scope.split(" ").includes("offline_access"), mcp: initialized.result?.serverInfo?.name, refreshRotated: refreshed.refresh_token !== tokens.refresh_token, invalidRedirectRejected: true, invalidPkceRejected: true, codeReplayRejected: true, refreshReplayRejected: true, revokedClientRejected: true, revokedTokenRejected: true }, null, 2));
 } finally {
   await admin.from("mcp_tool_calls").delete().eq("connection_id", connection.id);
   await admin.from("mcp_connections").delete().eq("id", connection.id);

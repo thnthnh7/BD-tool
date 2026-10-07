@@ -1,9 +1,10 @@
 import { requireModule } from "@/lib/auth/session";
-import { Badge, Button, Code, Group, Paper, Stack, Text } from "@mantine/core";
+import { Badge, Button, Group, Paper, Stack, Text } from "@mantine/core";
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { Table, TableTbody, TableTd, TableTh, TableThead, TableTr } from "@/components/leadely/table";
 import { McpConnectionManager } from "@/features/mcp/components/connection-manager";
+import { McpClientSetupGuide } from "@/features/mcp/components/client-setup-guide";
 import { loadMcpWorkspace, reviewMcpActionRequestAction } from "@/features/mcp/server/actions";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -22,16 +23,15 @@ export default async function McpPage({ searchParams }: { searchParams: Promise<
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
   const endpoint = `${baseUrl}/api/mcp`;
   const connectionNames = Object.fromEntries(data.connections.map((connection) => [connection.id, connection.name]));
-  const configExample = JSON.stringify({ mcpServers: { bizcraw: { type: "http", url: endpoint, headers: { Authorization: "Bearer <YOUR_TOKEN>" } } } }, null, 2);
   return <Stack gap="md">
     <PageHeader title={t("title")} subtitle={t("subtitle")} />
     <SectionPanel title={t("connections")}><McpConnectionManager connections={data.connections} endpoint={endpoint} enabled={Boolean(data.settings?.enabled && data.settings.read_tools_enabled)} /></SectionPanel>
-    <SectionPanel title={t("connectClient")}><Stack gap="xs"><Text size="sm">{t("connectHelp")}</Text><Paper withBorder p="sm" bg="gray.0"><Code block>{configExample}</Code></Paper><Text size="xs" c="dimmed">{t("replaceToken", { token: "<YOUR_TOKEN>" })}</Text></Stack></SectionPanel>
+    <SectionPanel title={t("connectClient")}><McpClientSetupGuide endpoint={endpoint} writeEnabled={Boolean(data.settings?.write_tools_enabled)} /></SectionPanel>
     <SectionPanel title={t("approvalQueue")}>
       <Group gap="xs" mb="xs">{["all", "pending", "completed", "rejected", "failed", "expired"].map((status) => <Link key={status} href={status === "all" ? "/app/mcp" : `/app/mcp?status=${status}`} style={{ textDecoration: "none" }}><Button size="compact-xs" variant={statusFilter === status ? "light" : "subtle"}>{status}</Button></Link>)}</Group>
       <Stack gap="xs">{data.actionRequests.filter((request) => statusFilter === "all" || request.status === statusFilter).map((request) => {
         const payload = requestPayload(request.payload);
-        const requestTitle = request.action_type === "create_company" ? t("createCompanyRequest") : request.action_type === "mark_quote_sent" ? t("markQuoteSentRequest") : t("startScrapeRequest");
+        const requestTitle = request.action_type === "create_company" ? t("createCompanyRequest") : request.action_type === "mark_quote_sent" ? t("markQuoteSentRequest") : request.action_type === "start_crm_sync" ? "Start CRM synchronization" : t("startScrapeRequest");
         const summary = request.action_type === "start_maps_scrape"
           ? [payload.query, payload.location].filter(Boolean).join(" · ")
           : String(payload.name || payload.title || "");
