@@ -7,7 +7,7 @@ const flatten = (value, prefix = "") => Object.entries(value).flatMap(([key, chi
   const next = prefix ? `${prefix}.${key}` : key;
   return typeof child === "object" && child !== null ? flatten(child, next) : [[next, child]];
 });
-const placeholders = (value) => [...String(value).matchAll(/\{([a-zA-Z][\w]*)/g)].map((match) => match[1]).sort();
+const placeholders = (value) => [...String(value).matchAll(/\{([a-zA-Z][\w]*)\s*(?:,|\})/g)].map((match) => match[1]).sort();
 
 const files = new Set((await readdir(root)).filter((name) => name.endsWith(".json")).map((name) => name.slice(0, -5)));
 const missingFiles = expectedLocales.filter((locale) => !files.has(locale));

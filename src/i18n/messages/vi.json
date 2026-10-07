@@ -301,7 +301,7 @@
     "emptyActor": "Actor đã hoàn tất nhưng không trả về bản ghi nào.",
     "selectPlacesTitle": "Chọn địa điểm và liên hệ để import",
     "crmSearch": "Tên, địa chỉ, website, SĐT hoặc người",
-    "importSummary": "Sẽ import {places} place · {contacts} contact",
+    "importSummary": "{places, plural, one {Sẽ import # địa điểm} other {Sẽ import # địa điểm}} · {contacts, plural, one {# liên hệ} other {# liên hệ}}",
     "importCrm": "Import vào CRM",
     "existingList": "List có sẵn",
     "newList": "Hoặc tạo list mới",
