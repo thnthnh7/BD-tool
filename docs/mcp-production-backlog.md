@@ -82,12 +82,13 @@ This file tracks the remaining MCP work that cannot be completed entirely in the
 
 ## 8. MCP Registry publication
 
-**Status:** manifest and public legal pages are prepared; namespace authentication and publication remain.
+**Status:** complete for version `1.1.0` on 2026-10-08.
 
 - Privacy, terms, security, contact and acceptable-use URLs are available in the marketing application.
 - `server.json` uses `com.bizcraw/bizcraw` and the permanent Streamable HTTP endpoint.
 - The manifest passed the official Registry validator with `mcp-publisher 1.8.1` on 2026-10-08.
-- Complete DNS or HTTP namespace verification, then publish with `mcp-publisher`.
+- HTTP namespace verification is live at `/.well-known/mcp-registry-auth`.
+- `com.bizcraw/bizcraw` version `1.1.0` is published and active in the production Registry API.
 - Monitor the published listing and repeat validation for material contract releases.
 
 **Done when:** the Registry accepts the server, namespace verification succeeds, the public listing resolves to the production endpoint and a clean client can connect from the listing.
