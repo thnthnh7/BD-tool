@@ -1,24 +1,43 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
+import { CAPABILITY_OPTIONS, MODULE_GROUPS, type PlanFeatureKey } from "@/lib/module-catalog";
 import { formatUsdFromCents } from "@/lib/money";
-import { loadPublicPlans, planDetailHighlights, planIncludedModules } from "@/lib/public-plans";
+import { loadPublicPlans } from "@/lib/public-plans";
 import styles from "@/styles/pricing-page.module.css";
 
 export async function PublicPricingGrid() {
   const plans = await loadPublicPlans();
   if (!plans.length) return <div className={styles.fallback}><h2>Plan details are temporarily unavailable</h2><p>Create a free workspace and review current plan availability inside Bizcraw.</p><Link href="/signup">Create workspace</Link></div>;
 
-  return <div className={styles.grid}>{plans.map((plan) => {
-    const featured = plan.badge.trim().length > 0;
-    return <article key={plan.id} className={featured ? styles.featured : styles.card}>
-      {featured ? <span className={styles.badge}>{plan.badge}</span> : null}
-      <span className={styles.type}>{plan.isFree ? "Free forever" : "For growing teams"}</span>
-      <h2>{plan.name}</h2>
-      <div className={styles.price}>{plan.isFree ? "Free" : plan.usdMonthlyCents == null ? "Contact us" : formatUsdFromCents(plan.usdMonthlyCents)}{!plan.isFree && plan.usdMonthlyCents != null ? <small>/ month</small> : null}</div>
-      <p>{plan.quotas.seats < 0 ? "Unlimited workspace seats." : `${plan.quotas.seats} workspace seat${plan.quotas.seats === 1 ? "" : "s"} included.`}</p>
-      <div className={styles.featureSection}><strong>Plan details</strong><ul>{planDetailHighlights(plan).map((line) => <li key={line}><Check size={16} />{line}</li>)}</ul></div>
-      <div className={styles.featureSection}><strong>Modules included</strong><ul>{planIncludedModules(plan).map((line) => <li key={line}><Check size={16} />{line}</li>)}</ul></div>
-      <Link href={`/signup?plan=${encodeURIComponent(plan.id)}`} className={featured ? styles.primary : styles.secondary}>Choose {plan.name}</Link>
-    </article>;
-  })}</div>;
+  const detailRows = [
+    ["Workspace seats", (plan: (typeof plans)[number]) => plan.quotas.seats < 0 ? "Unlimited" : String(plan.quotas.seats)],
+    ["Quotes / month", (plan: (typeof plans)[number]) => plan.quotas.quotes_per_month < 0 ? "Unlimited" : String(plan.quotas.quotes_per_month)],
+    ["AI briefs / month", (plan: (typeof plans)[number]) => plan.quotas.ai_briefs_per_month < 0 ? "Unlimited" : String(plan.quotas.ai_briefs_per_month)],
+    ["Free trial", (plan: (typeof plans)[number]) => plan.trialDays > 0 ? `${plan.trialDays} days` : "—"],
+  ] as const;
+
+  return <div className={`${styles.tableShell} ${plans.length === 1 ? styles.singlePlanTable : ""}`}><table className={styles.comparison}>
+    <thead><tr><th scope="col"><span>Compare plans</span><small>Limits and included modules</small></th>{plans.map((plan) => {
+      const featured = plan.badge.trim().length > 0;
+      return <th scope="col" key={plan.id} className={featured ? styles.featuredColumn : undefined}>
+        {featured ? <span className={styles.badge}>{plan.badge}</span> : null}
+        <h2>{plan.name}</h2>
+        <div className={styles.price}>{plan.isFree ? "$0" : plan.usdMonthlyCents == null ? "Contact us" : formatUsdFromCents(plan.usdMonthlyCents)}{plan.usdMonthlyCents != null ? <small>/ month</small> : null}</div>
+        <Link href={`/signup?plan=${encodeURIComponent(plan.id)}`} className={featured ? styles.primary : styles.secondary}>Choose {plan.name}</Link>
+      </th>;
+    })}</tr></thead>
+    <tbody>
+      <tr className={styles.groupRow}><th colSpan={plans.length + 1}>Plan details</th></tr>
+      {detailRows.map(([label, value]) => <tr key={label}><th scope="row">{label}</th>{plans.map((plan) => <td key={plan.id}>{value(plan)}</td>)}</tr>)}
+      {MODULE_GROUPS.map((group) => <PricingFeatureRows key={group.id} label={group.label} rows={group.modules} plans={plans} />)}
+      <PricingFeatureRows label="Advanced capabilities" rows={CAPABILITY_OPTIONS} plans={plans} />
+    </tbody>
+  </table></div>;
+}
+
+function PricingFeatureRows({ label, rows, plans }: { label: string; rows: readonly (readonly [PlanFeatureKey, string])[]; plans: Awaited<ReturnType<typeof loadPublicPlans>> }) {
+  return <>
+    <tr className={styles.groupRow}><th colSpan={plans.length + 1}>{label}</th></tr>
+    {rows.map(([key, featureLabel]) => <tr key={key}><th scope="row">{featureLabel}</th>{plans.map((plan) => <td key={plan.id}>{plan.features[key] ? <span className={styles.included}><Check size={17} /><span className={styles.srOnly}>Included</span></span> : <span className={styles.notIncluded}><Minus size={17} /><span className={styles.srOnly}>Not included</span></span>}</td>)}</tr>)}
+  </>;
 }

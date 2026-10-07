@@ -33,6 +33,38 @@ export function planIncludedModules(plan: ParsedPlan) {
   return [...modules, ...capabilities];
 }
 
+export function planFeatureGroups(plan: ParsedPlan) {
+  const groups: Array<{ label: string; items: string[] }> = MODULE_GROUPS.map((group) => ({
+    label: group.label,
+    items: group.modules.filter(([key]) => plan.features[key]).map(([, label]) => String(label)),
+  })).filter((group) => group.items.length > 0);
+  const capabilities = CAPABILITY_OPTIONS.filter(([key]) => plan.features[key]).map(([, label]) => String(label));
+  if (capabilities.length > 0) groups.push({ label: "Advanced", items: capabilities });
+  return groups;
+}
+
+const PRIMARY_FEATURE_ORDER = [
+  "Scraping",
+  "Sources",
+  "Leads",
+  "Companies",
+  "Contacts",
+  "Deals",
+  "Quotes",
+  "AI Agent",
+  "MCP",
+  "Document export",
+] as const;
+
+export function planPrimaryFeatures(plan: ParsedPlan, limit = 5) {
+  const included = planIncludedModules(plan);
+  return [...included].sort((left, right) => {
+    const leftIndex = PRIMARY_FEATURE_ORDER.indexOf(left as (typeof PRIMARY_FEATURE_ORDER)[number]);
+    const rightIndex = PRIMARY_FEATURE_ORDER.indexOf(right as (typeof PRIMARY_FEATURE_ORDER)[number]);
+    return (leftIndex < 0 ? PRIMARY_FEATURE_ORDER.length : leftIndex) - (rightIndex < 0 ? PRIMARY_FEATURE_ORDER.length : rightIndex);
+  }).slice(0, limit);
+}
+
 async function queryPublicPlans(): Promise<PublicPlan[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

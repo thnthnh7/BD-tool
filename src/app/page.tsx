@@ -4,9 +4,10 @@ import Link from "next/link";
 import { ArrowRight, Bot, Building2, Check, CircleCheck, FileSignature, Globe2, Import, ListChecks, LockKeyhole, MessageSquareText, Quote, Search, ShieldCheck, Sparkles, Workflow } from "lucide-react";
 import { LandingMotion } from "@/components/landing-motion";
 import { AppLogo } from "@/components/leadely/app-logo";
+import { PricingFeatureDialog } from "@/components/marketing/pricing-feature-dialog";
 import { crmProviders } from "@/features/crm-integrations/catalog";
 import { formatUsdFromCents } from "@/lib/money";
-import { loadPublicPlans, planDetailHighlights, planIncludedModules } from "@/lib/public-plans";
+import { loadPublicPlans, planDetailHighlights, planFeatureGroups, planIncludedModules, planPrimaryFeatures } from "@/lib/public-plans";
 import classes from "@/styles/landing.module.css";
 
 const siteUrl = "https://bizcraw.com";
@@ -80,7 +81,24 @@ export default async function LandingPage() {
 
     <section className={classes.securitySection}><div><span className={classes.securityIcon}><ShieldCheck size={26}/></span><h2>Your workspace stays within its boundaries.</h2><p>Bizcraw uses workspace-scoped access, role checks and server-side secret handling to keep customer data and connected credentials separated.</p></div><div className={classes.securityPoints}><span><LockKeyhole size={19}/><b>Role-aware access</b><small>Users see and act on what their role allows.</small></span><span><Globe2 size={19}/><b>Workspace isolation</b><small>Records remain associated with the correct organization.</small></span><span><ListChecks size={19}/><b>Reviewable actions</b><small>Agent changes can require approval and leave an audit trail.</small></span></div></section>
 
-    <section id="pricing" className={`${classes.section} ${classes.pricingSection}`}><Heading label="PRICING" title="Start with the workflow you need today." text="Choose a public plan below. You can review plan limits inside the product before upgrading."/><div className={classes.pricingGrid}>{plans.length ? plans.map((plan)=>{ const featured = plan.badge.trim().length > 0; const planHref = `/signup?plan=${encodeURIComponent(plan.id)}`; return <article key={plan.id} className={featured?classes.featuredPlan:classes.planCard}>{featured&&<span className={classes.planBadge}>{plan.badge}</span>}<span className={classes.planType}>{plan.isFree?"Free forever":"For growing teams"}</span><h3>{plan.name}</h3><div className={classes.price}>{plan.isFree?"Free":plan.usdMonthlyCents==null?"—":formatUsdFromCents(plan.usdMonthlyCents)}{!plan.isFree&&plan.usdMonthlyCents!=null&&<small>/ month</small>}</div><p>{plan.quotas.seats < 0 ? "Unlimited seats" : `${plan.quotas.seats} workspace seat${plan.quotas.seats===1?"":"s"} included.`}</p><div className={classes.planFeatureSection}><strong>Plan details</strong><ul>{planDetailHighlights(plan).map((line)=><li key={line}><Check size={16}/> {line}</li>)}</ul></div><div className={classes.planFeatureSection}><strong>Modules included</strong><ul>{planIncludedModules(plan).map((line)=><li key={line}><Check size={16}/> {line}</li>)}</ul></div><Link href={planHref} className={featured?classes.primaryButtonWide:classes.secondaryButtonWide}>Choose {plan.name}</Link></article>}) : <article className={classes.pricingFallback}><span className={classes.planType}>PLANS TEMPORARILY UNAVAILABLE</span><h3>Start with a Bizcraw workspace</h3><p>Current plan details could not be loaded. Create an account to review availability when the connection returns.</p><Link href={startHref} className={classes.primaryButtonWide}>Create account</Link></article>}</div><p style={{textAlign:"center",marginTop:24}}><Link href="/pricing">Compare full plan details</Link></p></section>
+    <section id="pricing" className={`${classes.section} ${classes.pricingSection}`}><Heading label="PRICING" title="Start with the workflow you need today." text="Choose a public plan below. You can review plan limits inside the product before upgrading."/><div className={`${classes.pricingGrid} ${plans.length === 1 ? classes.singlePlanGrid : ""}`}>{plans.length ? plans.map((plan)=>{
+      const featured = plan.badge.trim().length > 0;
+      const planHref = `/signup?plan=${encodeURIComponent(plan.id)}`;
+      const details = planDetailHighlights(plan);
+      const included = planIncludedModules(plan);
+      const primaryFeatures = planPrimaryFeatures(plan);
+      const hiddenCount = Math.max(0, included.length - primaryFeatures.length);
+      return <article key={plan.id} className={featured?classes.featuredPlan:classes.planCard}>
+        {featured&&<span className={classes.planBadge}>{plan.badge}</span>}
+        <span className={classes.planType}>{plan.isFree?"Free forever":"For growing teams"}</span>
+        <h3>{plan.name}</h3>
+        <div className={classes.price}>{plan.isFree?"$0":plan.usdMonthlyCents==null?"Contact us":formatUsdFromCents(plan.usdMonthlyCents)}{plan.usdMonthlyCents!=null&&<small>/ month</small>}</div>
+        <div className={classes.planMetrics}><span>{plan.quotas.seats < 0 ? "Unlimited seats" : `${plan.quotas.seats} seat${plan.quotas.seats===1?"":"s"}`}</span>{details.map((line)=><span key={line}>{line.replace(" per month", "/mo")}</span>)}</div>
+        <div className={classes.planFeatureSection}><strong>Highlights</strong><ul>{primaryFeatures.map((line)=><li key={line}><Check size={16}/> {line}</li>)}</ul></div>
+        {hiddenCount > 0 ? <PricingFeatureDialog planName={plan.name} groups={planFeatureGroups(plan)} hiddenCount={hiddenCount} /> : null}
+        <Link href={planHref} className={featured?classes.primaryButtonWide:classes.secondaryButtonWide}>Choose {plan.name}</Link>
+      </article>;
+    }) : <article className={classes.pricingFallback}><span className={classes.planType}>PLANS TEMPORARILY UNAVAILABLE</span><h3>Start with a Bizcraw workspace</h3><p>Current plan details could not be loaded. Create an account to review availability when the connection returns.</p><Link href={startHref} className={classes.primaryButtonWide}>Create account</Link></article>}</div><p style={{textAlign:"center",marginTop:24}}><Link href="/pricing">Compare full plan details</Link></p></section>
 
     <section className={classes.faqSection}>
       <div className={classes.faqHeading}>
