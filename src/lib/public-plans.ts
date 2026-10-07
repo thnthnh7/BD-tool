@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { parsePlan, type ParsedPlan } from "@/lib/entitlements";
+import { CAPABILITY_OPTIONS, MODULE_GROUPS } from "@/lib/module-catalog";
 
 export type PublicPlan = ParsedPlan & { usdMonthlyCents: number | null };
 
@@ -8,21 +9,28 @@ function quotaLabel(limit: number, counted: string, unlimited: string) {
   return limit < 0 ? unlimited : counted;
 }
 
-export function planHighlights(plan: ParsedPlan) {
-  const lines = [
+export function planDetailHighlights(plan: ParsedPlan) {
+  const lines: string[] = [];
+  if (plan.trialDays > 0) lines.push(`${plan.trialDays}-day free trial`);
+  lines.push(
     quotaLabel(plan.quotas.quotes_per_month, `${plan.quotas.quotes_per_month} quotes per month`, "Unlimited quotes"),
-    quotaLabel(plan.quotas.ai_briefs_per_month, `${plan.quotas.ai_briefs_per_month} AI actions per month`, "Unlimited AI actions"),
-  ];
-  const features: Array<[boolean, string]> = [
-    [plan.features.lead_scrape, "Lead scraping"],
-    [plan.features.byok_ai, "Bring your own AI key"],
-    [plan.features.export_docx, "Document export"],
-    [plan.features.contracts, "Contracts"],
-    [plan.features.custom_branding, "Custom branding"],
-    [plan.features.mcp_access, "MCP access"],
-  ];
-  for (const [enabled, label] of features) if (enabled) lines.push(label);
+    quotaLabel(plan.quotas.ai_briefs_per_month, `${plan.quotas.ai_briefs_per_month} AI briefs per month`, "Unlimited AI briefs"),
+  );
   return lines;
+}
+
+export function planIncludedModules(plan: ParsedPlan) {
+  const modules: string[] = [];
+  for (const group of MODULE_GROUPS) {
+    for (const [key, label] of group.modules) {
+      if (plan.features[key]) modules.push(label);
+    }
+  }
+  const capabilities: string[] = [];
+  for (const [key, label] of CAPABILITY_OPTIONS) {
+    if (plan.features[key]) capabilities.push(label);
+  }
+  return [...modules, ...capabilities];
 }
 
 async function queryPublicPlans(): Promise<PublicPlan[]> {

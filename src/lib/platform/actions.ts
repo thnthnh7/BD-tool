@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requirePlatform } from "@/lib/auth/session";
@@ -70,6 +70,7 @@ export async function updatePlanAction(formData: FormData) {
   revalidatePath("/app/platform/plans");
   revalidatePath("/pricing");
   revalidatePath("/");
+  updateTag("public-plans");
   return { ok: true as const };
 }
 
@@ -147,6 +148,7 @@ export async function updateProviderPricesAction(formData: FormData) {
   revalidatePath("/app/billing");
   revalidatePath("/pricing");
   revalidatePath("/");
+  updateTag("public-plans");
   return { ok: true as const };
 }
 
@@ -220,6 +222,7 @@ export async function createPlanAction(formData: FormData) {
   revalidatePath("/app/platform/plans");
   revalidatePath("/pricing");
   revalidatePath("/");
+  updateTag("public-plans");
   redirect(`/app/platform/plans?plan=${plan.id}`);
 }
 
@@ -241,6 +244,7 @@ export async function deletePlanAction(formData: FormData) {
   revalidatePath("/app/platform/plans");
   revalidatePath("/pricing");
   revalidatePath("/");
+  updateTag("public-plans");
   redirect("/app/platform/plans");
 }
 
