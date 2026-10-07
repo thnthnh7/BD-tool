@@ -155,6 +155,24 @@ export const tutorialChapters: TutorialChapter[] = [
     ],
   },
   {
+    id: "mcp",
+    number: 14,
+    title: "Connect an AI client",
+    description: "Use Bizcraw tools safely from ChatGPT and other MCP clients.",
+    duration: "6 min",
+    feature: "mcp_access",
+    roles: ["owner", "admin"],
+    steps: [
+      { id: "overview", title: "Understand the MCP workspace", body: "MCP lets an approved AI client use Bizcraw tools on behalf of your workspace. Every connection is limited by its scopes, plan access and workspace membership.", path: "/app/mcp", target: "mcp-page" },
+      { id: "oauth", title: "Connect ChatGPT with OAuth", body: "For ChatGPT, keep ChatGPT selected, open its connector settings and enter the Bizcraw server URL. Bizcraw will ask you to sign in, review the requested scopes and authorize this workspace. You do not need to create or paste a token.", path: "/app/mcp", target: "mcp-oauth-setup", triggerTarget: "mcp-client-chatgpt", fallbackTargets: ["mcp-client-guide"] },
+      { id: "server-url", title: "Use the production server URL", body: "Use https://bizcraw.com/api/mcp as the server URL. The client discovers Bizcraw OAuth automatically; never add a different domain or share credentials in chat.", path: "/app/mcp", target: "mcp-server-config", triggerTarget: "mcp-client-chatgpt", fallbackTargets: ["mcp-client-guide"] },
+      { id: "token", title: "Connect clients that require a token", body: "For Claude, Cursor, Codex or another client that cannot complete OAuth, create a named connection with the shortest practical expiry and only the scopes it needs. Copy the token immediately because Bizcraw stores only its hash.", path: "/app/mcp", target: "mcp-token-form", fallbackTargets: ["mcp-connections"] },
+      { id: "verify", title: "Verify the connection", body: "Ask the connected client: “What Bizcraw workspace am I connected to?” A successful answer should call get_workspace. Return here and confirm that Last used or Recent calls has updated.", path: "/app/mcp", target: "mcp-verify-connection", triggerTarget: "mcp-client-chatgpt", fallbackTargets: ["mcp-recent-calls"] },
+      { id: "approvals", title: "Approve sensitive actions", body: "Paid or externally meaningful actions create a pending request instead of running immediately. Review the action, workspace context and inputs here before approving or rejecting it.", path: "/app/mcp", target: "mcp-approval-queue" },
+      { id: "audit", title: "Review and revoke access", body: "Recent calls show which tools the AI client used and whether they succeeded. Rotate a token after moving it to another device, and revoke any connection you no longer trust.", path: "/app/mcp", target: "mcp-recent-calls", fallbackTargets: ["mcp-connections"] },
+    ],
+  },
+  {
     id: "agent", number: 15, title: "AI Agent", description: "Use page-aware guidance and review proposed actions safely.", duration: "3 min", feature: "ai_agent",
     steps: [
       { id: "open", title: "Meet your AI Agent", body: "The Agent opens beside your workspace and understands which Bizcraw page you are viewing. Ask for an explanation, a recommendation or help completing the current workflow.", path: "/app", target: "agent-panel", openAgent: true },
@@ -167,7 +185,6 @@ export const tutorialChapters: TutorialChapter[] = [
     ["team", 11, "Team and settings", "Configure workspace identity, access and connected services.", "team", "/app/settings", "Owners and admins manage workspace settings and invitations. Store API keys only in their dedicated secure fields."],
     ["billing", 12, "Billing and plan access", "Understand subscriptions, seats, modules and usage limits.", undefined, "/app/billing", "Bizcraw plan access and Apify usage are separate. Workspace owners manage subscription and billing."],
     ["crm-integrations", 13, "CRM integrations", "Connect supported CRMs and review synchronization boundaries.", "crm_integrations", "/app/crm-integrations", "Review supported objects, mappings and conflict behavior before synchronizing records."],
-    ["mcp", 14, "MCP access", "Let approved AI clients use scoped Bizcraw tools.", "mcp_access", "/app/mcp", "Review requested scopes before authorizing a client and revoke clients that are no longer trusted."],
   ].map(([id, number, title, description, feature, path, body]) => ({
     id: id as string,
     number: number as number,

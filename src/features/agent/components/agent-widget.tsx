@@ -280,6 +280,7 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
                 </div>
                 <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "first-scrape" })}>Guide me through my first scrape</button>
                 <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "apify" })}>Help me connect Apify</button>
+                <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "mcp" })}>Connect an AI client with MCP</button>
                 <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "workspace" })}>Show me how Bizcraw works</button>
                 <button type="button" className={classes.starter} onClick={() => void send(`Explain what I can do on ${pathname}. Give me the best next action and guide me step by step.`)}>What can I do on this page?</button>
               </Stack>

@@ -361,12 +361,21 @@ These chapters are available from the book index and are not required to finish 
 
 ### Chapter 14 — MCP access
 
-- Purpose: let approved external AI clients use scoped Bizcraw tools.
-- Key guidance:
-  - MCP access is an owner/admin capability controlled by plan and platform rollout.
-  - Review requested scopes before authorizing a client.
-  - Revoke clients that are no longer trusted or used.
-- Suggested AI question: **What can an MCP client access in this workspace?**
+- Purpose: connect an approved AI client to scoped Bizcraw tools and verify the connection safely.
+- Availability: workspace owners and admins when the `mcp_access` feature is enabled.
+- Steps:
+  1. **Understand the MCP workspace:** explain scopes, plan access and workspace isolation.
+  2. **Connect ChatGPT with OAuth:** open ChatGPT connector settings, use the Bizcraw server URL, sign in and review the requested scopes. No token copying is required.
+  3. **Use the production server URL:** enter `https://bizcraw.com/api/mcp` and allow the client to discover Bizcraw OAuth.
+  4. **Connect a token-based client:** for Claude, Cursor, Codex or another compatible client, create a named connection with the minimum scopes and a practical expiry. Copy the token once.
+  5. **Verify the connection:** ask **What Bizcraw workspace am I connected to?** and confirm `get_workspace`, Last used and Recent calls.
+  6. **Approve sensitive actions:** review paid or externally meaningful requests before approving or rejecting them.
+  7. **Review and revoke access:** inspect tool-call history, rotate moved tokens and revoke clients that are no longer trusted.
+- Security guidance:
+  - Prefer OAuth when the client supports it.
+  - Never paste a token into an AI conversation.
+  - Give each client only the scopes it needs.
+- Suggested AI question: **Guide me through connecting this AI client to Bizcraw with the safest available method.**
 
 ### Chapter 15 — AI Agent
 

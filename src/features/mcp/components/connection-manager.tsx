@@ -17,14 +17,14 @@ export function McpConnectionManager({ connections, endpoint, enabled }: { conne
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   return (
-    <Stack gap="md">
+    <Stack gap="md" data-tutorial-id="mcp-connection-manager">
       {!enabled ? <Alert color="yellow">{t("paused")}</Alert> : null}
       {token ? (
         <Alert color="teal" title={t("tokenCreated")} icon={<KeyRound size={18} />}>
           <Stack gap="xs"><Text size="sm">{t("copyNow")}</Text><Group wrap="nowrap"><Text ff="monospace" size="sm" style={{ wordBreak: "break-all" }}>{token}</Text><CopyButton value={token}>{({ copied, copy }) => <Button size="compact-sm" variant="light" onClick={copy} leftSection={copied ? <Check size={14} /> : <Copy size={14} />}>{copied ? t("copied") : t("copy")}</Button>}</CopyButton></Group></Stack>
         </Alert>
       ) : null}
-      <Paper withBorder radius="md" p="md">
+      <Paper withBorder radius="md" p="md" data-tutorial-id="mcp-token-form">
         <form onSubmit={async (event) => { event.preventDefault(); const form = event.currentTarget; setPending(true); setError(""); const result = await createMcpConnectionAction(new FormData(form)); setPending(false); if (result.error) return setError(result.error); setToken(result.token || ""); form.reset(); router.refresh(); }}>
           <Stack gap="sm">
             <TextInput name="name" label={t("connectionName")} placeholder={t("connectionPlaceholder")} required maxLength={80} />
@@ -35,8 +35,8 @@ export function McpConnectionManager({ connections, endpoint, enabled }: { conne
           </Stack>
         </form>
       </Paper>
-      <Paper withBorder radius="md" p="md"><Text size="xs" c="dimmed">{t("endpoint")}</Text><Text ff="monospace" size="sm" mt={4}>{endpoint}</Text><Text size="xs" c="dimmed" mt={6}>{t("endpointHelp")}</Text></Paper>
-      <Stack gap="xs">
+      <Paper withBorder radius="md" p="md" data-tutorial-id="mcp-endpoint"><Text size="xs" c="dimmed">{t("endpoint")}</Text><Text ff="monospace" size="sm" mt={4}>{endpoint}</Text><Text size="xs" c="dimmed" mt={6}>{t("endpointHelp")}</Text></Paper>
+      <Stack gap="xs" data-tutorial-id="mcp-connection-list">
         {connections.map((connection) => <Paper key={connection.id} withBorder radius="md" p="sm"><Group justify="space-between" align="center"><div><Group gap="xs"><Text fw={600} size="sm">{connection.name}</Text><Text size="xs" c={connection.display_status === "active" ? "teal" : connection.display_status === "expired" ? "orange" : "dimmed"}>{connection.display_status}</Text></Group><Text size="xs" c="dimmed">{connection.token_prefix} · {connection.scopes.join(", ")}</Text><Text size="xs" c="dimmed">{t("lastUsed", { value: connection.last_used_at ? new Date(connection.last_used_at).toLocaleString() : t("never") })} · {t("expires", { value: connection.expires_at ? new Date(connection.expires_at).toLocaleDateString() : t("never") })}</Text></div><Group gap="xs"><Button size="compact-sm" variant="subtle" onClick={async () => { const result = await rotateMcpConnectionAction(connection.id); if (result.error) return setError(result.error); setToken(result.token || ""); router.refresh(); }}>{t("rotate")}</Button>{connection.status === "active" ? <Button size="compact-sm" variant="subtle" color="red" onClick={async () => { await revokeMcpConnectionAction(connection.id); router.refresh(); }}>{t("revoke")}</Button> : null}</Group></Group></Paper>)}
         {!connections.length ? <Text size="sm" c="dimmed">{t("noConnections")}</Text> : null}
       </Stack>
