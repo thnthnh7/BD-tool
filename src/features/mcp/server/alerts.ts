@@ -2,6 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mcpAlertFingerprint, shouldSuppressMcpAlert } from "@/features/mcp/server/alert-policy";
+import { detectMcpAlertWebhookProvider, formatMcpAlertWebhookBody, type McpHealthAlertPayload } from "@/features/mcp/server/alert-webhook";
 
 export async function evaluateAndSendMcpHealthAlert() {
   const admin = createAdminClient();
@@ -44,10 +45,12 @@ export async function evaluateAndSendMcpHealthAlert() {
   if (claimError) throw new Error(claimError.message);
   if (!claimed) return { status: "attention" as const, issues, metrics, delivery: "suppressed" as const };
   try {
+    const payload: McpHealthAlertPayload = { event: "mcp.health.alert", severity: "warning", occurredAt: new Date().toISOString(), issues, metrics };
+    const provider = detectMcpAlertWebhookProvider(webhookUrl, process.env.MCP_ALERT_WEBHOOK_PROVIDER);
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event: "mcp.health.alert", severity: "warning", occurredAt: new Date().toISOString(), issues, metrics }),
+      body: JSON.stringify(formatMcpAlertWebhookBody(provider, payload)),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });

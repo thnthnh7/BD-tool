@@ -60,10 +60,10 @@ This file tracks the remaining MCP work that cannot be completed entirely in the
 
 ## 6. Production security assessment
 
-**Blocked by:** a deployed production-like environment and an approved security-testing window.
+**Status:** automated production-safe assessment completed on 2026-10-08; manual operational review remains.
 
-- Run a secrets/configuration review against the actual deployment.
-- Test token abuse, OAuth replay, redirect manipulation, dynamic registration abuse, oversized requests, rate-limit bypass and cross-workspace access.
+- Production probes now cover anonymous/random/expired/revoked tokens, OAuth replay and redirect manipulation, oversized requests, scope isolation and cross-workspace access.
+- Runtime dependency audit has no Critical or High advisories. Accepted Moderate transitive findings are documented in `mcp-production-security-assessment.md`.
 - Review service-role access, production logs, backups and incident permissions.
 - Remediate findings and rerun the affected MCP contract/security tests.
 
@@ -82,12 +82,12 @@ This file tracks the remaining MCP work that cannot be completed entirely in the
 
 ## 8. MCP Registry publication
 
-**Blocked by:** permanent domain ownership and public legal/support pages.
+**Status:** manifest and public legal pages are prepared; namespace authentication and publication remain.
 
-- Publish support, privacy, acceptable-use and security-reporting URLs.
-- Choose and verify a Bizcraw-owned reverse-DNS namespace.
-- Generate `server.json` with the current official schema and permanent Streamable HTTP endpoint.
-- Run the official validator and publish with `mcp-publisher`.
+- Privacy, terms, security, contact and acceptable-use URLs are available in the marketing application.
+- `server.json` uses `com.bizcraw/bizcraw` and the permanent Streamable HTTP endpoint.
+- The manifest passed the official Registry validator with `mcp-publisher 1.8.1` on 2026-10-08.
+- Complete DNS or HTTP namespace verification, then publish with `mcp-publisher`.
 - Monitor the published listing and repeat validation for material contract releases.
 
 **Done when:** the Registry accepts the server, namespace verification succeeds, the public listing resolves to the production endpoint and a clean client can connect from the listing.

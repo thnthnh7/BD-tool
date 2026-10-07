@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 function unauthorized(request: Request, message = "Invalid or revoked MCP access token.") {
   const metadata = `${appOrigin(request)}/.well-known/oauth-protected-resource/api/mcp`;
-  return Response.json({ error: message }, { status: 401, headers: { "WWW-Authenticate": `Bearer resource_metadata="${metadata}"` } });
+  return Response.json({ error: message }, { status: 401, headers: { "WWW-Authenticate": `Bearer resource_metadata="${metadata}"`, "Cache-Control": "no-store" } });
 }
 
 async function handle(request: Request) {
