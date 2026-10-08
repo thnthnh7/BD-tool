@@ -1,5 +1,5 @@
 import { requireModule } from "@/lib/auth/session";
-import { Divider, NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
+import { NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { Mail } from "lucide-react";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { EmptyState } from "@/components/leadely/empty-state";
@@ -8,17 +8,20 @@ import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { listCompanies, listContacts } from "@/features/companies/server/actions";
-import { listCommunications, listIntegrations, logCommunicationAction, upsertIntegrationAction } from "@/features/comms/server/actions";
+import { listCommunications, sendCommunicationAction } from "@/features/comms/server/actions";
+import { listEngagementAccounts } from "@/features/comms/server/accounts";
+import { EngagementAccountsPanel } from "@/features/comms/components/engagement-accounts-panel";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 
-export default async function InboxPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+export default async function InboxPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; oauth?: string }> }) {
   await requireModule("inbox");
-  const { q, page } = readListQuery(await searchParams);
-  const [items, companies, contacts, integrations] = await Promise.all([
+  const input = await searchParams;
+  const { q, page } = readListQuery(input);
+  const [items, companies, contacts, accounts] = await Promise.all([
     listCommunications(),
     listCompanies(),
     listContacts(),
-    listIntegrations(),
+    listEngagementAccounts(),
   ]);
   const matched = items.filter((item) =>
     matchesQuery(q, [item.subject, item.direction, item.to_address, item.from_address, (item.companies as { name?: string } | null)?.name]),
@@ -26,51 +29,25 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   const paged = slicePage(matched, page);
   return (
     <Stack gap="md">
-      <PageHeader title="Inbox" subtitle="Gmail/Outlook OAuth sẽ gắn sau. Hiện log email thủ công vào timeline CRM." />
+      <PageHeader title="Inbox" subtitle="Connect Gmail or Outlook, sync conversations and keep CRM timelines current." />
       <SectionPanel title="Mailbox connections">
-        <ActionForm action={upsertIntegrationAction} submitLabel="Save mailbox intent">
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <NativeSelect
-              name="provider"
-              label="Provider"
-              data={[
-                { value: "gmail", label: "Gmail" },
-                { value: "outlook", label: "Outlook" },
-              ]}
-            />
-            <TextInput name="account_email" label="Account email" />
-          </SimpleGrid>
-        </ActionForm>
-        {integrations.length ? (
-          <>
-            <Divider my="md" />
-            <Stack gap={4}>
-              {integrations.map((item) => (
-                <Text key={item.id} size="sm" lineClamp={1}>
-                  {item.provider} · {item.status} · {item.account_email || "no account"}
-                </Text>
-              ))}
-            </Stack>
-          </>
-        ) : null}
+        <EngagementAccountsPanel accounts={accounts} oauthStatus={input.oauth} />
       </SectionPanel>
-      <SectionPanel title="Log communication">
-        <ActionForm action={logCommunicationAction} submitLabel="Log">
+      <SectionPanel title="Compose email">
+        <ActionForm action={sendCommunicationAction} submitLabel="Send email">
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <TextInput name="subject" label="Subject" required style={{ gridColumn: "1 / -1" }} />
             <NativeSelect
-              name="direction"
-              label="Direction"
-              data={[
-                { value: "outbound", label: "Outbound" },
-                { value: "inbound", label: "Inbound" },
-              ]}
+              name="account_id"
+              label="Send from"
+              required
+              data={[{ value: "", label: "Select a connected mailbox" }, ...accounts.filter((item) => item.status === "connected").map((item) => ({ value: item.id, label: `${item.account_email} (${item.provider})` }))]}
             />
-            <TextInput name="to_address" label="To" />
+            <TextInput name="subject" label="Subject" required style={{ gridColumn: "1 / -1" }} />
+            <TextInput name="to_address" type="email" label="To" required />
             <NativeSelect name="company_id" label="Company" data={[{ value: "", label: "—" }, ...companies.map((item) => ({ value: item.id, label: item.name }))]} />
             <NativeSelect name="contact_id" label="Contact" data={[{ value: "", label: "—" }, ...contacts.map((item) => ({ value: item.id, label: item.display_name }))]} />
           </SimpleGrid>
-          <Textarea name="body" label="Body" minRows={4} />
+          <Textarea name="body" label="Body" minRows={6} />
         </ActionForm>
       </SectionPanel>
       <SectionPanel

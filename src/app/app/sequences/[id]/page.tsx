@@ -1,5 +1,5 @@
 import { requireModule } from "@/lib/auth/session";
-import { NativeSelect, Paper, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
+import { Checkbox, Group, NativeSelect, Paper, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { notFound } from "next/navigation";
 import surfaces from "@/styles/leadely-surfaces.module.css";
@@ -8,7 +8,8 @@ import { SectionPanel } from "@/components/leadely/section-panel";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { ListFooter, ListSearch, ListTable } from "@/components/leadely/list-frame";
 import { listCompanies, listContacts } from "@/features/companies/server/actions";
-import { addSequenceStepAction, enrollSequenceAction, getSequence } from "@/features/comms/server/actions";
+import { addSequenceStepAction, configureSequenceAction, enrollSequenceAction, getSequence, updateSequenceEnrollmentAction } from "@/features/comms/server/actions";
+import { listEngagementAccounts } from "@/features/comms/server/accounts";
 import { matchesQuery, readNamedQuery, slicePage } from "@/lib/list-page";
 
 export default async function SequenceDetailPage({
@@ -25,7 +26,7 @@ export default async function SequenceDetailPage({
   const enrollQuery = readNamedQuery(query, "enroll");
   const payload = await getSequence(id);
   if (!payload) notFound();
-  const [companies, contacts] = await Promise.all([listCompanies(), listContacts()]);
+  const [companies, contacts, accounts] = await Promise.all([listCompanies(), listContacts(), listEngagementAccounts()]);
   const sequencePath = `/app/sequences/${payload.sequence.id}`;
   const matchedSteps = payload.steps.filter((step) => matchesQuery(stepsQuery.q, [step.step_type, step.subject, step.body, step.delay_days]));
   const stepPage = slicePage(matchedSteps, stepsQuery.page);
@@ -43,6 +44,28 @@ export default async function SequenceDetailPage({
   return (
     <Stack gap="md">
       <PageHeader back={{ href: "/app/sequences", label: "Sequences" }} title={payload.sequence.name} subtitle={payload.sequence.description} />
+      <SectionPanel title="Delivery settings">
+        <ActionForm action={configureSequenceAction} submitLabel="Save settings">
+          <input type="hidden" name="sequence_id" value={payload.sequence.id} />
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <NativeSelect
+              name="sender_account_id"
+              label="Sending account"
+              defaultValue={payload.sequence.sender_account_id || ""}
+              data={[{ value: "", label: "Select a connected mailbox" }, ...accounts.filter((item) => item.status === "connected").map((item) => ({ value: item.id, label: `${item.account_email} (${item.provider})` }))]}
+            />
+            <NativeSelect
+              name="status"
+              label="Status"
+              defaultValue={payload.sequence.status}
+              data={[{ value: "draft", label: "Draft" }, { value: "active", label: "Active" }, { value: "paused", label: "Paused" }, { value: "archived", label: "Archived" }]}
+            />
+            <TextInput name="timezone" label="Timezone" defaultValue={payload.sequence.timezone} />
+            <TextInput name="daily_send_limit" type="number" min={1} max={500} label="Daily mailbox limit" defaultValue={payload.sequence.daily_send_limit} />
+          </SimpleGrid>
+          <Checkbox name="stop_on_reply" defaultChecked={payload.sequence.stop_on_reply} label="Stop this contact when a reply is detected" />
+        </ActionForm>
+      </SectionPanel>
       <SectionPanel title="Steps">
         <ActionForm action={addSequenceStepAction} submitLabel="Add step">
           <input type="hidden" name="sequence_id" value={payload.sequence.id} />
@@ -57,6 +80,7 @@ export default async function SequenceDetailPage({
               ]}
             />
             <TextInput name="delay_days" type="number" label="Delay days" defaultValue="1" />
+            <TextInput name="delay_minutes" type="number" label="Additional minutes" defaultValue="0" />
             <TextInput name="subject" label="Subject" style={{ gridColumn: "1 / -1" }} />
           </SimpleGrid>
           <Textarea name="body" label="Body" minRows={4} />
@@ -101,6 +125,8 @@ export default async function SequenceDetailPage({
                 <TableTh>Company</TableTh>
                 <TableTh>Contact</TableTh>
                 <TableTh>Status</TableTh>
+                <TableTh>Next run / reason</TableTh>
+                <TableTh>Actions</TableTh>
               </TableTr>
             </TableThead>
             <TableTbody>
@@ -109,6 +135,30 @@ export default async function SequenceDetailPage({
                   <TableTd>{(row.companies as { name?: string } | null)?.name || "—"}</TableTd>
                   <TableTd>{(row.contacts as { display_name?: string } | null)?.display_name || "—"}</TableTd>
                   <TableTd>{row.status}</TableTd>
+                  <TableTd>
+                    <Text size="xs">{row.next_run_at ? new Date(row.next_run_at).toLocaleString() : row.paused_reason || row.last_error || "—"}</Text>
+                  </TableTd>
+                  <TableTd>
+                    <Group gap="xs" wrap="nowrap">
+                      {row.status === "active" ? (
+                        <ActionForm action={updateSequenceEnrollmentAction} submitLabel="Pause" variant="light">
+                          <input type="hidden" name="enrollment_id" value={row.id} />
+                          <input type="hidden" name="status" value="paused" />
+                        </ActionForm>
+                      ) : row.status === "paused" ? (
+                        <ActionForm action={updateSequenceEnrollmentAction} submitLabel="Resume" variant="light">
+                          <input type="hidden" name="enrollment_id" value={row.id} />
+                          <input type="hidden" name="status" value="active" />
+                        </ActionForm>
+                      ) : null}
+                      {row.status === "active" || row.status === "paused" ? (
+                        <ActionForm action={updateSequenceEnrollmentAction} submitLabel="Stop" variant="light">
+                          <input type="hidden" name="enrollment_id" value={row.id} />
+                          <input type="hidden" name="status" value="stopped" />
+                        </ActionForm>
+                      ) : null}
+                    </Group>
+                  </TableTd>
                 </TableTr>
               ))}
             </TableTbody>

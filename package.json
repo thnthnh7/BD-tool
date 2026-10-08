@@ -7,7 +7,7 @@
     "build": "next build",
     "i18n:check": "node scripts/check-i18n.mjs",
     "i18n:translate": "node scripts/translate-messages.mjs",
-    "test:core": "tsx --test src/features/leads/tests/*.test.ts src/features/data-library/tests/*.test.ts",
+    "test:core": "tsx --test src/features/leads/tests/*.test.ts src/features/data-library/tests/*.test.ts src/features/comms/tests/*.test.ts",
     "test:agent": "tsx --test src/features/agent/tests/*.test.ts",
     "test:mcp": "node scripts/mcp-smoke-test.mjs",
     "test:mcp:oauth": "node scripts/mcp-oauth-smoke-test.mjs",

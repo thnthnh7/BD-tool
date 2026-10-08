@@ -1642,6 +1642,107 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["crm_sync_record_failures"]["Row"]>;
         Relationships: Rel;
       };
+      engagement_accounts: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          owner_user_id: string | null;
+          provider: string;
+          provider_account_id: string;
+          account_email: string;
+          display_name: string;
+          status: string;
+          capabilities: string[];
+          granted_scopes: string[];
+          access_token_secret_id: string | null;
+          refresh_token_secret_id: string | null;
+          token_expires_at: string | null;
+          authorized_at: string | null;
+          revoked_at: string | null;
+          last_synced_at: string | null;
+          last_error: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engagement_accounts"]["Row"]> & {
+          workspace_id: string;
+          provider: string;
+          provider_account_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engagement_accounts"]["Row"]>;
+        Relationships: Rel;
+      };
+      engagement_subscriptions: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          account_id: string;
+          resource: string;
+          provider_subscription_id: string | null;
+          provider_resource_id: string | null;
+          sync_cursor: string | null;
+          client_state_hash: string | null;
+          status: string;
+          expires_at: string | null;
+          last_notification_at: string | null;
+          last_synced_at: string | null;
+          last_error: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engagement_subscriptions"]["Row"]> & {
+          workspace_id: string;
+          account_id: string;
+          resource: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["engagement_subscriptions"]["Row"]>;
+        Relationships: Rel;
+      };
+      engagement_account_audit: {
+        Row: { id: string; workspace_id: string; account_id: string | null; actor_user_id: string | null; action: string; detail: Json; created_at: string };
+        Insert: Partial<Database["public"]["Tables"]["engagement_account_audit"]["Row"]> & { workspace_id: string; action: string };
+        Update: Partial<Database["public"]["Tables"]["engagement_account_audit"]["Row"]>;
+        Relationships: Rel;
+      };
+      engagement_webhook_events: {
+        Row: { id: string; provider: string; event_id: string; account_id: string | null; payload: Json; processed_at: string | null; error: string | null; created_at: string };
+        Insert: Partial<Database["public"]["Tables"]["engagement_webhook_events"]["Row"]> & { provider: string; event_id: string };
+        Update: Partial<Database["public"]["Tables"]["engagement_webhook_events"]["Row"]>;
+        Relationships: Rel;
+      };
+      engagement_suppressions: {
+        Row: { id: string; workspace_id: string; email: string; reason: string; source: string; created_at: string };
+        Insert: Partial<Database["public"]["Tables"]["engagement_suppressions"]["Row"]> & { workspace_id: string; email: string; reason: string };
+        Update: Partial<Database["public"]["Tables"]["engagement_suppressions"]["Row"]>;
+        Relationships: Rel;
+      };
+      engagement_jobs: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          sequence_id: string | null;
+          enrollment_id: string | null;
+          step_id: string | null;
+          account_id: string | null;
+          job_type: string;
+          status: string;
+          idempotency_key: string;
+          payload: Json;
+          available_at: string;
+          locked_at: string | null;
+          attempt_count: number;
+          max_attempts: number;
+          last_error: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["engagement_jobs"]["Row"]> & { workspace_id: string; job_type: string; idempotency_key: string };
+        Update: Partial<Database["public"]["Tables"]["engagement_jobs"]["Row"]>;
+        Relationships: Rel;
+      };
       communications: {
         Row: {
           id: string;
@@ -1656,6 +1757,16 @@ export type Database = {
           contact_id: string | null;
           deal_id: string | null;
           lead_id: string | null;
+          engagement_account_id: string | null;
+          provider_message_id: string | null;
+          provider_thread_id: string | null;
+          internet_message_id: string | null;
+          in_reply_to: string | null;
+          cc_addresses: Json;
+          bcc_addresses: Json;
+          snippet: string;
+          delivery_status: string;
+          synced_at: string | null;
           occurred_at: string;
           created_at: string;
         };
@@ -1676,6 +1787,16 @@ export type Database = {
           contact_id: string | null;
           deal_id: string | null;
           owner_user_id: string | null;
+          engagement_account_id: string | null;
+          provider_event_id: string | null;
+          calendar_id: string | null;
+          provider_etag: string | null;
+          timezone: string;
+          attendees: Json;
+          conference_url: string | null;
+          sync_status: string;
+          provider_updated_at: string | null;
+          deleted_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1691,6 +1812,11 @@ export type Database = {
           description: string;
           status: string;
           owner_user_id: string | null;
+          sender_account_id: string | null;
+          timezone: string;
+          sending_window: Json;
+          daily_send_limit: number;
+          stop_on_reply: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -1706,6 +1832,7 @@ export type Database = {
           position: number;
           step_type: string;
           delay_days: number;
+          delay_minutes: number;
           subject: string;
           body: string;
           created_at: string;
@@ -1728,6 +1855,13 @@ export type Database = {
           status: string;
           current_step: number;
           next_run_at: string | null;
+          contact_email: string | null;
+          paused_reason: string | null;
+          last_error: string | null;
+          completed_at: string | null;
+          replied_at: string | null;
+          unsubscribed_at: string | null;
+          updated_at: string;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["sequence_enrollments"]["Row"]> & {
@@ -2177,6 +2311,16 @@ export type Database = {
         Args: { p_connection_id: string };
         Returns: { access_token: string | null; refresh_token: string | null; token_expires_at: string | null }[];
       };
+      store_engagement_account_tokens: {
+        Args: { p_account_id: string; p_access_token: string; p_refresh_token?: string | null; p_expires_at?: string | null; p_scopes?: string[]; p_actor_user_id?: string | null };
+        Returns: undefined;
+      };
+      get_engagement_account_tokens: {
+        Args: { p_account_id: string };
+        Returns: { access_token: string | null; refresh_token: string | null; token_expires_at: string | null }[];
+      };
+      revoke_engagement_account: { Args: { p_account_id: string }; Returns: undefined };
+      claim_engagement_jobs: { Args: { p_limit?: number }; Returns: Database["public"]["Tables"]["engagement_jobs"]["Row"][] };
       revoke_crm_connection: {
         Args: { p_connection_id: string; p_actor_user_id: string };
         Returns: undefined;

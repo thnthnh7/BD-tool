@@ -1,5 +1,5 @@
 import { requireModule } from "@/lib/auth/session";
-import { Divider, NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
+import { NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { CalendarDays } from "lucide-react";
 import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { EmptyState } from "@/components/leadely/empty-state";
@@ -8,56 +8,39 @@ import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { listCompanies, listContacts } from "@/features/companies/server/actions";
-import { createMeetingAction, listMeetings, listIntegrations, upsertIntegrationAction } from "@/features/comms/server/actions";
+import { createMeetingAction, listMeetings } from "@/features/comms/server/actions";
+import { listEngagementAccounts } from "@/features/comms/server/accounts";
+import { EngagementAccountsPanel } from "@/features/comms/components/engagement-accounts-panel";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 
-export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; oauth?: string }> }) {
   await requireModule("calendar");
-  const { q, page } = readListQuery(await searchParams);
-  const [meetings, companies, contacts, integrations] = await Promise.all([
+  const input = await searchParams;
+  const { q, page } = readListQuery(input);
+  const [meetings, companies, contacts, accounts] = await Promise.all([
     listMeetings(),
     listCompanies(),
     listContacts(),
-    listIntegrations(),
+    listEngagementAccounts(),
   ]);
   const matched = meetings.filter((meeting) =>
     matchesQuery(q, [meeting.title, meeting.location, meeting.notes, (meeting.companies as { name?: string } | null)?.name]),
   );
   const paged = slicePage(matched, page);
-  const calendarIntegrations = integrations.filter((item) => item.provider.includes("calendar"));
   return (
     <Stack gap="md">
-      <PageHeader title="Calendar" subtitle="Meeting object workspace-scoped. Sync Google/Microsoft calendar ở bước OAuth sau." />
+      <PageHeader title="Calendar" subtitle="Create meetings and prepare two-way Google or Microsoft calendar sync." />
       <SectionPanel title="Calendar connections">
-        <ActionForm action={upsertIntegrationAction} submitLabel="Save calendar intent">
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <NativeSelect
-              name="provider"
-              label="Calendar"
-              data={[
-                { value: "google_calendar", label: "Google Calendar" },
-                { value: "microsoft_calendar", label: "Microsoft Calendar" },
-              ]}
-            />
-            <TextInput name="account_email" label="Account email" />
-          </SimpleGrid>
-        </ActionForm>
-        {calendarIntegrations.length ? (
-          <>
-            <Divider my="md" />
-            <Stack gap={4}>
-              {calendarIntegrations.map((item) => (
-                <Text key={item.id} size="sm" lineClamp={1}>
-                  {item.provider} · {item.status}
-                </Text>
-              ))}
-            </Stack>
-          </>
-        ) : null}
+        <EngagementAccountsPanel accounts={accounts} oauthStatus={input.oauth} />
       </SectionPanel>
       <SectionPanel title="New meeting">
         <ActionForm action={createMeetingAction} submitLabel="Create meeting">
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <NativeSelect
+              name="account_id"
+              label="Calendar account"
+              data={[{ value: "", label: "Local meeting only" }, ...accounts.filter((item) => item.status === "connected").map((item) => ({ value: item.id, label: `${item.account_email} (${item.provider})` }))]}
+            />
             <TextInput name="title" label="Title" required style={{ gridColumn: "1 / -1" }} />
             <TextInput name="starts_at" type="datetime-local" label="Starts" required />
             <TextInput name="ends_at" type="datetime-local" label="Ends" />
