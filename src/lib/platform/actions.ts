@@ -25,7 +25,9 @@ export async function updatePlanAction(formData: FormData) {
   const nextQuotas = {
     seats: requestedSeats < 0 ? -1 : Math.max(1, requestedSeats),
     quotes_per_month: Number(formData.get("quotes_per_month") || 0),
-    ai_briefs_per_month: Number(formData.get("ai_briefs_per_month") || 0),
+    ai_briefs_per_month: -1,
+    concurrent_scrape_runs: Math.max(1, Number(formData.get("concurrent_scrape_runs") || 1)),
+    raw_data_retention_days: Math.max(1, Number(formData.get("raw_data_retention_days") || 7)),
   };
   const nextFeatures = {
     ...currentFeatures,
@@ -106,11 +108,34 @@ export async function updateProviderPricesAction(formData: FormData) {
   ]);
   if (!plan) return { error: "Gói không tồn tại." };
 
+  const { error: planPriceError } = await supabase.from("plans").update({
+    price_monthly: monthlyAmount,
+    price_yearly: yearlyAmount,
+  }).eq("id", planId);
+  if (planPriceError) return { error: planPriceError.message };
+  for (const [interval, amount] of [["monthly", monthlyAmount], ["yearly", yearlyAmount]] as const) {
+    if (!amount) continue;
+    const { error } = await supabase.from("billing_provider_prices").upsert({
+      plan_id: planId,
+      provider: "sepay",
+      billing_interval: interval,
+      currency: "USD",
+      amount,
+      external_product_id: null,
+      external_price_id: `sepay:${planId}:${interval}`,
+      active: true,
+    }, { onConflict: "plan_id,provider,billing_interval" });
+    if (error) return { error: error.message };
+  }
+
   const configs = await getAllBillingProviderConfigs();
   const configuredProviders = configs
     .filter((config) => (config.provider === "stripe" || config.provider === "paypal") && billingProviderReady(config))
     .map((config) => config.provider as "stripe" | "paypal");
-  if (configuredProviders.length === 0) return { error: "Chưa kết nối Stripe hoặc PayPal." };
+  if (configuredProviders.length === 0) {
+    updateTag("public-plans");
+    return { ok: true as const, message: "Plan price saved. Stripe and PayPal will sync automatically after they are connected." };
+  }
 
   try {
     for (const provider of configuredProviders) {
@@ -209,7 +234,9 @@ export async function createPlanAction(formData: FormData) {
     quotas: {
       seats: 1,
       quotes_per_month: 0,
-      ai_briefs_per_month: 0,
+      ai_briefs_per_month: -1,
+      concurrent_scrape_runs: 1,
+      raw_data_retention_days: 7,
     },
     features: {},
     badge: "",

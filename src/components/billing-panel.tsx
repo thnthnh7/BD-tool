@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/leadely/empty-state";
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { StatusBadge } from "@/components/leadely/status-badge";
-import { createCheckoutInvoice, initGatewayCheckout, initiateSubscriptionCheckout } from "@/lib/billing/client-actions";
+import { createCheckoutInvoice, initGatewayCheckout, initiateSubscriptionCheckout, updateSubscriptionCancellation } from "@/lib/billing/client-actions";
 import { billingMarketOptions, convertUsdCents, formatMinorAmount, marketForLocale } from "@/lib/billing/localization";
 import type { AppLocale } from "@/i18n/config";
 import type { ParsedPlan } from "@/lib/entitlements";
@@ -72,6 +72,7 @@ export function BillingPanel({ plans, providerPrices, usdRates, locale, invoices
   async function checkout(formData: FormData) { setError(""); const result = await createCheckoutInvoice(formData); if (result.error) setError(result.error); }
   async function gateway(invoiceId: string) { const result = await initGatewayCheckout(invoiceId); if (result.error) setError(result.error); if (result.url) window.location.href = result.url; }
   async function subscriptionCheckout(formData: FormData) { setError(""); const result = await initiateSubscriptionCheckout(formData); if (result.error) setError(result.error); if (result.url) window.location.href = result.url; }
+  async function subscriptionControl(formData: FormData) { setError(""); const result = await updateSubscriptionCancellation(formData); if (result.error) setError(result.error); }
 
   const methods: Array<{ id: PaymentMethod; label: string; description: string; enabled: boolean }> = [
     { id: "stripe", label: t("card"), description: t("cardDescription"), enabled: providers.stripe },
@@ -96,6 +97,12 @@ export function BillingPanel({ plans, providerPrices, usdRates, locale, invoices
       <div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("price")}</Text><Text size="sm" fw={650}>{current?.isFree ? t("free") : displayPrice(current?.id, currentCycle) || t("notConfigured")}</Text></div>
       {subscription ? <><div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("method")}</Text><Text size="sm" fw={650}>{subscription.provider?.toUpperCase() || "SEPAY"}</Text></div><div className={classes.summaryItem}><Text size="xs" c="dimmed">{subscription.cancel_at_period_end ? t("ends") : t("renews")}</Text><Text size="sm" fw={650}>{new Date(subscription.current_period_end).toLocaleDateString(locale)}</Text></div></> : null}
       {canPay ? <Button size="xs" variant={editing ? "light" : "filled"} onClick={() => setEditing((value) => !value)}>{editing ? t("close") : t("changePlan")}</Button> : null}
+      {canPay && subscription && ["stripe", "paypal"].includes(subscription.provider || "") ? <form action={subscriptionControl}>
+        <input type="hidden" name="mode" value={subscription.cancel_at_period_end ? "resume" : "cancel"} />
+        <Button type="submit" size="xs" variant="subtle" color={subscription.cancel_at_period_end ? "teal" : "red"} disabled={subscription.provider === "paypal" && subscription.cancel_at_period_end}>
+          {subscription.cancel_at_period_end ? "Resume subscription" : "Cancel at period end"}
+        </Button>
+      </form> : null}
     </div></SectionPanel>
 
     {canPay ? <Collapse expanded={editing}><SectionPanel title={t("choosePlan")}>

@@ -56,3 +56,16 @@ test("subscription snapshots preserve entitlements after the plan changes", () =
   assert.equal(effective.features.contracts, false);
   assert.equal(effective.quotas.seats, 2);
 });
+
+test("legacy AI quotas are always interpreted as unlimited while capacity defaults stay safe", () => {
+  const plan = parsePlan(row({}, { ai_briefs_per_month: 3 }));
+  assert.equal(plan.quotas.ai_briefs_per_month, -1);
+  const effective = applyEntitlementSnapshot(plan, {
+    version: 1,
+    quotas: { ai_briefs_per_month: 1 },
+    features: {},
+  });
+  assert.equal(effective.quotas.ai_briefs_per_month, -1);
+  assert.equal(effective.quotas.concurrent_scrape_runs, 1);
+  assert.equal(effective.quotas.raw_data_retention_days, 7);
+});

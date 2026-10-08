@@ -94,8 +94,9 @@ export default async function PlatformWorkspaceDetailPage({
             </Text>
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               <TextInput name="quotes_per_month" label="Quotes" placeholder="plan default" />
-              <TextInput name="ai_briefs_per_month" label="AI briefs" />
               <TextInput name="seats" label="Seats" />
+              <TextInput name="concurrent_scrape_runs" label="Concurrent scrapes" placeholder="plan default" />
+              <TextInput name="raw_data_retention_days" label="Raw retention days" placeholder="plan default" />
             </SimpleGrid>
             <Group mt="sm">
               <Checkbox name="feature_byok_ai" label="BYOK" value="on" />

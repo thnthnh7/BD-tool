@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadPayPalSubscription, verifyPayPalWebhook } from "@/lib/billing/providers";
-import { beginWebhookEvent, finishWebhookEvent, markInvoicePaid, syncExternalSubscription } from "@/lib/billing/subscription-service";
+import { beginWebhookEvent, finishWebhookEvent, recordProviderPayment, syncExternalSubscription, updatePaymentRefundStatus } from "@/lib/billing/subscription-service";
 
 export const runtime = "nodejs";
 
@@ -11,7 +11,7 @@ function parseCustomId(value?: string) {
   return { workspaceId, planId, interval: interval === "yearly" ? "yearly" as const : "monthly" as const, invoiceId };
 }
 
-async function syncPayPalSubscription(resource: PayPalResource) {
+async function syncPayPalSubscription(resource: PayPalResource, providerEventAt?: string) {
   const meta = parseCustomId(resource.custom_id);
   if (!resource.id || !meta.workspaceId || !meta.planId) return;
   const billing = resource.billing_info as { next_billing_time?: string } | undefined;
@@ -26,11 +26,12 @@ async function syncPayPalSubscription(resource: PayPalResource) {
     providerStatus: String(resource.status || "APPROVAL_PENDING"),
     currentPeriodStart: typeof resource.start_time === "string" ? resource.start_time : undefined,
     currentPeriodEnd: billing?.next_billing_time,
+    providerEventAt,
   });
 }
 
 export async function POST(request: NextRequest) {
-  const event = await request.json() as { id: string; event_type: string; resource: PayPalResource };
+  const event = await request.json() as { id: string; event_type: string; create_time?: string; resource: PayPalResource };
   if (!(await verifyPayPalWebhook(request.headers, event))) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
@@ -45,10 +46,23 @@ export async function POST(request: NextRequest) {
     if (subscriptionId && !event.event_type.startsWith("BILLING.SUBSCRIPTION.")) {
       subscription = await loadPayPalSubscription(subscriptionId) as PayPalResource;
     }
-    if (subscriptionId) await syncPayPalSubscription(subscription);
+    if (subscriptionId) await syncPayPalSubscription(subscription, event.create_time);
     if (event.event_type === "PAYMENT.SALE.COMPLETED" && event.resource.id) {
       const meta = parseCustomId(subscription.custom_id);
-      if (meta.invoiceId) await markInvoicePaid(meta.invoiceId, event.resource.id, "paypal", event);
+      const amount = event.resource.amount as { total?: string; currency?: string } | undefined;
+      await recordProviderPayment({
+        provider: "paypal",
+        externalSubscriptionId: String(subscriptionId),
+        externalInvoiceId: event.resource.id,
+        externalPaymentId: event.resource.id,
+        preferredInvoiceId: meta.invoiceId,
+        raw: event,
+        total: Math.round(Number(amount?.total || 0) * 100),
+        currency: amount?.currency || "USD",
+      });
+    } else if (["PAYMENT.SALE.REFUNDED", "PAYMENT.SALE.REVERSED"].includes(event.event_type)) {
+      const saleId = typeof event.resource.sale_id === "string" ? event.resource.sale_id : event.resource.id;
+      if (saleId) await updatePaymentRefundStatus("paypal", saleId, event.event_type.endsWith("REFUNDED") ? "refunded" : "reversed");
     }
     await finishWebhookEvent("paypal", event.id);
     return NextResponse.json({ received: true });

@@ -17,6 +17,8 @@ const QUOTA_KEYS: (keyof PlanQuotas)[] = [
   "seats",
   "quotes_per_month",
   "ai_briefs_per_month",
+  "concurrent_scrape_runs",
+  "raw_data_retention_days",
 ];
 
 function monthStartIso() {

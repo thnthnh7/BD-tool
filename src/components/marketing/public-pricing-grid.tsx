@@ -12,15 +12,18 @@ export async function PublicPricingGrid() {
   const detailRows = [
     ["Workspace seats", (plan: (typeof plans)[number]) => plan.quotas.seats < 0 ? "Unlimited" : String(plan.quotas.seats)],
     ["Quotes / month", (plan: (typeof plans)[number]) => plan.quotas.quotes_per_month < 0 ? "Unlimited" : String(plan.quotas.quotes_per_month)],
-    ["AI briefs / month", (plan: (typeof plans)[number]) => plan.quotas.ai_briefs_per_month < 0 ? "Unlimited" : String(plan.quotas.ai_briefs_per_month)],
+    ["Installed sources", () => "Unlimited"],
+    ["Scrape runs", () => "Unlimited"],
+    ["AI actions", () => "Unlimited"],
+    ["Concurrent scrapes", (plan: (typeof plans)[number]) => String(plan.quotas.concurrent_scrape_runs)],
+    ["Raw data retention", (plan: (typeof plans)[number]) => `${plan.quotas.raw_data_retention_days} days`],
     ["Free trial", (plan: (typeof plans)[number]) => plan.trialDays > 0 ? `${plan.trialDays} days` : "—"],
   ] as const;
 
   return <div className={`${styles.tableShell} ${plans.length === 1 ? styles.singlePlanTable : ""}`}><table className={styles.comparison}>
     <thead><tr><th scope="col"><span>Compare plans</span><small>Limits and included modules</small></th>{plans.map((plan) => {
-      const featured = plan.badge.trim().length > 0;
+      const featured = plan.slug === "pro";
       return <th scope="col" key={plan.id} className={featured ? styles.featuredColumn : undefined}>
-        {featured ? <span className={styles.badge}>{plan.badge}</span> : null}
         <h2>{plan.name}</h2>
         <div className={styles.price}>{plan.isFree ? "$0" : plan.usdMonthlyCents == null ? "Contact us" : formatUsdFromCents(plan.usdMonthlyCents)}{plan.usdMonthlyCents != null ? <small>/ month</small> : null}</div>
         <Link href={`/signup?plan=${encodeURIComponent(plan.id)}`} className={featured ? styles.primary : styles.secondary}>Choose {plan.name}</Link>

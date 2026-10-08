@@ -169,6 +169,82 @@ export async function loadPayPalSubscription(id: string) {
   return response.json() as Promise<Record<string, unknown>>;
 }
 
+export async function setStripeSubscriptionCancellation(id: string, cancelAtPeriodEnd: boolean) {
+  const config = await getBillingProviderConfig("stripe");
+  const secret = config.credentials.secretKey;
+  if (!config.enabled || !secret) throw new Error("Stripe is not configured.");
+  const body = new URLSearchParams({ cancel_at_period_end: String(cancelAtPeriodEnd) });
+  const response = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(id)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const json = await response.json() as { error?: { message?: string } };
+  if (!response.ok) throw new Error(json.error?.message || "Could not update the Stripe subscription.");
+}
+
+export async function cancelPayPalSubscription(id: string) {
+  const { token, base } = await paypalAccessToken();
+  const response = await fetch(`${base}/v1/billing/subscriptions/${encodeURIComponent(id)}/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ reason: "Customer requested cancellation in Bizcraw." }),
+  });
+  if (!response.ok && response.status !== 204) {
+    const json = await response.json().catch(() => ({})) as { message?: string };
+    throw new Error(json.message || "Could not cancel the PayPal subscription.");
+  }
+}
+
+export async function changeStripeSubscriptionPlan(input: {
+  subscriptionId: string;
+  priceId: string;
+  workspaceId: string;
+  planId: string;
+  interval: "monthly" | "yearly";
+  invoiceId: string;
+}) {
+  const subscription = await loadStripeSubscription(input.subscriptionId) as {
+    items?: { data?: Array<{ id?: string }> };
+  };
+  const itemId = subscription.items?.data?.[0]?.id;
+  if (!itemId) throw new Error("The Stripe subscription has no billable item.");
+  const config = await getBillingProviderConfig("stripe");
+  const secret = config.credentials.secretKey;
+  if (!config.enabled || !secret) throw new Error("Stripe is not configured.");
+  const body = new URLSearchParams();
+  body.set("items[0][id]", itemId);
+  body.set("items[0][price]", input.priceId);
+  body.set("items[0][quantity]", "1");
+  body.set("proration_behavior", "always_invoice");
+  body.set("payment_behavior", "pending_if_incomplete");
+  body.set("cancel_at_period_end", "false");
+  body.set("metadata[workspace_id]", input.workspaceId);
+  body.set("metadata[plan_id]", input.planId);
+  body.set("metadata[interval]", input.interval);
+  body.set("metadata[invoice_id]", input.invoiceId);
+  const response = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(input.subscriptionId)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const json = await response.json() as { error?: { message?: string } };
+  if (!response.ok) throw new Error(json.error?.message || "Could not change the Stripe subscription plan.");
+}
+
+export async function revisePayPalSubscription(input: { subscriptionId: string; externalPlanId: string }) {
+  const { token, base } = await paypalAccessToken();
+  const response = await fetch(`${base}/v1/billing/subscriptions/${encodeURIComponent(input.subscriptionId)}/revise`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ plan_id: input.externalPlanId }),
+  });
+  const json = await response.json() as { links?: Array<{ rel?: string; href?: string }>; message?: string };
+  const approvalUrl = json.links?.find((link) => link.rel === "approve")?.href;
+  if (!response.ok) throw new Error(json.message || "Could not revise the PayPal subscription.");
+  return { url: approvalUrl || `${siteUrl()}/app/billing?result=plan-change-pending` };
+}
+
 export async function syncStripeCatalogPrice(input: {
   planName: string;
   interval: "monthly" | "yearly";

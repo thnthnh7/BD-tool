@@ -5,20 +5,6 @@ import { CAPABILITY_OPTIONS, MODULE_GROUPS } from "@/lib/module-catalog";
 
 export type PublicPlan = ParsedPlan & { usdMonthlyCents: number | null };
 
-function quotaLabel(limit: number, counted: string, unlimited: string) {
-  return limit < 0 ? unlimited : counted;
-}
-
-export function planDetailHighlights(plan: ParsedPlan) {
-  const lines: string[] = [];
-  if (plan.trialDays > 0) lines.push(`${plan.trialDays}-day free trial`);
-  lines.push(
-    quotaLabel(plan.quotas.quotes_per_month, `${plan.quotas.quotes_per_month} quotes per month`, "Unlimited quotes"),
-    quotaLabel(plan.quotas.ai_briefs_per_month, `${plan.quotas.ai_briefs_per_month} AI briefs per month`, "Unlimited AI briefs"),
-  );
-  return lines;
-}
-
 export function planIncludedModules(plan: ParsedPlan) {
   const modules: string[] = [];
   for (const group of MODULE_GROUPS) {
@@ -86,7 +72,7 @@ async function queryPublicPlans(): Promise<PublicPlan[]> {
   }
 }
 
-export const loadPublicPlans = unstable_cache(queryPublicPlans, ["public-marketing-plans-v2"], {
+export const loadPublicPlans = unstable_cache(queryPublicPlans, ["public-marketing-plans-v3"], {
   revalidate: 3600,
   tags: ["public-plans"],
 });

@@ -4,6 +4,7 @@ import {
   createCheckoutInvoice as createInvoice,
   initGatewayCheckout as initializeGateway,
   initiateSubscriptionCheckout as initiateSubscription,
+  updateSubscriptionCancellation as updateCancellation,
 } from "@/lib/billing/actions";
 
 export async function createCheckoutInvoice(formData: FormData) {
@@ -16,4 +17,8 @@ export async function initGatewayCheckout(invoiceId: string) {
 
 export async function initiateSubscriptionCheckout(formData: FormData) {
   return initiateSubscription(formData);
+}
+
+export async function updateSubscriptionCancellation(formData: FormData) {
+  return updateCancellation(formData);
 }

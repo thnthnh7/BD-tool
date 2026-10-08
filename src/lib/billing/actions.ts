@@ -3,14 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, hasServiceRole } from "@/lib/supabase/admin";
 import { effectivePlanStatus } from "@/lib/billing/plan-access";
 import { requireOwner, requireWorkspace } from "@/lib/auth/session";
-import { addMonths, createPaymentCode } from "@/lib/crypto-utils";
+import { createPaymentCode } from "@/lib/crypto-utils";
 import { parsePlan } from "@/lib/entitlements";
 import { gatewaySignature } from "@/lib/billing/sepay";
 import { recordHeartbeat } from "@/lib/platform/heartbeat";
-import { createPayPalSubscription, createStripeSubscriptionCheckout, type BillingProvider } from "@/lib/billing/providers";
+import { cancelPayPalSubscription, changeStripeSubscriptionPlan, createPayPalSubscription, createStripeSubscriptionCheckout, revisePayPalSubscription, setStripeSubscriptionCancellation, type BillingProvider } from "@/lib/billing/providers";
 import { convertUsdCents, loadUsdRates, marketForLocale } from "@/lib/billing/localization";
 import { getBillingProviderConfig } from "@/lib/billing/config";
 import { reconcileExternalSubscriptions } from "@/lib/billing/subscription-service";
+import { syncDefaultBillingCatalog } from "@/lib/billing/catalog-sync";
 
 export async function createCheckoutInvoice(formData: FormData) {
   const context = await requireOwner();
@@ -31,7 +32,10 @@ export async function createCheckoutInvoice(formData: FormData) {
     .eq("plan_id", plan.id).eq("billing_interval", interval).eq("currency", "USD").eq("active", true).limit(1).maybeSingle();
   if (!usdPrice?.amount) return { error: "Chưa cấu hình giá USD cho gói này." };
   const amount = convertUsdCents(usdPrice.amount, "VND", await loadUsdRates());
-  const { data: sub } = await supabase.from("subscriptions").select("id").eq("workspace_id", context.workspaceId).maybeSingle();
+  const { data: sub } = await supabase.from("subscriptions").select("id, provider, status, external_subscription_id").eq("workspace_id", context.workspaceId).maybeSingle();
+  if (sub?.external_subscription_id && ["active", "trialing", "past_due"].includes(sub.status)) {
+    return { error: `Your active subscription is managed by ${sub.provider.toUpperCase()}. Cancel it before switching to bank-transfer billing.` };
+  }
 
   const { data: invoice, error } = await supabase
     .from("invoices")
@@ -138,8 +142,12 @@ export async function initiateSubscriptionCheckout(formData: FormData) {
   const plan = parsePlan(planRow);
   if (plan.isFree) return { error: "Gói Free không cần thanh toán." };
   if (!price) return { error: `Chưa cấu hình giá ${provider === "stripe" ? "Stripe" : "PayPal"} cho gói này.` };
-  if (subscription?.external_subscription_id && subscription.status === "active") {
-    return { error: "Workspace đang có subscription hoạt động. Hãy hủy hoặc đổi gói từ subscription hiện tại." };
+  const changingExisting = Boolean(subscription?.external_subscription_id && ["active", "trialing", "past_due"].includes(subscription.status));
+  if (changingExisting && subscription?.provider !== provider) {
+    return { error: `The active subscription is managed by ${String(subscription?.provider || "another provider").toUpperCase()}. Change or cancel it with the same provider.` };
+  }
+  if (changingExisting && subscription?.plan_id === planId && subscription?.billing_interval === interval) {
+    return { error: "This plan and billing interval are already active." };
   }
 
   const { data: invoice, error } = await supabase.from("invoices").insert({
@@ -162,6 +170,24 @@ export async function initiateSubscriptionCheckout(formData: FormData) {
   if (error || !invoice) return { error: error?.message || "Không tạo được hóa đơn." };
 
   try {
+    if (changingExisting && subscription?.external_subscription_id) {
+      if (provider === "stripe") {
+        await changeStripeSubscriptionPlan({
+          subscriptionId: subscription.external_subscription_id,
+          priceId: price.external_price_id,
+          workspaceId: context.workspaceId,
+          planId,
+          interval,
+          invoiceId: invoice.id,
+        });
+        return { ok: true as const, url: "/app/billing?result=plan-change-pending" };
+      }
+      const revision = await revisePayPalSubscription({
+        subscriptionId: subscription.external_subscription_id,
+        externalPlanId: price.external_price_id,
+      });
+      return { ok: true as const, url: revision.url };
+    }
     const checkout = provider === "stripe"
       ? await createStripeSubscriptionCheckout({
           priceId: price.external_price_id,
@@ -191,6 +217,44 @@ export async function initiateSubscriptionCheckout(formData: FormData) {
     const message = checkoutError instanceof Error ? checkoutError.message : "Không tạo được checkout.";
     await supabase.from("invoices").update({ status: "failed", provider_status: "checkout_failed" }).eq("id", invoice.id);
     return { error: message };
+  }
+}
+
+export async function updateSubscriptionCancellation(formData: FormData) {
+  const context = await requireOwner();
+  const mode = String(formData.get("mode") || "cancel");
+  if (mode !== "cancel" && mode !== "resume") return { error: "Unknown subscription action." };
+  const supabase = await createClient();
+  const { data: subscription } = await supabase.from("subscriptions").select("*")
+    .eq("workspace_id", context.workspaceId).maybeSingle();
+  if (!subscription?.external_subscription_id || !["stripe", "paypal"].includes(subscription.provider)) {
+    return { error: "This subscription is not managed by an automatic billing provider." };
+  }
+  try {
+    if (subscription.provider === "stripe") {
+      await setStripeSubscriptionCancellation(subscription.external_subscription_id, mode === "cancel");
+    } else if (mode === "cancel") {
+      await cancelPayPalSubscription(subscription.external_subscription_id);
+    } else {
+      return { error: "A canceled PayPal subscription cannot be resumed. Start a new checkout instead." };
+    }
+    await supabase.from("subscriptions").update({
+      cancel_at_period_end: mode === "cancel",
+      canceled_at: mode === "cancel" ? new Date().toISOString() : null,
+    }).eq("workspace_id", context.workspaceId);
+    await supabase.from("subscription_events").insert({
+      workspace_id: context.workspaceId,
+      subscription_id: subscription.id,
+      event_type: mode === "cancel" ? "cancellation_requested" : "cancellation_resumed",
+      from_plan_id: subscription.plan_id,
+      to_plan_id: subscription.plan_id,
+      provider: subscription.provider,
+      metadata: { current_period_end: subscription.current_period_end },
+    });
+    revalidatePath("/app/billing");
+    return { ok: true as const };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not update the subscription." };
   }
 }
 
@@ -226,36 +290,15 @@ export async function applySepayPayment(payload: SepayPayload, channel: "vietqr"
     invoice = pending?.find((row) => content.includes(row.payment_code)) ?? null;
   }
   if (!invoice) return { error: "Invoice not found" };
-  if (amount < invoice.amount) return { error: "Amount too low" };
-
-  await admin.from("payments").insert({
-    invoice_id: invoice.id,
-    sepay_id: sepayId,
-    channel,
-    amount,
-    raw: payload as never,
+  const { data, error } = await admin.rpc("apply_sepay_invoice_payment", {
+    p_invoice_id: invoice.id,
+    p_sepay_id: sepayId,
+    p_channel: channel,
+    p_amount: amount,
+    p_raw: payload as never,
   });
-  await admin.from("invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", invoice.id);
-
-  const { data: sub } = await admin.from("subscriptions").select("*").eq("workspace_id", invoice.workspace_id).maybeSingle();
-  const periodEnd = addMonths(new Date(sub?.current_period_end || Date.now()), invoice.billing_interval === "yearly" ? 12 : 1);
-  if (sub) {
-    await admin.from("subscriptions").update({
-      plan_id: invoice.plan_id,
-      status: "active",
-      billing_interval: invoice.billing_interval,
-      current_period_end: periodEnd.toISOString(),
-    }).eq("id", sub.id);
-  }
-  const { data: workspace } = await admin.from("workspaces")
-    .select("plan_deactivated_at")
-    .eq("id", invoice.workspace_id)
-    .maybeSingle();
-  await admin.from("workspaces").update({
-    plan_id: invoice.plan_id,
-    plan_status: effectivePlanStatus("active", workspace?.plan_deactivated_at),
-  }).eq("id", invoice.workspace_id);
-  return { ok: true as const };
+  if (error) return { error: error.message };
+  return data as { ok: true; duplicate?: boolean };
 }
 
 export async function runBillingCron() {
@@ -264,25 +307,51 @@ export async function runBillingCron() {
   const now = new Date();
   let updated = 0;
   try {
-    const { data: subs } = await admin.from("subscriptions").select("*").in("status", ["active", "trialing", "past_due"]);
+    const catalog = await syncDefaultBillingCatalog();
+    // Provider reconciliation runs first so a successful renewal updates the
+    // period before local expiry rules are evaluated.
+    const reconciliation = await reconcileExternalSubscriptions();
+    const { data: freePlan } = await admin.from("plans").select("id").eq("is_free", true).eq("is_public", true).order("sort_order").limit(1).maybeSingle();
+    if (!freePlan) throw new Error("The public Free plan is not configured.");
+    const { data: subs } = await admin.from("subscriptions").select("*").in("status", ["active", "trialing", "past_due", "canceled"]);
     for (const sub of subs || []) {
       const end = new Date(sub.current_period_end);
       const graceEnd = new Date(end);
       graceEnd.setUTCDate(graceEnd.getUTCDate() + sub.grace_days);
-      if (now > graceEnd) {
-        await admin.from("subscriptions").update({ status: "expired" }).eq("id", sub.id);
-        await admin.from("workspaces").update({ plan_status: "expired" }).eq("id", sub.workspace_id);
+      const shouldEnd = sub.cancel_at_period_end && now > end;
+      if (shouldEnd || now > graceEnd) {
+        await admin.from("subscriptions").update({
+          status: shouldEnd ? "canceled" : "expired",
+          grace_ends_at: graceEnd.toISOString(),
+          ended_at: now.toISOString(),
+        }).eq("id", sub.id);
+        const { data: workspace } = await admin.from("workspaces").select("plan_deactivated_at").eq("id", sub.workspace_id).maybeSingle();
+        await admin.from("workspaces").update({
+          plan_id: freePlan.id,
+          plan_status: effectivePlanStatus("active", workspace?.plan_deactivated_at),
+        }).eq("id", sub.workspace_id);
+        await admin.from("subscription_events").insert({
+          workspace_id: sub.workspace_id,
+          subscription_id: sub.id,
+          event_type: shouldEnd ? "cancellation_completed" : "grace_period_expired",
+          from_plan_id: sub.plan_id,
+          to_plan_id: freePlan.id,
+          provider: sub.provider,
+          metadata: { period_end: sub.current_period_end },
+        });
         updated += 1;
       } else if (now > end && sub.status !== "past_due") {
-        await admin.from("subscriptions").update({ status: "past_due" }).eq("id", sub.id);
+        await admin.from("subscriptions").update({ status: "past_due", grace_ends_at: graceEnd.toISOString() }).eq("id", sub.id);
         await admin.from("workspaces").update({ plan_status: "past_due" }).eq("id", sub.workspace_id);
         updated += 1;
       }
     }
-    const reconciliation = await reconcileExternalSubscriptions();
+    const { data: pruned, error: pruneError } = await admin.rpc("prune_expired_scrape_results");
+    if (pruneError) throw pruneError;
     await anonymizeDeletedProfiles(admin);
-    await recordHeartbeat("billing_cron", reconciliation.failed === 0, `updated ${updated}; reconciled ${reconciliation.reconciled}; failed ${reconciliation.failed}`);
-    return { ok: true as const, updated, ...reconciliation };
+    const healthy = reconciliation.failed === 0 && catalog.errors.length === 0;
+    await recordHeartbeat("billing_cron", healthy, `catalog synced ${catalog.synced}; catalog errors ${catalog.errors.length}; updated ${updated}; reconciled ${reconciliation.reconciled}; failed ${reconciliation.failed}; raw rows pruned ${pruned || 0}`);
+    return { ok: true as const, updated, pruned: Number(pruned || 0), catalog, ...reconciliation };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Billing cron failed";
     await recordHeartbeat("billing_cron", false, message);

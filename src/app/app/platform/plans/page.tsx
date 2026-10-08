@@ -65,7 +65,9 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                   <TextInput name="trial_days" label="Trial days" type="number" defaultValue={String(plan.trialDays)} />
                   <TextInput name="seats" label="Seats" type="number" defaultValue={String(plan.quotas.seats)} />
                   <TextInput name="quotes_per_month" label="Quotes / month" type="number" defaultValue={String(plan.quotas.quotes_per_month)} />
-                  <TextInput name="ai_briefs_per_month" label="AI briefs / month" type="number" defaultValue={String(plan.quotas.ai_briefs_per_month)} />
+                  <TextInput label="AI actions" value="Unlimited" disabled />
+                  <TextInput name="concurrent_scrape_runs" label="Concurrent scrape runs" type="number" min={1} defaultValue={String(plan.quotas.concurrent_scrape_runs)} />
+                  <TextInput name="raw_data_retention_days" label="Raw data retention (days)" type="number" min={1} defaultValue={String(plan.quotas.raw_data_retention_days)} />
                 </SimpleGrid>
                 <Text size="sm" fw={700} mt="xs">Modules included</Text>
                 <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">

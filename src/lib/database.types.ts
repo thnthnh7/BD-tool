@@ -908,6 +908,34 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["quotes"]["Insert"]>;
         Relationships: [];
       };
+      subscription_events: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          subscription_id: string | null;
+          event_type: string;
+          from_plan_id: string | null;
+          to_plan_id: string | null;
+          provider: string | null;
+          external_event_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          subscription_id?: string | null;
+          event_type: string;
+          from_plan_id?: string | null;
+          to_plan_id?: string | null;
+          provider?: string | null;
+          external_event_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["subscription_events"]["Insert"]>;
+        Relationships: [];
+      };
       subscriptions: {
         Row: {
           billing_interval: string;
@@ -931,6 +959,12 @@ export type Database = {
           entitlement_snapshot: Json;
           last_reconciled_at: string | null;
           reconciliation_error: string | null;
+          scheduled_plan_id: string | null;
+          scheduled_change_at: string | null;
+          grace_ends_at: string | null;
+          canceled_at: string | null;
+          ended_at: string | null;
+          provider_event_at: string | null;
         };
         Insert: {
           billing_interval?: string;
@@ -954,6 +988,12 @@ export type Database = {
           entitlement_snapshot?: Json;
           last_reconciled_at?: string | null;
           reconciliation_error?: string | null;
+          scheduled_plan_id?: string | null;
+          scheduled_change_at?: string | null;
+          grace_ends_at?: string | null;
+          canceled_at?: string | null;
+          ended_at?: string | null;
+          provider_event_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["subscriptions"]["Insert"]>;
         Relationships: [];
@@ -2145,6 +2185,14 @@ export type Database = {
       consume_quota: {
         Args: { p_workspace_id: string; p_field: string; p_amount: number; p_limit: number };
         Returns: boolean;
+      };
+      apply_sepay_invoice_payment: {
+        Args: { p_invoice_id: string; p_sepay_id: string; p_channel: string; p_amount: number; p_raw: Json };
+        Returns: Json;
+      };
+      prune_expired_scrape_results: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
       };
       workspace_seat_limit: { Args: { p_workspace_id: string }; Returns: number };
       has_workspace_seat: { Args: { p_workspace_id: string; p_user_id?: string }; Returns: boolean };

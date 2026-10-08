@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     channel,
   );
 
-  await recordHeartbeat("sepay_webhook", !result.error, result.error || "ok");
-  return NextResponse.json({ success: !result.error, ...result });
+  const error = "error" in result ? result.error : undefined;
+  await recordHeartbeat("sepay_webhook", !error, error || "ok");
+  return NextResponse.json({ success: !error, ...result });
 }

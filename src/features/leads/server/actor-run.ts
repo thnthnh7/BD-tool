@@ -91,7 +91,9 @@ export async function startActorScrapeWithInput(input: {
     actor_validation_result: { valid: true, validated_at: new Date().toISOString() },
     guide_source_versions: input.guideSourceVersions || {},
   }).select("*").single();
-  if (error?.code === "23505") return { error: "Workspace đang có một lượt scrape chưa xong." };
+  if (error?.message?.includes("scrape_concurrency_limit") || error?.code === "23505") {
+    return { error: `Your plan supports ${context.plan.quotas.concurrent_scrape_runs} concurrent scrape run${context.plan.quotas.concurrent_scrape_runs === 1 ? "" : "s"}. Wait for an active run to finish or cancel it before starting another.` };
+  }
   if (error || !job) return { error: error?.message || "Không tạo được job." };
   const quota = await incrementUsage(supabase, context.workspaceId, "maps_scrapes", 1, -1);
   if (quota.error) {

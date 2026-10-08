@@ -2,6 +2,8 @@ export type PlanQuotas = {
   seats: number;
   quotes_per_month: number;
   ai_briefs_per_month: number;
+  concurrent_scrape_runs: number;
+  raw_data_retention_days: number;
 };
 
 export type PlanFeatures = {
@@ -93,7 +95,12 @@ export function parsePlan(row: {
     quotas: {
       seats: Number(quotas.seats ?? 1),
       quotes_per_month: Number(quotas.quotes_per_month ?? 0),
-      ai_briefs_per_month: Number(quotas.ai_briefs_per_month ?? 0),
+      // AI usage is metered for operations and abuse detection, but is never a
+      // commercial plan quota. Keep the legacy key in snapshots while always
+      // interpreting it as unlimited.
+      ai_briefs_per_month: -1,
+      concurrent_scrape_runs: Math.max(1, Number(quotas.concurrent_scrape_runs ?? 1)),
+      raw_data_retention_days: Math.max(1, Number(quotas.raw_data_retention_days ?? 7)),
     },
     features: {
       sources: feature(features, "sources", true),
@@ -152,7 +159,9 @@ export function applyPlanOverrides(
     quotas: {
       seats: numberOr(quotaPatch.seats, plan.quotas.seats),
       quotes_per_month: numberOr(quotaPatch.quotes_per_month, plan.quotas.quotes_per_month),
-      ai_briefs_per_month: numberOr(quotaPatch.ai_briefs_per_month, plan.quotas.ai_briefs_per_month),
+      ai_briefs_per_month: -1,
+      concurrent_scrape_runs: Math.max(1, numberOr(quotaPatch.concurrent_scrape_runs, plan.quotas.concurrent_scrape_runs)),
+      raw_data_retention_days: Math.max(1, numberOr(quotaPatch.raw_data_retention_days, plan.quotas.raw_data_retention_days)),
     },
     features: {
       ...plan.features,
