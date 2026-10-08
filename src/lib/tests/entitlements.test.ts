@@ -36,6 +36,18 @@ test("explicit module settings override compatibility defaults", () => {
   assert.equal(plan.features.ai_agent, false);
 });
 
+test("custom branding is available on every plan and cannot be disabled by a legacy snapshot", () => {
+  const plan = parsePlan(row({ custom_branding: false }));
+  assert.equal(plan.features.custom_branding, true);
+
+  const effective = applyEntitlementSnapshot(plan, {
+    version: 1,
+    quotas: {},
+    features: { custom_branding: false },
+  });
+  assert.equal(effective.features.custom_branding, true);
+});
+
 test("pending and suspended subscriptions never receive paid access", () => {
   for (const status of ["pending", "suspended", "expired", "canceled"] as const) {
     assert.equal(isPlanLocked(status), true);

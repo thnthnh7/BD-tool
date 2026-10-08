@@ -65,7 +65,6 @@ export const CAPABILITY_OPTIONS = [
   ["byok_ai", "BYOK AI"],
   ["ai_agent", "AI Agent"],
   ["export_docx", "Document export"],
-  ["custom_branding", "Custom branding"],
 ] as const;
 
 export type CapabilityKey = (typeof CAPABILITY_OPTIONS)[number][0];

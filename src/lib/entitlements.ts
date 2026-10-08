@@ -120,7 +120,10 @@ export function parsePlan(row: {
       team: feature(features, "team", false),
       crm_integrations: feature(features, "crm_integrations", false),
       export_docx: Boolean(features.export_docx),
-      custom_branding: Boolean(features.custom_branding),
+      // Branding is available to every workspace and is no longer a paid
+      // plan differentiator. Keep the legacy key in the contract so older
+      // snapshots remain readable.
+      custom_branding: true,
       contracts: Boolean(features.contracts),
       byok_ai: Boolean(features.byok_ai),
       ai_agent: feature(features, "ai_agent", false),
@@ -166,6 +169,7 @@ export function applyPlanOverrides(
     features: {
       ...plan.features,
       ...pickFeatures(featurePatch),
+      custom_branding: true,
     },
   };
 }
@@ -182,7 +186,6 @@ function pickFeatures(patch: Partial<PlanFeatures>): Partial<PlanFeatures> {
     "companies", "contacts", "deals", "tasks", "quotes", "product_modules",
     "inbox", "calendar", "sequences", "team", "crm_integrations",
     "export_docx",
-    "custom_branding",
     "contracts",
     "byok_ai",
     "ai_agent",
