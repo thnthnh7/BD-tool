@@ -388,6 +388,7 @@ export async function saveWorkspaceNoteAction(formData: FormData) {
 export async function updateWorkspaceBillingAction(formData: FormData) {
   await requirePlatform("super_admin");
   const supabase = await createClient();
+  const admin = createAdminClient();
   const workspaceId = String(formData.get("workspaceId") || "");
   const planId = String(formData.get("planId") || "");
   const planStatus = String(formData.get("planStatus") || "");
@@ -410,7 +411,7 @@ export async function updateWorkspaceBillingAction(formData: FormData) {
     billing_interval: interval,
   };
   if (periodEnd) subscriptionPatch.current_period_end = new Date(periodEnd).toISOString();
-  const { error: subError } = await supabase.from("subscriptions").update(subscriptionPatch).eq("workspace_id", workspaceId);
+  const { error: subError } = await admin.from("subscriptions").update(subscriptionPatch).eq("workspace_id", workspaceId);
   if (subError) return { error: subError.message };
   await recordPlatformAudit({
     action: "workspace.billing",
@@ -624,9 +625,9 @@ export async function markInvoicePaidAction(formData: FormData) {
 
 export async function cancelInvoiceAction(formData: FormData) {
   await requirePlatform("super_admin");
-  const supabase = await createClient();
+  const admin = createAdminClient();
   const invoiceId = String(formData.get("id") || "");
-  const { error } = await supabase.from("invoices").update({ status: "cancelled" }).eq("id", invoiceId).eq("status", "pending");
+  const { error } = await admin.from("invoices").update({ status: "cancelled" }).eq("id", invoiceId).eq("status", "pending");
   if (error) return { error: error.message };
   await recordPlatformAudit({ action: "invoice.cancel", entityType: "invoice", entityId: invoiceId });
   revalidatePath("/app/platform/payments");

@@ -5,9 +5,8 @@ import { redirect } from "next/navigation";
 import { isPlatformFlagEnabled } from "@/lib/platform/flags";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, hasServiceRole } from "@/lib/supabase/admin";
-import { addDays, addMonths, createToken, hashToken, slugify } from "@/lib/crypto-utils";
-import { getSessionContext, requireOwner, requireOwnerOrAdmin } from "@/lib/auth/session";
-import { parsePlan } from "@/lib/entitlements";
+import { addDays, createToken, hashToken, slugify } from "@/lib/crypto-utils";
+import { getSessionContext, requireModule, requireOwner, requireOwnerOrAdmin } from "@/lib/auth/session";
 import { defaultSettings } from "@/lib/default-data";
 
 function siteUrl() {
@@ -155,17 +154,6 @@ export async function createWorkspaceAction(formData: FormData) {
   if (!name) return { error: "Tên workspace là bắt buộc." };
 
   const supabase = await createClient();
-  const { data: planRow } = await supabase
-    .from("plans")
-    .select("*")
-    .eq("is_public", true)
-    .eq("is_free", true)
-    .order("sort_order")
-    .limit(1)
-    .maybeSingle();
-  if (!planRow) return { error: "Gói Free mặc định chưa được cấu hình." };
-  const plan = parsePlan(planRow);
-
   let requestedPaidPlanId = "";
   if (requestedPlanId) {
     const { data: requestedPlan } = await supabase
@@ -176,24 +164,13 @@ export async function createWorkspaceAction(formData: FormData) {
     if (requestedPlan?.is_public && !requestedPlan.is_free) requestedPaidPlanId = requestedPlan.id;
   }
 
-  const workspaceId = crypto.randomUUID();
   const slug = slugify(name);
-  const { error: wsError } = await supabase.from("workspaces").insert({
-    id: workspaceId,
-    type,
-    name,
-    slug,
-    plan_id: plan.id,
-    plan_status: plan.isFree ? "active" : plan.trialDays > 0 ? "trialing" : "past_due",
+  const { data: workspaceId, error: wsError } = await supabase.rpc("create_workspace_onboarding", {
+    p_name: name,
+    p_slug: slug,
+    p_type: type,
   });
-  if (wsError) return { error: wsError.message };
-
-  const { error: memberError } = await supabase.from("workspace_members").insert({
-    workspace_id: workspaceId,
-    user_id: context.userId,
-    role: "owner",
-  });
-  if (memberError) return { error: memberError.message };
+  if (wsError || !workspaceId) return { error: wsError?.message || "Không tạo được workspace." };
 
   const settings = type === "company" ? defaultSettings : {
     ...defaultSettings,
@@ -231,34 +208,6 @@ export async function createWorkspaceAction(formData: FormData) {
     default_maintenance_fee: settings.defaultMaintenanceFee,
   });
 
-  const { data: templates } = await supabase.from("module_templates").select("*").order("sort_order");
-  if (templates?.length) {
-    await supabase.from("modules").insert(
-      templates.map((template) => ({
-        workspace_id: workspaceId,
-        name: template.name,
-        category: template.category,
-        description: template.description,
-        suggested_price: template.suggested_price,
-        default_qty: template.default_qty,
-        visual_hint: template.visual_hint,
-      })),
-    );
-  }
-
-  const periodEnd = plan.isFree
-    ? addMonths(new Date(), 120)
-    : addDays(new Date(), Math.max(plan.trialDays, 1));
-
-  await supabase.from("subscriptions").insert({
-    workspace_id: workspaceId,
-    plan_id: plan.id,
-    status: plan.isFree ? "active" : "trialing",
-    billing_interval: "monthly",
-    current_period_start: new Date().toISOString(),
-    current_period_end: periodEnd.toISOString(),
-  });
-
   if (requestedPaidPlanId) redirect(`/app/billing?plan=${encodeURIComponent(requestedPaidPlanId)}`);
   redirect("/app");
 }
@@ -276,6 +225,7 @@ export async function convertToCompanyAction() {
 }
 
 export async function createInviteAction(formData: FormData) {
+  await requireModule("team");
   const context = await getSessionContext();
   if (!context || context.kind !== "workspace" || context.memberRole === "member") {
     return { error: "Không có quyền mời thành viên." };

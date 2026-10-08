@@ -3,7 +3,7 @@ import { jsonrepair } from "jsonrepair";
 import type { AiBriefResult } from "@/lib/ai/types";
 import { completeChat } from "@/features/ai/server/complete";
 import { retrieveKnowledge, type KnowledgeEvidence } from "@/features/knowledge/server/retrieve";
-import { requireWorkspace } from "@/lib/auth/session";
+import { requireModule } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -321,7 +321,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Yêu cầu tối đa ${MAX_REQUIREMENTS_LENGTH.toLocaleString("vi-VN")} ký tự.` }, { status: 400 });
   }
 
-  const context = await requireWorkspace();
+  const context = await requireModule("quotes");
   const supabase = await createClient();
   const { data: moduleRows } = await supabase
     .from("modules")

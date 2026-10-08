@@ -16,6 +16,7 @@ export function QuoteDelivery({
   quote,
   client,
   canShare,
+  canExport,
   copied,
   message,
   onChange,
@@ -25,6 +26,7 @@ export function QuoteDelivery({
   quote: Quote;
   client: Client | null;
   canShare: boolean;
+  canExport: boolean;
   copied: boolean;
   message: string;
   onChange: (next: Partial<Quote>) => void;
@@ -107,17 +109,17 @@ export function QuoteDelivery({
           <Button variant="default" disabled={!canShare} onClick={onShare} leftSection={<Copy size={16} />}>
             {copied ? "Copied" : "Copy link"}
           </Button>
-          <Button variant="default" disabled={!canShare || quote.items.length === 0} onClick={() => exportQuoteToExcel(settings, quote, client)} leftSection={<FileSpreadsheet size={16} />}>
+          {canExport ? <Button variant="default" disabled={!canShare || quote.items.length === 0} onClick={() => exportQuoteToExcel(settings, quote, client)} leftSection={<FileSpreadsheet size={16} />}>
             Excel
-          </Button>
-          <Button variant="default" disabled={!canShare || quote.items.length === 0} onClick={() => exportQuoteToPdf(settings, quote, client)} leftSection={<FileText size={16} />}>
+          </Button> : null}
+          {canExport ? <Button variant="default" disabled={!canShare || quote.items.length === 0} onClick={() => exportQuoteToPdf(settings, quote, client)} leftSection={<FileText size={16} />}>
             PDF
-          </Button>
-          {uploaded ? null : (
+          </Button> : null}
+          {canExport && !uploaded ? (
             <Button variant="default" disabled={!canShare || quote.items.length === 0} onClick={() => void exportQuoteToPptx(settings, quote, client)} leftSection={<Presentation size={16} />}>
               PowerPoint
             </Button>
-          )}
+          ) : null}
           <FileButton accept="application/pdf,.pdf" onChange={uploadPdf}>
             {(props) => (
               <Button variant="default" {...props} loading={pending}>

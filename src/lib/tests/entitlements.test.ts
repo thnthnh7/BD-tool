@@ -20,12 +20,12 @@ function row(features: Record<string, boolean> = {}, quotas: Record<string, numb
   };
 }
 
-test("legacy plans keep existing workspace modules until an admin explicitly disables them", () => {
+test("missing module flags fail closed while the legacy scrape alias remains supported", () => {
   const plan = parsePlan(row({ lead_scrape: true }));
-  assert.equal(plan.features.sources, true);
+  assert.equal(plan.features.sources, false);
   assert.equal(plan.features.scraping, true);
-  assert.equal(plan.features.deals, true);
-  assert.equal(plan.features.ai_agent, true);
+  assert.equal(plan.features.deals, false);
+  assert.equal(plan.features.ai_agent, false);
 });
 
 test("explicit module settings override compatibility defaults", () => {

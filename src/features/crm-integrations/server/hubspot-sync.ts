@@ -131,6 +131,15 @@ export async function processNextHubSpotSyncPage() {
   if (error) throw error;
   const run = data?.[0] as QueueRun | undefined;
   if (!run) return null;
+  const { data: featureEnabled, error: featureError } = await admin.rpc("workspace_feature_enabled", {
+    p_workspace_id: run.workspace_id,
+    p_feature: "crm_integrations",
+  });
+  if (featureError) throw featureError;
+  if (!featureEnabled) {
+    await admin.from("crm_sync_runs").update({ status: "canceled", error_summary: "CRM integrations are not available for this workspace.", completed_at: new Date().toISOString() }).eq("id", run.id);
+    return { runId: run.id, status: "canceled" };
+  }
   if (run.cancel_requested) {
     await admin.from("crm_sync_runs").update({ status: "canceled", completed_at: new Date().toISOString() }).eq("id", run.id);
     return { runId: run.id, status: "canceled" };

@@ -7,7 +7,7 @@ import { ensureLegacyClientForCompany } from "@/features/companies/server/action
 import { getDeal } from "@/features/deals/server/actions";
 
 export default async function NewQuotePage({ searchParams }: { searchParams: Promise<{ dealId?: string; mode?: string }> }) {
-  await requireModule("quotes");
+  const context = await requireModule("quotes");
   const { dealId, mode } = await searchParams;
   const { settings, clients, modules } = await loadWorkspaceAppData(["settings", "clients", "modules"]);
   let resolvedClients = clients;
@@ -30,6 +30,6 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <QuoteEditor settings={settings || defaultSettings} clients={resolvedClients} modules={modules} initialQuote={seed} mode={mode === "upload" ? "upload" : "quote"} />
+    <QuoteEditor settings={settings || defaultSettings} clients={resolvedClients} modules={modules} initialQuote={seed} mode={mode === "upload" ? "upload" : "quote"} canExport={context.plan.features.export_docx} />
   );
 }

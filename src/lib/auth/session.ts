@@ -101,6 +101,15 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     && ["active", "trialing", "past_due"].includes(subscription.status)
     ? subscription.entitlement_snapshot
     : null;
+  const workspaceStatus = workspace.plan_status as PlanStatus;
+  const subscriptionStatus = subscription?.plan_id === workspace.plan_id
+    ? subscription.status as PlanStatus
+    : null;
+  const planStatus = isPlanLocked(workspaceStatus)
+    ? workspaceStatus
+    : !planRow.is_free && (!subscriptionStatus || isPlanLocked(subscriptionStatus))
+      ? subscriptionStatus || "pending"
+      : workspaceStatus;
   return {
     kind: "workspace",
     userId,
@@ -111,7 +120,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     workspaceType: workspace.type as "personal" | "company",
     memberRole: membership.role as MemberRole,
     plan: applyPlanOverrides(applyEntitlementSnapshot(parsePlan(planRow), snapshot), override?.quotas, override?.features),
-    planStatus: workspace.plan_status as PlanStatus,
+    planStatus,
     locked: workspace.locked || Boolean(workspace.archived_at),
   };
 });

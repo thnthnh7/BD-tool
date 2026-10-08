@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOwnerOrAdmin, requireWorkspace } from "@/lib/auth/session";
+import { requireModule, requireOwnerOrAdmin, requireWorkspace } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 export async function loadKnowledgeData() {
+  await requireModule("product_modules");
   const context = await requireWorkspace();
   const supabase = await createClient();
   const [documents, drafts] = await Promise.all([
@@ -15,6 +16,7 @@ export async function loadKnowledgeData() {
 }
 
 export async function reviewModuleDraftAction(draftId: string, decision: "approve" | "reject") {
+  await requireModule("product_modules");
   const context = await requireOwnerOrAdmin();
   const supabase = await createClient();
   const { data: draft } = await supabase
@@ -48,6 +50,7 @@ export async function reviewModuleDraftAction(draftId: string, decision: "approv
 }
 
 export async function deleteKnowledgeDocumentAction(documentId: string) {
+  await requireModule("product_modules");
   const context = await requireOwnerOrAdmin();
   const supabase = await createClient();
   const { data } = await supabase

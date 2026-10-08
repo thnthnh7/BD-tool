@@ -7,6 +7,7 @@ import { withWorkspace } from "@/lib/events";
 import type { Json } from "@/lib/database.types";
 import { CATALOG_CARD_COLUMNS, getCatalogPage } from "./catalog-page";
 import { requireWorkspaceApifyConnection } from "@/features/leads/server/apify-connection";
+import { requireModule } from "@/lib/auth/session";
 const SOURCES_PAGE_SIZE = 200;
 
 export type SourceListFilters = {
@@ -200,6 +201,7 @@ export async function listInstalledReadySources() {
 }
 
 export async function installScrapeSourceAction(formData: FormData) {
+  await requireModule("sources");
   const { context, supabase } = await withWorkspace();
   if (context.memberRole === "member") return { error: "Chỉ owner hoặc admin được cài nguồn." };
   if (!context.plan.features.lead_scrape) return { error: "Gói hiện tại không gồm lead scrape." };
@@ -246,6 +248,7 @@ export async function uninstallScrapeSourceAction(formData: FormData) {
 }
 
 export async function refreshActorContractAction(formData: FormData) {
+  await requireModule("sources");
   const { context, supabase } = await withWorkspace();
   if (context.memberRole === "member") return { error: "Only an owner or admin can refresh an Actor definition." };
   const sourceId = String(formData.get("source_id") || "");

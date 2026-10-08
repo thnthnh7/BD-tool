@@ -100,6 +100,7 @@ export async function updateLeadAction(formData: FormData) {
 
 export async function qualifyLeadAction(formData: FormData) {
   await requireModule("leads"); // qualifyLeadAction
+  await requireModule("deals");
   const { context, supabase } = await withWorkspace();
   const leadId = formText(formData, "lead_id");
   const title = formText(formData, "title");

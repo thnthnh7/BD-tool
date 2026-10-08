@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireOwnerOrAdmin } from "@/lib/auth/session";
+import { requireModule, requireOwnerOrAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { ACCEPTED_EXTENSIONS, chunkText, extractDocumentText, fileExtension, findPricingDrafts } from "@/features/knowledge/server/extract";
 import { embedTexts, vectorLiteral } from "@/features/knowledge/server/embedding";
@@ -18,6 +18,7 @@ function safeName(name: string) {
 }
 
 export async function POST(request: NextRequest) {
+  await requireModule("product_modules");
   const context = await requireOwnerOrAdmin();
   const supabase = await createClient();
   const gate = await admit(supabase, context.workspaceId, "knowledge_upload", 6, 3600);

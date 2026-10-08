@@ -3,6 +3,7 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatform } from "@/lib/auth/session";
 import { createEntitlementSnapshot, parsePlan } from "@/lib/entitlements";
 import { syncLeadGenerationStore } from "@/features/leads/server/sync-store";
@@ -57,7 +58,8 @@ export async function updatePlanAction(formData: FormData) {
   if (entitlementsChanged && String(formData.get("apply_to_existing") || "") === "on") {
     const updatedPlan = parsePlan({ ...current, quotas: nextQuotas, features: nextFeatures });
     const snapshot = createEntitlementSnapshot(updatedPlan, nextVersion);
-    const { error: snapshotError } = await supabase.from("subscriptions").update({
+    const admin = createAdminClient();
+    const { error: snapshotError } = await admin.from("subscriptions").update({
       entitlement_version: nextVersion,
       entitlement_snapshot: snapshot as never,
     }).eq("plan_id", id);

@@ -33,6 +33,16 @@ export async function loadWorkspaceAppData(parts: Array<"settings" | "clients" |
 export async function saveSettingsAction(settings: CompanySettings) {
   const context = await requireOwnerOrAdmin();
   const supabase = await createClient();
+  if (!context.plan.features.custom_branding) {
+    const { data: current } = await supabase
+      .from("workspace_settings")
+      .select("logo_path, accent_color")
+      .eq("workspace_id", context.workspaceId)
+      .single();
+    if (current && (settings.logoPath !== current.logo_path || settings.accentColor !== current.accent_color)) {
+      return { error: "Gói hiện tại không gồm tùy chỉnh thương hiệu." };
+    }
+  }
   const { error } = await supabase
     .from("workspace_settings")
     .update(settingsToUpdate(settings))
@@ -45,6 +55,9 @@ export async function saveSettingsAction(settings: CompanySettings) {
 
 export async function saveWorkspaceLogoAction(dataUrl: string) {
   const context = await requireOwnerOrAdmin();
+  if (!context.plan.features.custom_branding) {
+    return { error: "Gói hiện tại không gồm tùy chỉnh thương hiệu." };
+  }
   const supabase = await createClient();
   let logoPath = "";
   if (dataUrl) {
@@ -123,24 +136,6 @@ export async function saveQuoteAction(quote: Quote) {
   }
 
   const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from("quotes")
-    .select("id")
-    .eq("id", quote.id)
-    .eq("workspace_id", context.workspaceId)
-    .maybeSingle();
-
-  if (!existing) {
-    const quota = await incrementUsage(
-      supabase,
-      context.workspaceId,
-      "quotes_created",
-      1,
-      context.plan.quotas.quotes_per_month,
-    );
-    if (quota.error) return { error: quota.error };
-  }
-
   const row = quoteToRow(quote, context.workspaceId);
   const now = new Date().toISOString();
   if (quote.status === "sent") {
@@ -156,6 +151,9 @@ export async function saveQuoteAction(quote: Quote) {
     row.rejected_at = now;
   }
   const { error } = await supabase.from("quotes").upsert(row, { onConflict: "id" });
+  if (error?.message?.includes("quote_monthly_limit")) {
+    return { error: `Đã đạt giới hạn ${context.plan.quotas.quotes_per_month} báo giá trong tháng.` };
+  }
   if (error) return { error: error.message };
   if (quote.dealId) {
     revalidatePath(`/app/deals/${quote.dealId}`);
@@ -220,12 +218,29 @@ export async function importLocalDataAction(raw: string) {
   } catch {
     return { error: "JSON không hợp lệ." };
   }
+  if ((parsed.clients?.length || 0) > 0 || (parsed.quotes?.length || 0) > 0) {
+    await requireModule("quotes");
+  }
+  if ((parsed.modules?.length || 0) > 0) {
+    await requireModule("product_modules");
+  }
   const supabase = await createClient();
   if (parsed.settings) {
-    await supabase.from("workspace_settings").update(settingsToUpdate(parsed.settings)).eq("workspace_id", context.workspaceId);
+    if (!context.plan.features.custom_branding) {
+      const { data: current } = await supabase
+        .from("workspace_settings")
+        .select("logo_path, accent_color")
+        .eq("workspace_id", context.workspaceId)
+        .single();
+      if (current && (parsed.settings.logoPath !== current.logo_path || parsed.settings.accentColor !== current.accent_color)) {
+        return { error: "Dữ liệu nhập có tùy chỉnh thương hiệu không thuộc gói hiện tại." };
+      }
+    }
+    const { error } = await supabase.from("workspace_settings").update(settingsToUpdate(parsed.settings)).eq("workspace_id", context.workspaceId);
+    if (error) return { error: error.message };
   }
   for (const client of parsed.clients || []) {
-    await supabase.from("clients").upsert({
+    const { error } = await supabase.from("clients").upsert({
       id: client.id,
       workspace_id: context.workspaceId,
       company_name: client.companyName,
@@ -241,9 +256,27 @@ export async function importLocalDataAction(raw: string) {
       notes: client.notes || "",
       created_at: client.createdAt,
     });
+    if (error) return { error: error.message };
+  }
+  for (const serviceModule of parsed.modules || []) {
+    const { error } = await supabase.from("modules").upsert({
+      id: serviceModule.id,
+      workspace_id: context.workspaceId,
+      name: serviceModule.name,
+      description: serviceModule.description,
+      suggested_price: serviceModule.suggestedPrice,
+      category: serviceModule.category,
+      default_qty: serviceModule.defaultQty,
+      visual_hint: serviceModule.visualHint,
+    });
+    if (error) return { error: error.message };
   }
   for (const quote of parsed.quotes || []) {
-    await supabase.from("quotes").upsert(quoteToRow(quote, context.workspaceId));
+    const { error } = await supabase.from("quotes").upsert(quoteToRow(quote, context.workspaceId));
+    if (error?.message?.includes("quote_monthly_limit")) {
+      return { error: `Đã đạt giới hạn ${context.plan.quotas.quotes_per_month} báo giá trong tháng.` };
+    }
+    if (error) return { error: error.message };
   }
   revalidatePath("/app");
   return { ok: true as const };

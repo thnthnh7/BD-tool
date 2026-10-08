@@ -324,15 +324,14 @@ export async function updatePaymentRefundStatus(
 
 export async function beginWebhookEvent(provider: "stripe" | "paypal", eventId: string, eventType: string, payload: unknown) {
   const admin = createAdminClient();
-  const { error } = await admin.from("billing_webhook_events").insert({
-    provider,
-    external_event_id: eventId,
-    event_type: eventType,
-    payload,
-  } as never);
-  if (error?.code === "23505") return false;
+  const { data, error } = await admin.rpc("claim_billing_webhook_event", {
+    p_provider: provider,
+    p_event_id: eventId,
+    p_event_type: eventType,
+    p_payload: payload as never,
+  });
   if (error) throw error;
-  return true;
+  return Boolean(data);
 }
 
 export async function finishWebhookEvent(provider: "stripe" | "paypal", eventId: string, error?: string) {
@@ -340,5 +339,6 @@ export async function finishWebhookEvent(provider: "stripe" | "paypal", eventId:
   await admin.from("billing_webhook_events").update({
     processed_at: error ? null : new Date().toISOString(),
     processing_error: error || null,
+    processing_started_at: null,
   } as never).eq("provider", provider).eq("external_event_id", eventId);
 }

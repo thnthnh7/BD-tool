@@ -81,12 +81,14 @@ export function QuoteEditor({
   modules,
   initialQuote,
   mode = "quote",
+  canExport = false,
 }: {
   settings: CompanySettings;
   clients: Client[];
   modules: ServiceModule[];
   initialQuote?: Partial<Quote> | null;
   mode?: "quote" | "upload";
+  canExport?: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(mode === "upload" ? "4" : "1");
@@ -398,6 +400,7 @@ export function QuoteEditor({
                 quote={quote}
                 client={client}
                 canShare={canSave}
+                canExport={canExport}
                 copied={copied}
                 message={message}
                 onChange={update}

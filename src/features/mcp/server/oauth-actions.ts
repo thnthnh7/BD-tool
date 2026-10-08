@@ -4,10 +4,11 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireWorkspace } from "@/lib/auth/session";
 import { mcpResource, normalizeOAuthScopes, oauthCodeTtlSeconds, opaqueToken, tokenHash, validPkceChallenge } from "@/features/mcp/server/oauth";
+import { isPlanLocked } from "@/lib/entitlements";
 
 export async function approveMcpOAuthAction(formData: FormData) {
   const context = await requireWorkspace();
-  if (!context.plan.features.mcp_access || context.locked || ["expired", "canceled"].includes(context.planStatus)) redirect("/app/billing");
+  if (!context.plan.features.mcp_access || context.locked || isPlanLocked(context.planStatus)) redirect("/app/billing");
   const clientId = String(formData.get("client_id") || "");
   const redirectUri = String(formData.get("redirect_uri") || "");
   const state = String(formData.get("state") || "");

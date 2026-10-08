@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireOwnerOrAdmin } from "@/lib/auth/session";
+import { requireModule, requireOwnerOrAdmin } from "@/lib/auth/session";
 import { contactDisplayName, formInt, formOptionalId, formText } from "@/lib/crm";
 import { recordActivity, withWorkspace } from "@/lib/events";
 import { incrementUsage } from "@/lib/usage";
@@ -77,6 +77,7 @@ export async function getScrapeJob(id: string) {
 }
 
 export async function startMapsScrapeAction(formData: FormData) {
+  await requireModule("scraping");
   if (!(await isPlatformFlagEnabled("scrape_enabled"))) {
     return { error: "Maps scrape đang tạm dừng." };
   }
@@ -184,6 +185,7 @@ export async function startMapsScrapeAction(formData: FormData) {
 }
 
 export async function startActorScrapeAction(formData: FormData) {
+  await requireModule("scraping");
   if (!(await isPlatformFlagEnabled("scrape_enabled"))) {
     return { error: "Scrape đang tạm dừng." };
   }
@@ -305,6 +307,7 @@ export async function cancelScrapeJobAction(formData: FormData) {
 }
 
 export async function refreshScrapeJobAction(formData: FormData) {
+  await requireModule("scraping");
   const { context, supabase } = await withWorkspace();
   const id = formText(formData, "job_id");
   const { data: job } = await supabase
@@ -362,6 +365,7 @@ export async function refreshScrapeJobAction(formData: FormData) {
 }
 
 export async function toggleScrapeSelectionAction(formData: FormData) {
+  await requireModule("scraping");
   const { context, supabase } = await withWorkspace();
   const resultId = formOptionalId(formData, "result_id");
   const personId = formOptionalId(formData, "person_id");
@@ -385,6 +389,7 @@ export async function toggleScrapeSelectionAction(formData: FormData) {
 }
 
 export async function setScrapeBulkSelectionAction(formData: FormData) {
+  await requireModule("scraping");
   const { context, supabase } = await withWorkspace();
   const jobId = formText(formData, "job_id");
   const target = formText(formData, "target");
@@ -436,6 +441,7 @@ export async function setScrapeBulkSelectionAction(formData: FormData) {
 }
 
 export async function importScrapeResultsAction(formData: FormData) {
+  await requireModule("scraping");
   const { context, supabase } = await withWorkspace();
   const jobId = formText(formData, "job_id");
   const listId = formOptionalId(formData, "list_id");

@@ -732,6 +732,8 @@ export type Database = {
           received_at: string;
           processed_at: string | null;
           processing_error: string | null;
+          processing_started_at: string | null;
+          attempt_count: number;
         };
         Insert: {
           id?: string;
@@ -742,6 +744,8 @@ export type Database = {
           received_at?: string;
           processed_at?: string | null;
           processing_error?: string | null;
+          processing_started_at?: string | null;
+          attempt_count?: number;
         };
         Update: Partial<Database["public"]["Tables"]["billing_webhook_events"]["Insert"]>;
         Relationships: [];
@@ -2184,6 +2188,22 @@ export type Database = {
       };
       consume_quota: {
         Args: { p_workspace_id: string; p_field: string; p_amount: number; p_limit: number };
+        Returns: boolean;
+      };
+      workspace_feature_enabled: {
+        Args: { p_workspace_id: string; p_feature: string };
+        Returns: boolean;
+      };
+      workspace_quota_limit: {
+        Args: { p_workspace_id: string; p_quota: string; p_fallback?: number };
+        Returns: number;
+      };
+      create_workspace_onboarding: {
+        Args: { p_name: string; p_slug: string; p_type: string };
+        Returns: string;
+      };
+      claim_billing_webhook_event: {
+        Args: { p_provider: string; p_event_id: string; p_event_type: string; p_payload: Json };
         Returns: boolean;
       };
       apply_sepay_invoice_payment: {

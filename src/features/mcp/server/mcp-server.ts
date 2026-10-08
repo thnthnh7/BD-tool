@@ -15,6 +15,25 @@ type Connection = {
   workspace_id: string;
   created_by: string | null;
   scopes: string[];
+  features: Record<string, boolean>;
+};
+
+const TOOL_FEATURES: Record<string, string> = {
+  search_companies: "companies", get_company: "companies", create_company: "companies", update_company: "companies",
+  search_contacts: "contacts", get_contact: "contacts", create_contact: "contacts", update_contact: "contacts",
+  list_leads: "leads", get_lead: "leads", create_lead: "leads", update_lead: "leads",
+  get_deal: "deals", list_sales_pipelines: "deals", create_deal: "deals", update_deal: "deals",
+  get_task: "tasks", create_task: "tasks", update_task: "tasks",
+  list_scrape_sources: "sources",
+  search_data_library: "data_library", get_data_record: "data_library",
+  search_knowledge: "product_modules",
+  get_quotes: "quotes", create_quote_draft: "quotes", request_mark_quote_sent: "quotes",
+  list_scrape_runs: "scraping", get_scrape_run: "scraping", request_start_maps_scrape: "scraping",
+  list_lead_lists: "lists", get_list: "lists", create_list: "lists", remove_company_from_list: "lists", add_company_to_list: "lists",
+  list_crm_integrations: "crm_integrations", list_crm_sync_runs: "crm_integrations", get_crm_sync_run: "crm_integrations",
+  list_crm_field_mappings: "crm_integrations", list_crm_sync_issues: "crm_integrations", list_crm_record_failures: "crm_integrations",
+  get_crm_sync_readiness: "crm_integrations", resolve_crm_sync_issue: "crm_integrations", retry_crm_record_failure: "crm_integrations",
+  request_start_crm_sync: "crm_integrations", cancel_crm_sync: "crm_integrations", retry_crm_sync: "crm_integrations",
 };
 
 function json(value: unknown) {
@@ -43,6 +62,8 @@ function registerAuditedTool<T extends Record<string, unknown>>(
   handler: (input: T) => Promise<{ data: unknown; count?: number }>,
 ) {
   if (!connection.scopes.includes(definition.scope)) return;
+  const requiredFeature = TOOL_FEATURES[definition.name];
+  if (requiredFeature && connection.features[requiredFeature] !== true) return;
   server.registerTool(definition.name, {
     title: definition.title,
     description: definition.description,

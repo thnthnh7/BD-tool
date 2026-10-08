@@ -23,6 +23,7 @@ export async function createCheckoutInvoice(formData: FormData) {
   if (billingCountry !== "VN") return { error: "SePay is available for Vietnam billing addresses only." };
 
   const supabase = await createClient();
+  const admin = createAdminClient();
   const { data: planRow } = await supabase.from("plans").select("*").eq("id", planId).single();
   if (!planRow) return { error: "Gói không tồn tại." };
   const plan = parsePlan(planRow);
@@ -37,7 +38,7 @@ export async function createCheckoutInvoice(formData: FormData) {
     return { error: `Your active subscription is managed by ${sub.provider.toUpperCase()}. Cancel it before switching to bank-transfer billing.` };
   }
 
-  const { data: invoice, error } = await supabase
+  const { data: invoice, error } = await admin
     .from("invoices")
     .insert({
       workspace_id: context.workspaceId,
@@ -132,6 +133,7 @@ export async function initiateSubscriptionCheckout(formData: FormData) {
   if (provider !== "stripe" && provider !== "paypal") return { error: "Phương thức thanh toán không hợp lệ." };
 
   const supabase = await createClient();
+  const admin = createAdminClient();
   const [{ data: planRow }, { data: price }, { data: subscription }] = await Promise.all([
     supabase.from("plans").select("*").eq("id", planId).single(),
     supabase.from("billing_provider_prices").select("*")
@@ -150,7 +152,7 @@ export async function initiateSubscriptionCheckout(formData: FormData) {
     return { error: "This plan and billing interval are already active." };
   }
 
-  const { data: invoice, error } = await supabase.from("invoices").insert({
+  const { data: invoice, error } = await admin.from("invoices").insert({
     workspace_id: context.workspaceId,
     subscription_id: subscription?.id,
     plan_id: plan.id,
@@ -208,14 +210,14 @@ export async function initiateSubscriptionCheckout(formData: FormData) {
           invoiceId: invoice.id,
           billingCountry,
         });
-    await supabase.from("invoices").update({
+    await admin.from("invoices").update({
       external_invoice_id: checkout.id,
       hosted_invoice_url: checkout.url,
     }).eq("id", invoice.id);
     return { ok: true as const, url: checkout.url };
   } catch (checkoutError) {
     const message = checkoutError instanceof Error ? checkoutError.message : "Không tạo được checkout.";
-    await supabase.from("invoices").update({ status: "failed", provider_status: "checkout_failed" }).eq("id", invoice.id);
+    await admin.from("invoices").update({ status: "failed", provider_status: "checkout_failed" }).eq("id", invoice.id);
     return { error: message };
   }
 }
@@ -225,6 +227,7 @@ export async function updateSubscriptionCancellation(formData: FormData) {
   const mode = String(formData.get("mode") || "cancel");
   if (mode !== "cancel" && mode !== "resume") return { error: "Unknown subscription action." };
   const supabase = await createClient();
+  const admin = createAdminClient();
   const { data: subscription } = await supabase.from("subscriptions").select("*")
     .eq("workspace_id", context.workspaceId).maybeSingle();
   if (!subscription?.external_subscription_id || !["stripe", "paypal"].includes(subscription.provider)) {
@@ -238,11 +241,11 @@ export async function updateSubscriptionCancellation(formData: FormData) {
     } else {
       return { error: "A canceled PayPal subscription cannot be resumed. Start a new checkout instead." };
     }
-    await supabase.from("subscriptions").update({
+    await admin.from("subscriptions").update({
       cancel_at_period_end: mode === "cancel",
       canceled_at: mode === "cancel" ? new Date().toISOString() : null,
     }).eq("workspace_id", context.workspaceId);
-    await supabase.from("subscription_events").insert({
+    await admin.from("subscription_events").insert({
       workspace_id: context.workspaceId,
       subscription_id: subscription.id,
       event_type: mode === "cancel" ? "cancellation_requested" : "cancellation_resumed",

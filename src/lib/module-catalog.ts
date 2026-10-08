@@ -6,7 +6,6 @@ export const MODULE_GROUPS = [
       ["sources", "Sources"],
       ["scraping", "Scraping"],
       ["leads", "Leads"],
-      ["lists", "Lists"],
     ],
   },
   {
@@ -51,7 +50,7 @@ export const MODULE_GROUPS = [
 // These capabilities remain part of the entitlement contract for existing
 // subscriptions and internal services, but do not represent standalone UI
 // modules that customers need to configure.
-export const INTERNAL_MODULE_KEYS = ["data_library"] as const;
+export const INTERNAL_MODULE_KEYS = ["data_library", "lists"] as const;
 
 export type ModuleKey =
   | (typeof MODULE_GROUPS)[number]["modules"][number][0]
