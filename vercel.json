@@ -16,7 +16,7 @@
     },
     {
       "path": "/api/engagement/cron",
-      "schedule": "*/5 * * * *"
+      "schedule": "30 2 * * *"
     }
   ]
 }
