@@ -21,6 +21,7 @@ export function SeoContentPage({ page }: { page: SeoPageContent }) {
     "@context": "https://schema.org",
     "@graph": [
       { "@type": "WebPage", name: page.title, description: page.description, url: `${SITE_URL}${page.path}`, isPartOf: { "@id": `${SITE_URL}/#website` } },
+      ...(page.path.startsWith("/compare/") ? [{ "@type": "Article", headline: page.title.replace(" | Bizcraw", ""), description: page.description, mainEntityOfPage: `${SITE_URL}${page.path}`, dateModified: "2026-10-10", publisher: { "@id": `${SITE_URL}/#organization` } }] : []),
       { "@type": "BreadcrumbList", itemListElement: breadcrumbItems.map((item, index) => ({ "@type": "ListItem", position: index + 1, name: item.name, item: `${SITE_URL}${item.path}` })) },
       faqSchema,
     ],
@@ -62,7 +63,9 @@ export function SeoContentPage({ page }: { page: SeoPageContent }) {
           <div className={styles.faqList}>{page.faq.map(([question, answer]) => <details key={question}><summary>{question}<span>+</span></summary><p>{answer}</p></details>)}</div>
         </section>
 
-        <section className={styles.relatedSection}><div><span className={styles.eyebrow}>EXPLORE NEXT</span><h2>Continue through the workflow.</h2></div><div className={styles.relatedLinks}>{page.related.map((key) => { const related = seoPages[key]; return related ? <Link key={key} href={related.path}><span>{related.eyebrow}</span><b>{related.title.replace(" | Bizcraw", "")}</b><ArrowRight size={18} /></Link> : key === "pricing" ? <Link key={key} href="/pricing"><span>PLANS</span><b>Bizcraw pricing</b><ArrowRight size={18} /></Link> : null; })}</div></section>
+        {page.sources?.length ? <section className={styles.sourceSection}><span className={styles.eyebrow}>SOURCES</span><h2>Reference material used for this comparison.</h2><ul>{page.sources.map((source) => <li key={source.href}><a href={source.href} target="_blank" rel="noreferrer">{source.label}<ArrowRight size={16} /></a></li>)}</ul></section> : null}
+
+        <section className={styles.relatedSection}><div><span className={styles.eyebrow}>EXPLORE NEXT</span><h2>Continue through the workflow.</h2></div><div className={styles.relatedLinks}>{page.related.map((key) => { const related = seoPages[key]; return related ? <Link key={key} href={related.path}><span>{related.eyebrow}</span><b>{related.title.replace(" | Bizcraw", "")}</b><ArrowRight size={18} /></Link> : key === "pricing" ? <Link key={key} href="/pricing"><span>PLANS</span><b>Bizcraw pricing</b><ArrowRight size={18} /></Link> : key === "mcp" ? <Link key={key} href="/mcp"><span>AI CONNECTIVITY</span><b>Bizcraw MCP server</b><ArrowRight size={18} /></Link> : null; })}</div></section>
 
         <section className={styles.cta}><span>START WITH A FREE WORKSPACE</span><h2>Collect better data and keep the next action attached.</h2><p>Build a repeatable path from scraping to sales execution.</p><Link href="/signup" className={styles.lightButton}>Create workspace <ArrowRight size={18} /></Link></section>
       </main>

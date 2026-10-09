@@ -20,6 +20,13 @@
 - [AI sales agent](https://bizcraw.com/features/ai-sales-agent)
 - [Apify integration](https://bizcraw.com/integrations/apify)
 
+## Product comparisons
+
+- [All product comparisons](https://bizcraw.com/compare)
+- [Bizcraw vs Apify](https://bizcraw.com/compare/bizcraw-vs-apify)
+- [Bizcraw vs Clay](https://bizcraw.com/compare/bizcraw-vs-clay)
+- [Bizcraw vs Apollo](https://bizcraw.com/compare/bizcraw-vs-apollo)
+
 ## Trust and policy
 
 - [Security](https://bizcraw.com/security)

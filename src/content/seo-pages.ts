@@ -11,6 +11,7 @@ export type SeoPageContent = {
   useCases: string[];
   faq: Array<[string, string]>;
   related: string[];
+  sources?: Array<{ label: string; href: string }>;
 };
 
 export const seoPages: Record<string, SeoPageContent> = {
@@ -283,6 +284,99 @@ export const seoPages: Record<string, SeoPageContent> = {
       ["Why preserve provenance?", "Source context helps users understand when and where a field was collected and whether it should be refreshed."],
     ],
     related: ["web-scraping", "data-to-crm", "features/scraping"],
+  },
+  "compare/bizcraw-vs-apify": {
+    path: "/compare/bizcraw-vs-apify",
+    eyebrow: "BIZCRAW VS APIFY",
+    title: "Bizcraw vs Apify: Workflow and Platform Comparison | Bizcraw",
+    description: "Compare Bizcraw and Apify by workflow, from running web data collection to reviewing records and continuing sales work.",
+    intro: "Apify provides a platform for building and running Actors that automate web tasks. Bizcraw connects supported scraping sources to review, CRM and commercial workflows. The right choice depends on whether you need scraping infrastructure or a sales workspace around collected data.",
+    image: "/landing/bizcraw-source-library-hero.png",
+    imageAlt: "Supported scraping sources in the Bizcraw source library",
+    benefits: [
+      { title: "Choose Apify for Actor infrastructure", text: "Apify is designed around Actors, runs, storage, schedules and developer integrations for web automation." },
+      { title: "Choose Bizcraw for sales operations", text: "Bizcraw keeps supported source runs beside reviewed companies, contacts, leads, deals, quotes and contracts." },
+      { title: "Use them together", text: "A workspace can connect an Apify account, run supported Actors and continue with selected results inside Bizcraw." },
+    ],
+    steps: [
+      { title: "Define the outcome", text: "Decide whether the main need is programmable web automation or a controlled scrape-to-sales workflow." },
+      { title: "Check source support", text: "Confirm the Actor, fields and inputs required for the collection job." },
+      { title: "Plan review", text: "Decide how people will inspect quality, duplicates and relevance before using results." },
+      { title: "Plan the next action", text: "Choose where approved records will be owned, qualified and progressed." },
+    ],
+    useCases: ["Actor development and web automation with Apify", "Reviewed scraping workflows with Bizcraw", "Apify-powered collection connected to CRM work", "Source, run and cost context beside sales records"],
+    faq: [
+      ["Is Bizcraw an alternative to every Apify capability?", "No. Apify is a broad web automation platform. Bizcraw focuses on connecting supported collection sources to review and sales execution."],
+      ["Can Bizcraw work with Apify?", "Yes. Bizcraw supports connecting an Apify account and using supported Actors from its source library."],
+      ["Which product should a developer choose?", "A developer building custom web automation may prefer Apify directly. A team that needs reviewed results connected to CRM and commercial work may prefer Bizcraw or use both."],
+    ],
+    related: ["integrations/apify", "features/scraping", "compare/bizcraw-vs-clay"],
+    sources: [
+      { label: "Apify documentation: Actors", href: "https://docs.apify.com/actors" },
+      { label: "Apify documentation: Running Actors", href: "https://docs.apify.com/actors/running" },
+    ],
+  },
+  "compare/bizcraw-vs-clay": {
+    path: "/compare/bizcraw-vs-clay",
+    eyebrow: "BIZCRAW VS CLAY",
+    title: "Bizcraw vs Clay: Data Workflow Comparison | Bizcraw",
+    description: "Compare Bizcraw and Clay for prospect research, enrichment, workflow automation and the sales work after data collection.",
+    intro: "Clay combines data enrichment and workflow building around tables and integrations. Bizcraw starts with supported public-data collection, adds result review and keeps approved records connected to CRM and commercial operations.",
+    image: "/landing/bizcraw-crm-companies.png",
+    imageAlt: "Reviewed companies and sales records in Bizcraw",
+    benefits: [
+      { title: "Clay for enrichment workflows", text: "Clay documents enrichment providers and multi-step workflows for adding data and acting on table records." },
+      { title: "Bizcraw for scrape-to-sales work", text: "Bizcraw connects source selection, runs, result review and the workspace records that continue the sales process." },
+      { title: "Compare the operating model", text: "Evaluate who configures data steps, who reviews records and where ownership, deals, quotes and contracts live." },
+    ],
+    steps: [
+      { title: "Identify the data gap", text: "Determine whether you need to discover new public records, enrich known records or both." },
+      { title: "Test a representative sample", text: "Compare field quality, provenance and cost on the same target market." },
+      { title: "Review governance", text: "Check permissions, credential handling and how users approve records or actions." },
+      { title: "Map downstream work", text: "Confirm where qualified records, tasks, deals and commercial documents will be managed." },
+    ],
+    useCases: ["Enriching known records with Clay", "Collecting and reviewing public business data with Bizcraw", "Source-aware prospect qualification", "Connected CRM, quote and contract workflows"],
+    faq: [
+      ["Does Bizcraw replace every Clay integration?", "No. The products have different scopes. Compare the specific data providers and workflow steps required by your team."],
+      ["What is the main workflow difference?", "Clay centers data enrichment and workflow steps around records and tables. Bizcraw connects supported scraping runs to reviewed CRM and sales operations."],
+      ["Can teams use both?", "Yes. Teams can choose specialized tools for enrichment while using Bizcraw for supported collection, review and connected sales work."],
+    ],
+    related: ["guides/web-scraping-vs-data-enrichment", "data-to-crm", "compare/bizcraw-vs-apollo"],
+    sources: [
+      { label: "Clay University: Enrichments overview", href: "https://university.clay.com/docs/clay-enrichments-integration-overview" },
+      { label: "Clay University: Enrichment in workflows", href: "https://university.clay.com/docs/enrichment-in-workflows" },
+    ],
+  },
+  "compare/bizcraw-vs-apollo": {
+    path: "/compare/bizcraw-vs-apollo",
+    eyebrow: "BIZCRAW VS APOLLO",
+    title: "Bizcraw vs Apollo: Prospecting Workflow Comparison | Bizcraw",
+    description: "Compare Bizcraw and Apollo for public-data collection, prospecting, sequences and connected sales operations.",
+    intro: "Apollo documents prospecting and multistep sequences for engaging contacts. Bizcraw focuses on collecting public business data through supported sources, reviewing results and continuing with connected workspace records and commercial work.",
+    image: "/landing/bizcraw-quotes.png",
+    imageAlt: "A commercial quote workflow in Bizcraw",
+    benefits: [
+      { title: "Apollo for prospecting and sequences", text: "Apollo sequences organize scheduled emails, calls and other steps for contacts." },
+      { title: "Bizcraw for source-to-workspace flow", text: "Bizcraw retains source and run context as selected data becomes companies, contacts, leads, deals and commercial records." },
+      { title: "Compare the full journey", text: "Look beyond record counts and evaluate collection, review, ownership, outreach controls and downstream sales work." },
+    ],
+    steps: [
+      { title: "Map acquisition", text: "Document how the team discovers prospects and which public signals matter." },
+      { title: "Map qualification", text: "Decide how users review relevance, duplicates and available fields." },
+      { title: "Map engagement", text: "Identify the channels, approval rules and sequence steps required for outreach." },
+      { title: "Map commercial work", text: "Confirm how deals, tasks, quotes and contracts continue after a prospect responds." },
+    ],
+    useCases: ["Contact engagement sequences with Apollo", "Public business-data collection with Bizcraw", "Reviewed records before CRM activation", "Sales work that continues through quotes and contracts"],
+    faq: [
+      ["Is Bizcraw an email sequencing product?", "Bizcraw includes connected engagement tools, but this comparison should be based on the exact channels and automation your team needs."],
+      ["What does Apollo emphasize?", "Apollo's documentation describes sequences as scheduled steps such as emails, calls and action items used to engage contacts."],
+      ["What does Bizcraw emphasize?", "Bizcraw emphasizes supported public-data collection, result review and the workspace operations that follow an approved record."],
+    ],
+    related: ["web-scraping-for-lead-generation", "data-to-crm", "compare/bizcraw-vs-apify"],
+    sources: [
+      { label: "Apollo Knowledge Base: Sequences overview", href: "https://knowledge.apollo.io/hc/en-us/articles/4409237165837-Sequences-Overview" },
+      { label: "Apollo Knowledge Base: Create a sequence", href: "https://knowledge.apollo.io/hc/en-us/articles/4409231193101-Create-a-Sequence" },
+    ],
   },
 };
 

@@ -59,6 +59,23 @@ export const marketingHubs: Record<string, MarketingHubContent> = {
       { href: "/guides/how-to-build-a-prospect-list-with-web-scraping", label: "STEP-BY-STEP GUIDE", title: "Build a prospect list with web scraping", description: "Define an ideal record, validate a sample and move qualified prospects into an owned follow-up process." },
       { href: "/guides/web-scraping-vs-data-enrichment", label: "COMPARISON", title: "Web scraping vs data enrichment", description: "Understand when to discover new records and when to improve information about companies you already know." },
       { href: "/web-scraping-for-lead-generation", label: "WORKFLOW", title: "Web scraping for lead generation", description: "See how collection, qualification and sales activation fit together inside one workspace." },
+      { href: "/compare/bizcraw-vs-apify", label: "PRODUCT COMPARISON", title: "Bizcraw vs Apify", description: "Compare a web automation platform with a reviewed scrape-to-sales workspace." },
+      { href: "/compare/bizcraw-vs-clay", label: "PRODUCT COMPARISON", title: "Bizcraw vs Clay", description: "Compare enrichment workflows with source-aware collection and connected sales operations." },
+      { href: "/compare/bizcraw-vs-apollo", label: "PRODUCT COMPARISON", title: "Bizcraw vs Apollo", description: "Compare prospecting sequences with reviewed public-data collection and downstream commercial work." },
+    ],
+  },
+  compare: {
+    path: "/compare",
+    eyebrow: "PRODUCT COMPARISONS",
+    title: "Compare Bizcraw with adjacent data and sales platforms.",
+    description: "Compare Bizcraw with Apify, Clay and Apollo using documented workflows, product scope and the work your team needs after data collection.",
+    intro: "These comparisons focus on operating models instead of declaring one universal winner. Start with your required sources, review process, sales workflow and technical ownership.",
+    sectionTitle: "Choose the comparison that matches your workflow",
+    sectionText: "Each page links to the other product's official documentation and explains where the products overlap or serve different needs.",
+    cards: [
+      { href: "/compare/bizcraw-vs-apify", label: "WEB AUTOMATION", title: "Bizcraw vs Apify", description: "Compare Actor infrastructure with a reviewed scrape-to-sales workspace." },
+      { href: "/compare/bizcraw-vs-clay", label: "DATA ENRICHMENT", title: "Bizcraw vs Clay", description: "Compare enrichment workflows with source-aware collection and connected sales operations." },
+      { href: "/compare/bizcraw-vs-apollo", label: "SALES ENGAGEMENT", title: "Bizcraw vs Apollo", description: "Compare prospecting sequences with reviewed public-data collection and downstream commercial work." },
     ],
   },
   integrations: {

@@ -70,6 +70,10 @@ The authoritative current public plans, prices, seats, limits, and included modu
 - https://bizcraw.com/features/scraping
 - https://bizcraw.com/features/ai-sales-agent
 - https://bizcraw.com/integrations/apify
+- https://bizcraw.com/compare
+- https://bizcraw.com/compare/bizcraw-vs-apify
+- https://bizcraw.com/compare/bizcraw-vs-clay
+- https://bizcraw.com/compare/bizcraw-vs-apollo
 - https://bizcraw.com/security
 - https://bizcraw.com/privacy
 - https://bizcraw.com/terms

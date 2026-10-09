@@ -1,0 +1,30 @@
+name: Notify IndexNow
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "public/**"
+      - "src/app/(marketing)/**"
+      - "src/app/pricing/**"
+      - "src/app/sitemap.ts"
+      - "src/components/marketing/**"
+      - "src/content/**"
+      - "src/styles/seo-page.module.css"
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Allow the production deployment to finish
+        run: sleep 120
+      - name: Submit the live sitemap to IndexNow
+        run: node scripts/submit-indexnow.mjs

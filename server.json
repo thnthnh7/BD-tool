@@ -1,14 +1,14 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "com.bizcraw/bizcraw",
+  "name": "io.github.thnthnh7/bizcraw",
   "title": "Bizcraw",
-  "description": "Web scraping and AI sales workspace with scoped CRM, scraping, knowledge and sales workflow tools.",
-  "version": "1.1.0",
-  "websiteUrl": "https://bizcraw.com",
+  "description": "Connect compatible AI clients to a permission-aware Bizcraw sales workspace.",
+  "websiteUrl": "https://bizcraw.com/mcp",
   "repository": {
     "url": "https://github.com/thnthnh7/BD-tool",
     "source": "github"
   },
+  "version": "1.1.0",
   "remotes": [
     {
       "type": "streamable-http",
