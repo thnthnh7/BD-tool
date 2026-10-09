@@ -1,0 +1,37 @@
+# Bizcraw
+
+> Bizcraw is a web scraping and AI sales workspace that helps teams collect public business data, review structured results, move approved records into CRM workflows, and manage the sales work that follows.
+
+## Canonical overview
+
+- [What is Bizcraw?](https://bizcraw.com/what-is-bizcraw): Product definition, audience, workflow, and controls.
+- [Features](https://bizcraw.com/features): Product capabilities.
+- [Solutions](https://bizcraw.com/solutions): Use cases for web scraping, lead generation, and CRM activation.
+- [Pricing](https://bizcraw.com/pricing): Current public plans and included capabilities.
+- [MCP server](https://bizcraw.com/mcp): How compatible AI clients connect to Bizcraw.
+
+## Product documentation
+
+- [Lead scraping platform](https://bizcraw.com/lead-scraping-platform)
+- [Web scraping](https://bizcraw.com/web-scraping)
+- [Web scraping for lead generation](https://bizcraw.com/web-scraping-for-lead-generation)
+- [Google Maps lead scraper](https://bizcraw.com/google-maps-lead-scraper)
+- [Data to CRM](https://bizcraw.com/data-to-crm)
+- [AI sales agent](https://bizcraw.com/features/ai-sales-agent)
+- [Apify integration](https://bizcraw.com/integrations/apify)
+
+## Trust and policy
+
+- [Security](https://bizcraw.com/security)
+- [Privacy](https://bizcraw.com/privacy)
+- [Terms](https://bizcraw.com/terms)
+- [Acceptable use](https://bizcraw.com/acceptable-use)
+- [Contact](https://bizcraw.com/contact)
+
+## Additional context
+
+- [Expanded facts for language models](https://bizcraw.com/llms-full.txt)
+- Product name: Bizcraw
+- Canonical website: https://bizcraw.com
+- MCP endpoint: https://bizcraw.com/api/mcp
+- Primary language of public documentation: English

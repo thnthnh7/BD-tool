@@ -3,10 +3,11 @@ import { marketingIndexPaths } from "@/content/marketing-pages";
 import { seoPageList } from "@/content/seo-pages";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date("2026-10-07");
+  const lastModified = new Date("2026-10-10");
   return [
     { url: "https://bizcraw.com", lastModified, changeFrequency: "weekly", priority: 1, images: ["https://bizcraw.com/landing/bizcraw-source-library-hero.png"] },
     { url: "https://bizcraw.com/pricing", lastModified, changeFrequency: "weekly", priority: 0.8 },
+    { url: "https://bizcraw.com/mcp", lastModified, changeFrequency: "monthly", priority: 0.8 },
     { url: "https://bizcraw.com/lead-scraping-platform", lastModified, changeFrequency: "weekly", priority: 0.9, images: ["https://bizcraw.com/landing/bizcraw-source-library-hero.png"] },
     ...marketingIndexPaths.map((path) => ({
       url: `https://bizcraw.com${path}`,
