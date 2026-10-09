@@ -107,7 +107,7 @@ export async function listAiModelsAction(input: { provider: string; baseUrl: str
   if (apiKey.length < 12 || apiKey.length > 500) return { error: "Paste the full API key first." };
   let baseUrl = "";
   try {
-    baseUrl = await validateAiBaseUrl(input.baseUrl.trim());
+    baseUrl = await validateAiBaseUrl(input.baseUrl.trim(), provider);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "The base URL is not allowed." };
   }

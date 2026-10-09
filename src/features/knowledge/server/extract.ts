@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import mammoth from "mammoth";
 import { extractText as extractPdfText } from "unpdf";
+import { assertSafeZip } from "@/lib/zip-safety";
 
 export const ACCEPTED_EXTENSIONS = ["pdf", "docx", "xlsx", "csv", "txt"] as const;
 
@@ -11,12 +12,15 @@ export function fileExtension(name: string) {
 export async function extractDocumentText(file: File) {
   const extension = fileExtension(file.name);
   const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
   if (extension === "txt" || extension === "csv") return new TextDecoder().decode(arrayBuffer);
   if (extension === "docx") {
+    assertSafeZip(bytes, { maxEntries: 2_000, maxUncompressedBytes: 50_000_000, maxEntryBytes: 20_000_000, maxCompressionRatio: 100 });
     const result = await mammoth.extractRawText({ buffer: Buffer.from(arrayBuffer) });
     return result.value;
   }
   if (extension === "xlsx") {
+    assertSafeZip(bytes, { maxEntries: 2_000, maxUncompressedBytes: 50_000_000, maxEntryBytes: 20_000_000, maxCompressionRatio: 100 });
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuffer);
     const rows: string[] = [];
@@ -30,7 +34,10 @@ export async function extractDocumentText(file: File) {
     return rows.join("\n");
   }
   if (extension === "pdf") {
-    const result = await extractPdfText(new Uint8Array(arrayBuffer), { mergePages: true });
+    if (bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46 || bytes[4] !== 0x2d) {
+      throw new Error("The uploaded file is not a valid PDF.");
+    }
+    const result = await extractPdfText(bytes, { mergePages: true });
     return Array.isArray(result.text) ? result.text.join("\n\n") : result.text;
   }
   throw new Error("Định dạng file chưa được hỗ trợ.");

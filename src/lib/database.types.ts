@@ -819,12 +819,16 @@ export type Database = {
           created_at: string;
           id: string;
           payload: Json;
+          expires_at: string;
+          revoked_at: string | null;
           workspace_id: string;
         };
         Insert: {
           created_at?: string;
           id: string;
           payload: Json;
+          expires_at?: string;
+          revoked_at?: string | null;
           workspace_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["public_quotes"]["Insert"]>;

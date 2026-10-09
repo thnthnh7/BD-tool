@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 
 export async function createMcpTestWorkspace(admin, { withOwner = false } = {}) {
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
-  const { data: plan, error: planError } = await admin.from("plans").select("id").limit(1).single();
+  const { data: plan, error: planError } = await admin.from("plans").select("id").eq("is_public", true).order("price_monthly", { ascending: true }).limit(1).single();
   if (planError) throw planError;
   const { data: workspace, error: workspaceError } = await admin.from("workspaces").insert({
     name: `MCP test ${suffix}`,
@@ -12,7 +12,7 @@ export async function createMcpTestWorkspace(admin, { withOwner = false } = {}) 
     plan_status: "trialing",
   }).select("id").single();
   if (workspaceError) throw workspaceError;
-  const { error: overrideError } = await admin.from("workspace_overrides").upsert({ workspace_id: workspace.id, features: { mcp_access: true } }, { onConflict: "workspace_id" });
+  const { error: overrideError } = await admin.from("workspace_overrides").upsert({ workspace_id: workspace.id, features: { mcp_access: true, companies: true } }, { onConflict: "workspace_id" });
   if (overrideError) throw overrideError;
 
   let owner = null;

@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import type { Json } from "@/lib/database.types";
 import { guardSpreadsheetCell, parseCsv, suggestMapping, validateImportRow, type ImportRow } from "@/features/agent/logic";
 import type { ReadContext } from "@/features/agent/server/read";
+import { assertSafeZip } from "@/lib/zip-safety";
 
 export const IMPORT_LIMITS = { maxBytes: 2_000_000, maxRows: 2_000, maxColumns: 40, batch: 25 };
 
@@ -33,6 +34,7 @@ export async function stageImport(ctx: ReadContext, fileName: string, bytes: Uin
 }
 
 async function readSheet(bytes: Uint8Array) {
+  assertSafeZip(bytes, { maxEntries: 500, maxUncompressedBytes: 10_000_000, maxEntryBytes: 5_000_000, maxCompressionRatio: 100 });
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(Buffer.from(bytes) as unknown as ExcelJS.Buffer);
   const sheet = workbook.worksheets[0];

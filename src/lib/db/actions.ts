@@ -10,6 +10,9 @@ import { incrementUsage } from "@/lib/usage";
 import { createPublicId } from "@/lib/ids";
 import type { Client, CompanySettings, Quote, ServiceModule } from "@/lib/types";
 import { createShareId } from "@/lib/share-id";
+import { slimSharedPayload, type SharedQuotePayload } from "@/lib/share";
+import { admit } from "@/lib/admission";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function loadWorkspaceAppData(parts: Array<"settings" | "clients" | "modules" | "quotes"> = ["settings", "clients", "modules", "quotes"]) {
   const context = await requireWorkspace();
@@ -189,12 +192,22 @@ export async function createShareAction(payload: unknown) {
   await requireModule("quotes"); // createShareAction
   const context = await requireWorkspace();
   const supabase = await createClient();
+  if (!payload || typeof payload !== "object" || !("settings" in payload) || !("quote" in payload)) {
+    return { error: "Dữ liệu chia sẻ không hợp lệ." };
+  }
+  const safePayload = slimSharedPayload(payload as SharedQuotePayload, { stripDataLogos: false });
+  if (Buffer.byteLength(JSON.stringify(safePayload), "utf8") > 512_000) {
+    return { error: "Quote quá lớn để tạo link chia sẻ." };
+  }
+  const gate = await admit(createAdminClient(), context.userId, "share_create", 20, 60);
+  if ("error" in gate) return { error: gate.error };
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const id = createShareId();
     const { error } = await supabase.from("public_quotes").insert({
       id,
       workspace_id: context.workspaceId,
-      payload: payload as never,
+      payload: safePayload as never,
+      expires_at: new Date(Date.now() + 30 * 86_400_000).toISOString(),
     });
     if (!error) return { id, url: `${process.env.NEXT_PUBLIC_SITE_URL || ""}/p/${id}` };
   }

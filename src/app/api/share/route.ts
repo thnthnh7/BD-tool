@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { slimSharedPayload, type SharedQuotePayload } from "@/lib/share";
 import { createShareId, isValidShareId } from "@/lib/share-id";
+import { admit } from "@/lib/admission";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -12,6 +14,10 @@ function isPayload(value: unknown): value is SharedQuotePayload {
 }
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== request.nextUrl.origin) {
+    return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
+  }
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
@@ -38,6 +44,11 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = slimSharedPayload(body, { stripDataLogos: false });
+  if (Buffer.byteLength(JSON.stringify(payload), "utf8") > 512_000) {
+    return NextResponse.json({ error: "Shared quote is too large" }, { status: 413 });
+  }
+  const gate = await admit(createAdminClient(), userData.user.id, "share_create", 20, 60);
+  if ("error" in gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const id = createShareId();
     if (!isValidShareId(id)) continue;
@@ -45,10 +56,10 @@ export async function POST(request: NextRequest) {
       id,
       workspace_id: membership.workspace_id,
       payload: payload as never,
+      expires_at: new Date(Date.now() + 30 * 86_400_000).toISOString(),
     });
     if (!error) {
-      const origin = request.nextUrl.origin;
-      return NextResponse.json({ id, url: `${origin}/p/${id}` });
+      return NextResponse.json({ id, url: `${request.nextUrl.origin}/p/${id}` });
     }
   }
 

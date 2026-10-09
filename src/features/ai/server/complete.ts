@@ -58,7 +58,22 @@ function isPrivateAddress(address: string) {
   return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80:");
 }
 
-export async function validateAiBaseUrl(rawUrl: string) {
+const PROVIDER_HOSTS: Record<string, ReadonlySet<string>> = {
+  openai: new Set(["api.openai.com"]),
+  anthropic: new Set(["api.anthropic.com"]),
+  google: new Set(["generativelanguage.googleapis.com"]),
+  deepseek: new Set(["api.deepseek.com"]),
+  mistral: new Set(["api.mistral.ai"]),
+  xai: new Set(["api.x.ai"]),
+  openrouter: new Set(["openrouter.ai"]),
+  groq: new Set(["api.groq.com"]),
+};
+
+function allowedCustomHosts() {
+  return new Set((process.env.AI_CUSTOM_PROVIDER_HOST_ALLOWLIST || "").split(",").map((value) => value.trim().toLowerCase().replace(/\.$/, "")).filter(Boolean));
+}
+
+export async function validateAiBaseUrl(rawUrl: string, provider = "custom") {
   const url = new URL(rawUrl);
   if (url.protocol !== "https:" || url.username || url.password || url.port) {
     throw new Error("AI provider URL must use HTTPS without credentials or a custom port.");
@@ -66,6 +81,12 @@ export async function validateAiBaseUrl(rawUrl: string) {
   const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
   if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
     throw new Error("Private network AI provider URLs are not allowed.");
+  }
+  const allowedHosts = provider === "custom" ? allowedCustomHosts() : PROVIDER_HOSTS[provider];
+  if (!allowedHosts?.has(hostname)) {
+    throw new Error(provider === "custom"
+      ? "This custom AI host has not been approved by the workspace operator."
+      : "The base URL does not match the selected AI provider.");
   }
   const addresses = await lookup(hostname, { all: true, verbatim: true });
   if (!addresses.length || addresses.some(({ address }) => isPrivateAddress(address))) {
@@ -105,6 +126,7 @@ export function extractMessageContent(payload: unknown): string {
 }
 
 export async function callOpenAiCompatible(params: {
+  provider?: string;
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -118,7 +140,7 @@ export async function callOpenAiCompatible(params: {
   const timeout = setTimeout(() => controller.abort(), params.timeoutMs ?? 45_000);
   const started = Date.now();
   try {
-    const baseUrl = await validateAiBaseUrl(params.baseUrl);
+    const baseUrl = await validateAiBaseUrl(params.baseUrl, params.provider);
     const body: Record<string, unknown> = {
       model: params.model,
       messages: params.messages,
@@ -167,6 +189,7 @@ export async function callOpenAiCompatible(params: {
 }
 
 async function callAnthropic(params: {
+  provider?: string;
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -179,7 +202,7 @@ async function callAnthropic(params: {
   const timeout = setTimeout(() => controller.abort(), params.timeoutMs ?? 45_000);
   const started = Date.now();
   try {
-    const baseUrl = await validateAiBaseUrl(params.baseUrl);
+    const baseUrl = await validateAiBaseUrl(params.baseUrl, params.provider || "anthropic");
     const system = params.messages
       .filter((message) => message.role === "system")
       .map((message) => message.content)

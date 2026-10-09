@@ -40,9 +40,9 @@ export async function createMcpConnectionAction(formData: FormData) {
   const expiry = String(formData.get("expiry") || "90");
   if (!name) return { error: "Enter a connection name." };
   if (!scopes.length) return { error: "Select at least one scope." };
-  if (!["30", "90", "365", "never"].includes(expiry)) return { error: "Select a valid expiry period." };
+  if (!["30", "90"].includes(expiry)) return { error: "Select a valid expiry period." };
   const token = generateMcpToken();
-  const expiresAt = expiry === "never" ? null : new Date(Date.now() + Number(expiry) * 86_400_000).toISOString();
+  const expiresAt = new Date(Date.now() + Number(expiry) * 86_400_000).toISOString();
   const { error } = await createAdminClient().from("mcp_connections").insert({
     workspace_id: context.workspaceId,
     created_by: context.userId,

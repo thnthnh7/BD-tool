@@ -28,7 +28,7 @@ export function McpConnectionManager({ connections, endpoint, enabled }: { conne
         <form onSubmit={async (event) => { event.preventDefault(); const form = event.currentTarget; setPending(true); setError(""); const result = await createMcpConnectionAction(new FormData(form)); setPending(false); if (result.error) return setError(result.error); setToken(result.token || ""); form.reset(); router.refresh(); }}>
           <Stack gap="sm">
             <TextInput name="name" label={t("connectionName")} placeholder={t("connectionPlaceholder")} required maxLength={80} />
-            <NativeSelect name="expiry" label={t("tokenExpiry")} defaultValue="90" data={[{ value: "30", label: t("days30") }, { value: "90", label: t("days90") }, { value: "365", label: t("year1") }, { value: "never", label: t("noExpiry") }]} />
+            <NativeSelect name="expiry" label={t("tokenExpiry")} defaultValue="90" data={[{ value: "30", label: t("days30") }, { value: "90", label: t("days90") }]} />
             <div><Text size="sm" fw={500} mb={6}>{t("permissions")}</Text><Text size="xs" c="dimmed" mb={8}>Start with the minimum access this client needs. Write permissions are never selected automatically.</Text><Group>{mcpScopes.map((scope) => <Checkbox key={scope} name="scopes" value={scope} defaultChecked={mcpDefaultScopes.includes(scope)} label={t(mcpScopeLabelKeys[scope])} />)}</Group></div>
             {error ? <Text c="red" size="sm">{error}</Text> : null}
             <Button type="submit" loading={pending} disabled={!enabled} w="fit-content">{t("createToken")}</Button>

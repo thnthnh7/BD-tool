@@ -222,7 +222,7 @@ async function completeWithTools(input: {
 async function callProvider(input: { provider: string; baseUrl: string; apiKey: string; model: string; messages: ModelMessage[]; tools: { name: string }[]; signal: AbortSignal }) {
   const started = Date.now();
   try {
-    const baseUrl = await validateAiBaseUrl(input.baseUrl);
+    const baseUrl = await validateAiBaseUrl(input.baseUrl, input.provider);
     if (input.provider === "anthropic") return anthropic(input, baseUrl, started);
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",

@@ -312,6 +312,7 @@ export async function removePlatformAdminAction(formData: FormData) {
 export async function loadWorkspaceDetail(workspaceId: string) {
   await requirePlatform();
   const supabase = await createClient();
+  const admin = createAdminClient();
   const { data: workspace } = await supabase.from("workspaces").select("*").eq("id", workspaceId).maybeSingle();
   if (!workspace) return null;
   const [{ data: subscription }, { data: planRow }, { data: override }, { data: members }, { data: usage }, { data: notes }, { data: shares }, { data: providers }, counts] =
@@ -323,7 +324,7 @@ export async function loadWorkspaceDetail(workspaceId: string) {
       supabase.from("usage_counters").select("*").eq("workspace_id", workspaceId).eq("period", currentPeriod()).maybeSingle(),
       supabase.from("workspace_notes").select("id, body, created_at, author_id").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
       supabase.from("public_quotes").select("id, created_at").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
-      supabase.from("workspace_ai_providers").select("provider, model, status, last_tested_at, encrypted_api_key").eq("workspace_id", workspaceId),
+      admin.from("workspace_ai_providers").select("provider, model, status, last_tested_at, encrypted_api_key").eq("workspace_id", workspaceId),
       supabase.rpc("platform_workspace_counts", { p_workspace_id: workspaceId }),
     ]);
   const ids = (members || []).map((row) => row.user_id);

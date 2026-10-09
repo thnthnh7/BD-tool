@@ -116,7 +116,13 @@ export async function contractFileUrlAction(contractId: string) {
 export async function publicProposalPdfUrl(shareId: string) {
   if (!hasServiceRole()) return { error: "Chưa cấu hình quyền đọc file." };
   const admin = createAdminClient();
-  const { data } = await admin.from("public_quotes").select("payload").eq("id", shareId).maybeSingle();
+  const { data } = await admin
+    .from("public_quotes")
+    .select("payload")
+    .eq("id", shareId)
+    .is("revoked_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
   const payload = data?.payload as { quote?: { presentationSource?: string; proposalPdfPath?: string } } | null;
   const quote = payload?.quote;
   if (quote?.presentationSource !== "upload" || !quote.proposalPdfPath) return { error: "Không có PDF." };

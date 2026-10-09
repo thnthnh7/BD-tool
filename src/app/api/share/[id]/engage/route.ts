@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     body = {};
   }
   const eventType = body.event_type || "opened";
-  if (!["opened", "section_viewed", "pdf_downloaded", "accepted", "rejected"].includes(eventType)) {
+  if (!["opened", "section_viewed", "pdf_downloaded"].includes(eventType)) {
     return NextResponse.json({ error: "Invalid event" }, { status: 400 });
   }
 
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   if ("error" in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status ?? 503 });
   }
-  const { data: share } = await supabase.from("public_quotes").select("workspace_id, payload").eq("id", id).maybeSingle();
+  const { data: share } = await supabase.from("public_quotes").select("workspace_id, payload").eq("id", id).is("revoked_at", null).gt("expires_at", new Date().toISOString()).maybeSingle();
   if (!share) return NextResponse.json({ error: "Share not found" }, { status: 404 });
   const payload = share.payload as unknown as SharedQuotePayload;
   const quoteId = payload?.quote?.id || null;
