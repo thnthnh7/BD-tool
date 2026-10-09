@@ -30,7 +30,7 @@ export async function createCheckoutInvoice(formData: FormData) {
   if (plan.isFree) return { error: "Gói Free không cần thanh toán." };
 
   const { data: usdPrice } = await supabase.from("billing_provider_prices").select("amount")
-    .eq("plan_id", plan.id).eq("billing_interval", interval).eq("currency", "USD").eq("active", true).limit(1).maybeSingle();
+    .eq("plan_id", plan.id).eq("provider", "sepay").eq("billing_interval", interval).eq("currency", "USD").eq("active", true).maybeSingle();
   if (!usdPrice?.amount) return { error: "Chưa cấu hình giá USD cho gói này." };
   const amount = convertUsdCents(usdPrice.amount, "VND", await loadUsdRates());
   const { data: sub } = await supabase.from("subscriptions").select("id, provider, status, external_subscription_id").eq("workspace_id", context.workspaceId).maybeSingle();

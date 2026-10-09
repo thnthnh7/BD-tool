@@ -130,6 +130,14 @@ export async function updateProviderPricesAction(formData: FormData) {
     if (error) return { error: error.message };
   }
 
+  const admin = createAdminClient();
+  for (const [interval, amount] of [["monthly", monthlyAmount], ["yearly", yearlyAmount]] as const) {
+    let stale = admin.from("billing_provider_prices").update({ active: false }).eq("plan_id", planId).eq("billing_interval", interval).eq("active", true);
+    stale = amount > 0 ? stale.neq("amount", amount) : stale;
+    const { error } = await stale;
+    if (error) return { error: error.message };
+  }
+
   const configs = await getAllBillingProviderConfigs();
   const configuredProviders = configs
     .filter((config) => (config.provider === "stripe" || config.provider === "paypal") && billingProviderReady(config))
@@ -146,7 +154,7 @@ export async function updateProviderPricesAction(formData: FormData) {
         const amount = interval === "monthly" ? monthlyAmount : yearlyAmount;
         if (!amount) continue;
         const current = (existingPrices || []).find((row) => row.provider === provider && row.billing_interval === interval);
-        if (current?.amount === amount && current.external_price_id) {
+        if (current?.active && current.amount === amount && current.external_price_id) {
           productId = current.external_product_id || productId;
           continue;
         }

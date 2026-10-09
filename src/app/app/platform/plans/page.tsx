@@ -40,7 +40,7 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
           </div>
         ) : undefined}
       >
-        {plans.map(({ plan, workspaceCount, providerPrices }) => (
+        {plans.map(({ plan, workspaceCount }) => (
           <div className={classes.planPanel} key={plan.id}>
               <Group justify="space-between" align="flex-start" mb="md">
                 <div>
@@ -119,7 +119,7 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                       type="number"
                       min={0.01}
                       step={0.01}
-                      defaultValue={String((providerPrices.find((item) => item.billing_interval === "monthly")?.amount || 0) / 100)}
+                      defaultValue={String(plan.priceMonthly / 100)}
                       leftSection="$"
                     />
                     <TextInput
@@ -128,7 +128,7 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                       type="number"
                       min={0}
                       step={0.01}
-                      defaultValue={String((providerPrices.find((item) => item.billing_interval === "yearly")?.amount || 0) / 100)}
+                      defaultValue={String(plan.priceYearly / 100)}
                       leftSection="$"
                     />
                     </SimpleGrid>

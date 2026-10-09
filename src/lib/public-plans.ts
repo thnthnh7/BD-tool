@@ -60,13 +60,10 @@ async function queryPublicPlans(): Promise<PublicPlan[]> {
     const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data, error } = await supabase.from("plans").select("*").eq("is_public", true).order("sort_order");
     if (error || !data) return [];
-    const ids = data.map((row) => row.id);
-    const { data: prices } = ids.length
-      ? await supabase.from("billing_provider_prices").select("plan_id, amount").in("plan_id", ids).eq("active", true).eq("billing_interval", "monthly").eq("currency", "USD")
-      : { data: [] };
-    const monthlyCents = new Map<string, number>();
-    for (const price of prices || []) if (!monthlyCents.has(price.plan_id)) monthlyCents.set(price.plan_id, price.amount);
-    return data.map((row) => ({ ...parsePlan(row), usdMonthlyCents: monthlyCents.get(row.id) ?? null }));
+    return data.map((row) => {
+      const plan = parsePlan(row);
+      return { ...plan, usdMonthlyCents: plan.isFree ? 0 : plan.priceMonthly || null };
+    });
   } catch {
     return [];
   }
