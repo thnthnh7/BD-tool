@@ -5,6 +5,7 @@ import { ArrowRight, Bot, Building2, Check, CircleCheck, FileSignature, Globe2, 
 import { LandingMotion } from "@/components/landing-motion";
 import { AppLogo } from "@/components/leadely/app-logo";
 import { PricingFeatureDialog } from "@/components/marketing/pricing-feature-dialog";
+import { HeroLogoLink } from "@/components/marketing/hero-logo-link";
 import { crmProviders } from "@/features/crm-integrations/catalog";
 import { formatUsdFromCents } from "@/lib/money";
 import { loadPublicPlans, planFeatureGroups, planIncludedModules, planPrimaryFeatures } from "@/lib/public-plans";
@@ -46,7 +47,7 @@ export default async function LandingPage() {
   return <LandingMotion><main className={classes.page}>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
     <header className={classes.header}><div className={classes.navShell}>
-      <Link href="/#hero" aria-label="Bizcraw home" className={classes.logoLink}><AppLogo tagline /></Link>
+      <HeroLogoLink className={classes.logoLink}><AppLogo tagline /></HeroLogoLink>
       <nav className={classes.navLinks} aria-label="Primary navigation"><Link href="/features">Product</Link><Link href="/solutions">Solutions</Link><Link href="/guides">Guides</Link><Link href="/integrations">Integrations</Link><Link href="/pricing">Pricing</Link></nav>
       <div className={classes.navActions}><Link href="/login" className={classes.textButton}>Sign in</Link><Link href={startHref} className={classes.primaryButton}>Start free <ArrowRight size={16} /></Link></div>
     </div></header>

@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { AppLogo } from "@/components/leadely/app-logo";
+import { HeroLogoLink } from "@/components/marketing/hero-logo-link";
 import styles from "@/styles/seo-page.module.css";
 
 export function MarketingHeader() {
   return (
     <header className={styles.header}>
       <div className={styles.headerInner}>
-        <Link href="/#hero" aria-label="Bizcraw home" className={styles.logo}><AppLogo tagline /></Link>
+        <HeroLogoLink className={styles.logo}><AppLogo tagline /></HeroLogoLink>
         <nav aria-label="Primary navigation">
           <Link href="/features">Product</Link>
           <Link href="/solutions">Solutions</Link>
