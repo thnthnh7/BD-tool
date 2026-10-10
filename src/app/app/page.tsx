@@ -7,6 +7,7 @@ import { TodayTasksPanel } from "@/components/leadely/dashboard/today-tasks-pane
 import { RecentLeadsPanel } from "@/components/leadely/dashboard/recent-leads-panel";
 import { DealForecastPanel } from "@/components/leadely/dashboard/deal-forecast-panel";
 import { TopCompaniesPanel } from "@/components/leadely/dashboard/top-companies-panel";
+import { WorkflowOutcomesPanel } from "@/components/leadely/dashboard/workflow-outcomes-panel";
 import { LeadelyBanner } from "@/components/leadely/dashboard/leadely-banner";
 import { loadWorkspaceAppData } from "@/lib/db/actions";
 import { calculateQuoteTotals, currencyTotals, formatCurrencyTotals, normalizeDealCurrency } from "@/lib/money";
@@ -17,6 +18,7 @@ import { listLeads } from "@/features/leads/server/actions";
 import { listTasks } from "@/features/tasks/server/actions";
 import { listMeetings, listNotifications } from "@/features/comms/server/actions";
 import type { DashboardCompanyRank, DashboardDealPoint, DashboardLead, DashboardStage } from "@/components/leadely/dashboard/types";
+import { loadWorkflowOutcomes } from "@/features/analytics/server/workflow-outcomes";
 import classes from "@/styles/leadely-dashboard.module.css";
 
 function greeting() {
@@ -43,7 +45,7 @@ function isOpenDeal(stageType: string | null | undefined) {
 }
 
 export default async function AppHomePage() {
-  const [{ context, quotes, clients }, deals, pipelinesData, leads, tasks, companies, meetings, notifications, usdRates] = await Promise.all([
+  const [{ context, quotes, clients }, deals, pipelinesData, leads, tasks, companies, meetings, notifications, usdRates, workflowOutcomes] = await Promise.all([
     loadWorkspaceAppData(["quotes", "clients"]),
     listDeals(),
     listPipelines(),
@@ -53,6 +55,7 @@ export default async function AppHomePage() {
     listMeetings(),
     listNotifications(),
     loadUsdRates(),
+    loadWorkflowOutcomes(),
   ]);
 
   const name = context.email.split("@")[0];
@@ -177,6 +180,14 @@ export default async function AppHomePage() {
         <MetricCard label="Meetings booked" value={String(meetings.length)} icon={<CalendarDays size={18} />} hint={`${meetingsToday} today`} />
         <MetricCard label="Revenue" value={formatCurrencyTotals(revenueTotals, true)} icon={<Wallet size={18} />} hint={`${wonDeals.length} won deals`} />
       </SimpleGrid>
+
+      <WorkflowOutcomesPanel
+        outcomes={workflowOutcomes}
+        wonDeals={wonDeals.length}
+        totalDeals={deals.length}
+        showData={context.plan.features.data_library}
+        showSequences={context.plan.features.sequences}
+      />
 
       <Grid gap={16} align="stretch">
         <GridCol span={{ base: 12, md: 8 }} className={classes.rowFill}>
