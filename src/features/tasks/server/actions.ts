@@ -41,6 +41,21 @@ export async function listDealTasks(dealId: string) {
   return data || [];
 }
 
+export async function listEntityTasks(filters: { companyId?: string; contactId?: string }) {
+  const { context, supabase } = await withWorkspace();
+  let query = supabase
+    .from("tasks")
+    .select("id, title, type, priority, status, due_at")
+    .eq("workspace_id", context.workspaceId)
+    .eq("status", "open")
+    .order("due_at", { ascending: true, nullsFirst: false })
+    .limit(10);
+  if (filters.companyId) query = query.eq("company_id", filters.companyId);
+  if (filters.contactId) query = query.eq("contact_id", filters.contactId);
+  const { data } = await query;
+  return data || [];
+}
+
 export async function createTaskAction(formData: FormData) {
   await requireModule("tasks"); // createTaskAction
   const { context, supabase } = await withWorkspace();
@@ -82,6 +97,8 @@ export async function createTaskAction(formData: FormData) {
   });
   revalidatePath("/app/tasks");
   if (data.deal_id) revalidatePath(`/app/deals/${data.deal_id}`);
+  if (data.company_id) revalidatePath(`/app/companies/${data.company_id}`);
+  if (data.contact_id) revalidatePath(`/app/contacts/${data.contact_id}`);
   return { ok: true as const, id: data.id };
 }
 

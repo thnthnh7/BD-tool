@@ -9,14 +9,16 @@ import { ActionForm } from "@/features/crm/components/action-form";
 import { ActivityList, NoteForm } from "@/features/crm/components/activity-panel";
 import { getContact, listCompanies, updateContactAction } from "@/features/companies/server/actions";
 import { listActivities } from "@/features/tasks/server/actions";
+import { listEntityTasks } from "@/features/tasks/server/actions";
+import { EntityTaskPanel } from "@/features/tasks/components/entity-task-panel";
 import { RELATIONSHIP_STRENGTHS } from "@/lib/crm";
 
 export default async function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireModule("contacts");
+  const context = await requireModule("contacts");
   const { id } = await params;
   const [contact, companies] = await Promise.all([getContact(id), listCompanies()]);
   if (!contact) notFound();
-  const activities = await listActivities({ contactId: id });
+  const [activities, tasks] = await Promise.all([listActivities({ contactId: id }), context.plan.features.tasks ? listEntityTasks({ contactId: id }) : Promise.resolve([])]);
 
   return (
     <Stack gap="md">
@@ -62,6 +64,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           </div>
         </GridCol>
       </Grid>
+      {context.plan.features.tasks ? <SectionPanel><EntityTaskPanel tasks={tasks} contactId={contact.id} companyId={contact.company_id || undefined} /></SectionPanel> : null}
       {contact.company_id ? (
         <Text component="div" size="sm">
           Company:{" "}

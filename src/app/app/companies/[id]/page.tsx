@@ -18,19 +18,22 @@ import {
   updateCompanyAction,
 } from "@/features/companies/server/actions";
 import { listActivities } from "@/features/tasks/server/actions";
+import { listEntityTasks } from "@/features/tasks/server/actions";
+import { EntityTaskPanel } from "@/features/tasks/components/entity-task-panel";
 import { LIFECYCLE_STAGES } from "@/lib/crm";
 import { getAccountPlan, upsertAccountPlanAction } from "@/features/comms/server/actions";
 
 export default async function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireModule("companies");
+  const context = await requireModule("companies");
   const { id } = await params;
   const company = await getCompany(id);
   if (!company) notFound();
-  const [contacts, deals, activities, accountPlan] = await Promise.all([
+  const [contacts, deals, activities, accountPlan, tasks] = await Promise.all([
     listCompanyContacts(id),
     listCompanyDeals(id),
     listActivities({ companyId: id }),
     getAccountPlan(id),
+    context.plan.features.tasks ? listEntityTasks({ companyId: id }) : Promise.resolve([]),
   ]);
 
   return (
@@ -129,6 +132,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
           </SectionPanel>
         </GridCol>
       </Grid>
+      {context.plan.features.tasks ? <SectionPanel><EntityTaskPanel tasks={tasks} companyId={company.id} /></SectionPanel> : null}
       <div data-tutorial-id="company-detail-plan">
       <SectionPanel title="Account plan">
         <ActionForm action={upsertAccountPlanAction} submitLabel="Save plan">
