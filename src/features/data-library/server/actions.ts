@@ -3,8 +3,9 @@
 import { requireModule } from "@/lib/auth/session";
 
 import { revalidatePath } from "next/cache";
-import type { Json } from "@/lib/database.types";
+import type { Database, Json } from "@/lib/database.types";
 import { withWorkspace } from "@/lib/events";
+import { importEligibility, withoutEmptyValues, type ImportTarget } from "@/features/data-library/import-policy";
 
 function object(value: Json): Record<string, Json | undefined> {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -138,4 +139,115 @@ export async function setDataRecordSuppressionAction(formData: FormData) {
   if (error) return { error: error.message };
   revalidatePath("/app/data");
   return { ok: true as const };
+}
+
+export async function importDataRecordsAction(formData: FormData) {
+  await requireModule("data_library");
+  const { context, supabase } = await withWorkspace();
+  const target = String(formData.get("target") || "");
+  const duplicatePolicy = String(formData.get("duplicate_policy") || "skip");
+  if (!(["company", "contact"] as string[]).includes(target)) return { error: "Unsupported CRM target." };
+  if (!(["skip", "update"] as string[]).includes(duplicatePolicy)) return { error: "Unsupported duplicate policy." };
+  let ids: string[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("record_ids") || "[]"));
+    if (Array.isArray(parsed)) ids = [...new Set(parsed.filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 100);
+  } catch { return { error: "Invalid record selection." }; }
+  if (!ids.length) return { error: "Select at least one record." };
+
+  const { data: batch, error: batchError } = await supabase.from("data_import_batches").insert({
+    workspace_id: context.workspaceId, created_by: context.userId, target_type: target,
+    duplicate_policy: duplicatePolicy, total_count: ids.length, status: "processing",
+  }).select("id").single();
+  if (batchError || !batch) return { error: batchError?.message || "Could not start the import." };
+  const batchId = batch.id;
+
+  async function failBatch(message: string) {
+    await supabase.from("data_import_batches").update({
+      status: "failed", error_message: message.slice(0, 500), finished_at: new Date().toISOString(),
+    }).eq("id", batchId).eq("workspace_id", context.workspaceId);
+  }
+
+  const { data: records, error: recordsError } = await supabase.from("data_records").select("*")
+    .eq("workspace_id", context.workspaceId).in("id", ids);
+  if (recordsError) {
+    await failBatch(recordsError.message);
+    return { error: recordsError.message };
+  }
+  const counts = { imported: 0, updated: 0, skipped: ids.length - (records?.length || 0), failed: 0 };
+  const items: Database["public"]["Tables"]["data_import_items"]["Insert"][] = [];
+
+  for (const row of records || []) {
+    const item = { workspace_id: context.workspaceId, batch_id: batchId, record_id: row.id, status: "skipped", reason: "" } as Database["public"]["Tables"]["data_import_items"]["Insert"];
+    try {
+      const eligibility = importEligibility(row, target as ImportTarget);
+      if (!eligibility.eligible) { item.reason = eligibility.reason; counts.skipped += 1; items.push(item); continue; }
+      const normalized = object(row.normalized_data);
+      const raw = object(row.raw_data);
+      const title = row.title || string(normalized.title) || "Untitled";
+      const url = row.canonical_url || string(normalized.url);
+      const email = (string(normalized.email) || string(raw.email)).toLowerCase();
+      const phone = string(normalized.phone) || string(raw.phone);
+
+      if (target === "company") {
+        let domain = string(normalized.domain);
+        if (!domain && url) { try { domain = new URL(url).hostname.replace(/^www\./, "").toLowerCase(); } catch { domain = ""; } }
+        const existing = domain ? (await supabase.from("companies").select("id").eq("workspace_id", context.workspaceId).eq("domain", domain).maybeSingle()).data : null;
+        if (existing && duplicatePolicy === "skip") { item.reason = "company_exists"; item.company_id = existing.id; counts.skipped += 1; items.push(item); continue; }
+        if (existing) {
+          const { error } = await supabase.from("companies").update(withoutEmptyValues({ name: title, website: url, email, phone, industry: string(raw.industry) || string(raw.category), address: string(raw.address) })).eq("id", existing.id).eq("workspace_id", context.workspaceId);
+          if (error) throw error;
+          item.status = "updated"; item.company_id = existing.id;
+        } else {
+          const { data: company, error } = await supabase.from("companies").insert({ workspace_id: context.workspaceId, name: title, domain, website: url, email, phone, industry: string(raw.industry) || string(raw.category), address: string(raw.address), owner_user_id: context.userId, lifecycle_stage: "prospect", lead_source: "data_library", notes: `Source record: ${row.id}` }).select("id").single();
+          if (error || !company) throw error || new Error("Could not create company.");
+          item.status = "imported"; item.company_id = company.id;
+        }
+        const { error: recordError } = await supabase.from("data_records").update({ promoted_company_id: item.company_id, review_status: "imported" }).eq("id", row.id).eq("workspace_id", context.workspaceId);
+        if (recordError) throw recordError;
+      } else {
+        const existing = email ? (await supabase.from("contacts").select("id").eq("workspace_id", context.workspaceId).ilike("email", email).maybeSingle()).data : null;
+        const parts = title.trim().split(/\s+/);
+        if (existing && duplicatePolicy === "skip") { item.reason = "contact_exists"; item.contact_id = existing.id; counts.skipped += 1; items.push(item); continue; }
+        if (existing) {
+          const { error } = await supabase.from("contacts").update(withoutEmptyValues({ first_name: parts[0] || "", last_name: parts.slice(1).join(" "), display_name: title, email, phone, linkedin_url: url.includes("linkedin.com") ? url : "" })).eq("id", existing.id).eq("workspace_id", context.workspaceId);
+          if (error) throw error;
+          item.status = "updated"; item.contact_id = existing.id;
+        } else {
+          const { data: contact, error } = await supabase.from("contacts").insert({ workspace_id: context.workspaceId, first_name: parts[0] || "", last_name: parts.slice(1).join(" "), display_name: title, email, phone, linkedin_url: url.includes("linkedin.com") ? url : "", owner_user_id: context.userId, notes: `${url ? `Profile: ${url}\n` : ""}Source record: ${row.id}` }).select("id").single();
+          if (error || !contact) throw error || new Error("Could not create contact.");
+          item.status = "imported"; item.contact_id = contact.id;
+        }
+        const { error: recordError } = await supabase.from("data_records").update({ promoted_contact_id: item.contact_id, review_status: "imported" }).eq("id", row.id).eq("workspace_id", context.workspaceId);
+        if (recordError) throw recordError;
+      }
+      if (item.status === "updated") counts.updated += 1;
+      else counts.imported += 1;
+    } catch (error) {
+      item.status = "failed";
+      item.reason = error instanceof Error ? error.message.slice(0, 300) : "Import failed";
+      counts.failed += 1;
+    }
+    items.push(item);
+  }
+
+  if (items.length) {
+    const { error } = await supabase.from("data_import_items").insert(items);
+    if (error) {
+      await failBatch(error.message);
+      return { error: error.message };
+    }
+  }
+  const { error: completeError } = await supabase.from("data_import_batches").update({
+    status: "completed", imported_count: counts.imported, updated_count: counts.updated,
+    skipped_count: counts.skipped, failed_count: counts.failed, finished_at: new Date().toISOString(),
+  }).eq("id", batchId).eq("workspace_id", context.workspaceId);
+  if (completeError) {
+    await failBatch(completeError.message);
+    return { error: completeError.message };
+  }
+  revalidatePath("/app/data");
+  revalidatePath("/app/companies");
+  revalidatePath("/app/contacts");
+  return { ok: true as const, batchId, counts };
 }

@@ -1306,6 +1306,25 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["data_suppressions"]["Row"]>;
         Relationships: Rel;
       };
+      data_import_batches: {
+        Row: {
+          id: string; workspace_id: string; created_by: string | null; target_type: string; duplicate_policy: string;
+          status: string; total_count: number; imported_count: number; updated_count: number; skipped_count: number;
+          failed_count: number; error_message: string | null; created_at: string; finished_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["data_import_batches"]["Row"]> & { workspace_id: string; target_type: string };
+        Update: Partial<Database["public"]["Tables"]["data_import_batches"]["Row"]>;
+        Relationships: Rel;
+      };
+      data_import_items: {
+        Row: {
+          id: string; workspace_id: string; batch_id: string; record_id: string; status: string; reason: string;
+          company_id: string | null; contact_id: string | null; created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["data_import_items"]["Row"]> & { workspace_id: string; batch_id: string; record_id: string; status: string };
+        Update: Partial<Database["public"]["Tables"]["data_import_items"]["Row"]>;
+        Relationships: Rel;
+      };
       data_record_links: {
         Row: {
           id: string; workspace_id: string; from_record_id: string; to_record_id: string;

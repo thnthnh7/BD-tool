@@ -26,6 +26,9 @@ export default async function DataLibraryPage({ searchParams }: {
     details: t("details"), rawData: t("rawData"), open: t("open"), createCompany: t("createCompany"),
     createContact: t("createContact"), saved: t("saved"), unknownCollection: t("unknownCollection"), quality: t("quality"),
     status: t("status"), source: t("source"), issues: t("issues"), duplicate: t("duplicate"), suppress: t("suppress"), restore: t("restore"),
+    importSelected: t("importSelected"), previewTitle: t("previewTitle"), selectedCount: t("selectedCount"), target: t("target"),
+    companies: t("companies"), contacts: t("contacts"), duplicatePolicy: t("duplicatePolicy"), skipExisting: t("skipExisting"),
+    updateExisting: t("updateExisting"), runImport: t("runImport"), cancel: t("cancel"), imported: t("imported"), updated: t("updated"), skipped: t("skipped"), failed: t("failed"),
   };
   const typeLabels = Object.fromEntries(DATA_RECORD_TYPES.map((type) => [type, t(`types.${type}`)]));
   return <Stack gap="md">

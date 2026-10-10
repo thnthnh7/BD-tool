@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Anchor, Badge, Button, Card, Divider, Drawer, Group, NativeSelect, Progress, ScrollArea, Stack, Table, Text, UnstyledButton } from "@mantine/core";
+import { Anchor, Badge, Button, Card, Checkbox, Divider, Drawer, Group, NativeSelect, Progress, ScrollArea, Stack, Table, Text, UnstyledButton } from "@mantine/core";
 import { Check, Copy, ExternalLink, FolderOpen } from "lucide-react";
 import { DataRecordActions } from "./record-actions";
 import { safeDatasetUrl } from "@/features/leads/dataset";
 import type { Database, Json } from "@/lib/database.types";
 import classes from "./data-library-browser.module.css";
+import { DataImportDialog } from "./data-import-dialog";
 
 type Collection = Database["public"]["Tables"]["data_collections"]["Row"];
 type RecordRow = Database["public"]["Tables"]["data_records"]["Row"];
@@ -50,6 +51,9 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
     allCollections: string; collections: string; records: string; dataType: string; details: string; rawData: string; open: string;
     createCompany: string; createContact: string; saved: string; unknownCollection: string;
     quality: string; status: string; source: string; issues: string; duplicate: string; suppress: string; restore: string;
+    importSelected: string; previewTitle: string; selectedCount: string; target: string; companies: string; contacts: string;
+    duplicatePolicy: string; skipExisting: string; updateExisting: string; runImport: string; cancel: string;
+    imported: string; updated: string; skipped: string; failed: string;
   };
   typeLabels: Record<string, string>;
   footer: React.ReactNode;
@@ -58,6 +62,9 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [detail, setDetail] = useState<RecordRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectable = records.filter((record) => record.review_status === "ready" && !record.promoted_company_id && !record.promoted_contact_id);
+  const selected = new Set(selectedIds);
 
   function selectCollection(value: string) {
     const next = new URLSearchParams(searchParams.toString());
@@ -66,7 +73,7 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
     router.push(`${pathname}?${next.toString()}`);
   }
 
-  const selected = collections.find((item) => item.id === selectedCollection);
+  const selectedCollectionRow = collections.find((item) => item.id === selectedCollection);
   return <>
     <div className={classes.mobileCollection}>
       <NativeSelect aria-label={labels.allCollections} value={selectedCollection} onChange={(event) => selectCollection(event.currentTarget.value)}
@@ -89,12 +96,14 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
 
       <Card withBorder padding={0} className={classes.tableCard}>
         <Group justify="space-between" px="md" py="sm">
-          <div><Text fw={650}>{selected?.name || labels.allCollections}</Text><Text size="xs" c="dimmed">{total.toLocaleString(locale)} {labels.records.toLowerCase()}</Text></div>
+          <div><Text fw={650}>{selectedCollectionRow?.name || labels.allCollections}</Text><Text size="xs" c="dimmed">{total.toLocaleString(locale)} {labels.records.toLowerCase()}</Text></div>
+          <DataImportDialog recordIds={selectedIds} labels={labels} onComplete={() => setSelectedIds([])} />
         </Group>
         <Divider />
         <ScrollArea type="auto">
           <Table verticalSpacing="sm" horizontalSpacing="md" highlightOnHover>
             <Table.Thead><Table.Tr>
+              <Table.Th w={44}><Checkbox aria-label={labels.importSelected} checked={selectable.length > 0 && selectable.every((record) => selected.has(record.id))} indeterminate={selectedIds.length > 0 && !selectable.every((record) => selected.has(record.id))} onChange={(event) => setSelectedIds(event.currentTarget.checked ? selectable.map((record) => record.id) : [])} /></Table.Th>
               <Table.Th>{labels.records}</Table.Th>
               <Table.Th w={140}>{labels.dataType}</Table.Th>
               <Table.Th>{labels.details}</Table.Th>
@@ -109,6 +118,7 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
               const externalUrl = record.canonical_url ? safeDatasetUrl(record.canonical_url) : null;
               const promoted = Boolean(record.promoted_company_id || record.promoted_contact_id);
               return <Table.Tr key={record.id} className={classes.row} onClick={() => setDetail(record)}>
+                <Table.Td onClick={(event) => event.stopPropagation()}><Checkbox aria-label={`${labels.importSelected}: ${record.title}`} disabled={!selectable.some((item) => item.id === record.id)} checked={selected.has(record.id)} onChange={(event) => setSelectedIds((current) => event.currentTarget.checked ? [...current, record.id] : current.filter((id) => id !== record.id))} /></Table.Td>
                 <Table.Td className={classes.primaryCell}><Text size="sm" fw={600} truncate>{record.title}</Text><Text size="xs" c="dimmed">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(record.captured_at))}</Text></Table.Td>
                 <Table.Td><Text size="sm">{typeLabels[record.record_type] || record.record_type}</Text></Table.Td>
                 <Table.Td className={classes.detailCell}><Text size="sm" c={summary ? undefined : "dimmed"} lineClamp={2}>{summary || "—"}</Text></Table.Td>
