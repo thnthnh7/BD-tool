@@ -11,17 +11,20 @@ import { listCompanies, listContacts } from "@/features/companies/server/actions
 import { listCommunications, sendCommunicationAction } from "@/features/comms/server/actions";
 import { listEngagementAccounts } from "@/features/comms/server/accounts";
 import { EngagementAccountsPanel } from "@/features/comms/components/engagement-accounts-panel";
+import { SuppressionPanel } from "@/features/comms/components/suppression-panel";
+import { listEngagementSuppressions } from "@/features/comms/server/suppression-actions";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 
 export default async function InboxPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; oauth?: string }> }) {
-  await requireModule("inbox");
+  const context = await requireModule("inbox");
   const input = await searchParams;
   const { q, page } = readListQuery(input);
-  const [items, companies, contacts, accounts] = await Promise.all([
+  const [items, companies, contacts, accounts, suppressions] = await Promise.all([
     listCommunications(),
     listCompanies(),
     listContacts(),
     listEngagementAccounts(),
+    listEngagementSuppressions(),
   ]);
   const matched = items.filter((item) =>
     matchesQuery(q, [item.subject, item.direction, item.to_address, item.from_address, (item.companies as { name?: string } | null)?.name]),
@@ -33,6 +36,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       <SectionPanel title="Mailbox connections">
         <EngagementAccountsPanel accounts={accounts} oauthStatus={input.oauth} />
       </SectionPanel>
+      <SectionPanel><SuppressionPanel items={suppressions} canManage={context.memberRole !== "member"} /></SectionPanel>
       <SectionPanel title="Compose email">
         <ActionForm action={sendCommunicationAction} submitLabel="Send email">
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
