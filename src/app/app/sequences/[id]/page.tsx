@@ -8,7 +8,7 @@ import { SectionPanel } from "@/components/leadely/section-panel";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { ListFooter, ListSearch, ListTable } from "@/components/leadely/list-frame";
 import { listCompanies, listContacts } from "@/features/companies/server/actions";
-import { addSequenceStepAction, configureSequenceAction, enrollSequenceAction, getSequence, updateSequenceEnrollmentAction } from "@/features/comms/server/actions";
+import { addSequenceStepAction, configureSequenceAction, deleteSequenceStepAction, enrollSequenceAction, getSequence, updateSequenceEnrollmentAction, updateSequenceStepAction } from "@/features/comms/server/actions";
 import { listEngagementAccounts } from "@/features/comms/server/accounts";
 import { matchesQuery, readNamedQuery, slicePage } from "@/lib/list-page";
 
@@ -38,6 +38,7 @@ export default async function SequenceDetailPage({
     ]),
   );
   const enrollPage = slicePage(matchedEnrollments, enrollQuery.page);
+  const canEditSteps = payload.sequence.status !== "active" && !payload.enrollments.some((row) => row.status === "active" || row.status === "paused");
   const stepExtra = { enroll: enrollQuery.q, enrollPage: enrollQuery.page > 1 ? String(enrollQuery.page) : "" };
   const enrollExtra = { step: stepsQuery.q, stepPage: stepsQuery.page > 1 ? String(stepsQuery.page) : "" };
 
@@ -98,6 +99,26 @@ export default async function SequenceDetailPage({
               <Text size="xs" c="dimmed" lineClamp={3}>
                 {step.body}
               </Text>
+              {canEditSteps ? <details style={{ marginTop: 8 }}>
+                <summary style={{ cursor: "pointer", fontSize: 13 }}>Edit step</summary>
+                <Stack gap="sm" mt="sm">
+                  <ActionForm action={updateSequenceStepAction} submitLabel="Save step">
+                    <input type="hidden" name="step_id" value={step.id} />
+                    <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                      <NativeSelect name="step_type" label="Type" defaultValue={step.step_type} data={[{ value: "email", label: "Email" }, { value: "task", label: "Task" }, { value: "wait", label: "Wait" }]} />
+                      <Group grow>
+                        <TextInput name="delay_days" type="number" min={0} max={365} label="Delay days" defaultValue={step.delay_days} />
+                        <TextInput name="delay_minutes" type="number" min={0} max={1439} label="Minutes" defaultValue={step.delay_minutes} />
+                      </Group>
+                      <TextInput name="subject" label="Subject / task title" defaultValue={step.subject} style={{ gridColumn: "1 / -1" }} />
+                    </SimpleGrid>
+                    <Textarea name="body" label="Body" defaultValue={step.body} minRows={3} />
+                  </ActionForm>
+                  <ActionForm action={deleteSequenceStepAction} submitLabel="Delete step" variant="light" layout="inline">
+                    <input type="hidden" name="step_id" value={step.id} />
+                  </ActionForm>
+                </Stack>
+              </details> : null}
             </Paper>
           ))}
           {stepPage.total === 0 ? (

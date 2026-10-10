@@ -6,6 +6,27 @@ import { recordActivity, withWorkspace } from "@/lib/events";
 import { requireModule } from "@/lib/auth/session";
 import { getEngagementAccessToken } from "@/features/comms/server/accounts";
 import { createProviderEvent, sendProviderEmail, type EngagementProvider } from "@/features/comms/server/providers";
+import { validateSequenceStep } from "@/features/comms/sequence-validation";
+
+function sequenceStepFromForm(formData: FormData) {
+  return validateSequenceStep({
+    stepType: formText(formData, "step_type") || "email",
+    delayDays: Number(formData.get("delay_days") || 0),
+    delayMinutes: Number(formData.get("delay_minutes") || 0),
+    subject: formText(formData, "subject"),
+    body: formText(formData, "body"),
+  });
+}
+
+async function editableSequence(supabase: Awaited<ReturnType<typeof withWorkspace>>["supabase"], workspaceId: string, sequenceId: string) {
+  const [{ data: sequence }, { count: running }] = await Promise.all([
+    supabase.from("sequences").select("id, status").eq("id", sequenceId).eq("workspace_id", workspaceId).maybeSingle(),
+    supabase.from("sequence_enrollments").select("id", { count: "exact", head: true }).eq("sequence_id", sequenceId).eq("workspace_id", workspaceId).in("status", ["active", "paused"]),
+  ]);
+  if (!sequence) return { error: "Sequence not found." } as const;
+  if (sequence.status === "active" || running) return { error: "Pause the sequence and stop active enrollments before editing its steps." } as const;
+  return { sequence } as const;
+}
 
 export async function listCommunications() {
   const { context, supabase } = await withWorkspace();
@@ -243,10 +264,16 @@ export async function addSequenceStepAction(formData: FormData) {
   await requireModule("sequences");
   const { context, supabase } = await withWorkspace();
   const sequenceId = formText(formData, "sequence_id");
+  if (!sequenceId) return { error: "Sequence not found." };
+  const editable = await editableSequence(supabase, context.workspaceId, sequenceId);
+  if ("error" in editable) return editable;
+  const parsed = sequenceStepFromForm(formData);
+  if ("error" in parsed) return parsed;
   const { data: last } = await supabase
     .from("sequence_steps")
     .select("position")
     .eq("sequence_id", sequenceId)
+    .eq("workspace_id", context.workspaceId)
     .order("position", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -254,14 +281,40 @@ export async function addSequenceStepAction(formData: FormData) {
     workspace_id: context.workspaceId,
     sequence_id: sequenceId,
     position: (last?.position || 0) + 1,
-    step_type: formText(formData, "step_type") || "email",
-    delay_days: Number(formData.get("delay_days") || 0),
-    delay_minutes: Number(formData.get("delay_minutes") || 0),
-    subject: formText(formData, "subject"),
-    body: formText(formData, "body"),
+    ...parsed.value,
   });
   if (error) return { error: error.message };
   revalidatePath(`/app/sequences/${sequenceId}`);
+  return { ok: true as const };
+}
+
+export async function updateSequenceStepAction(formData: FormData) {
+  await requireModule("sequences");
+  const { context, supabase } = await withWorkspace();
+  const stepId = formText(formData, "step_id");
+  const { data: step } = await supabase.from("sequence_steps").select("id, sequence_id").eq("id", stepId).eq("workspace_id", context.workspaceId).maybeSingle();
+  if (!step) return { error: "Sequence step not found." };
+  const editable = await editableSequence(supabase, context.workspaceId, step.sequence_id);
+  if ("error" in editable) return editable;
+  const parsed = sequenceStepFromForm(formData);
+  if ("error" in parsed) return parsed;
+  const { error } = await supabase.from("sequence_steps").update(parsed.value).eq("id", step.id).eq("workspace_id", context.workspaceId);
+  if (error) return { error: error.message };
+  revalidatePath(`/app/sequences/${step.sequence_id}`);
+  return { ok: true as const };
+}
+
+export async function deleteSequenceStepAction(formData: FormData) {
+  await requireModule("sequences");
+  const { context, supabase } = await withWorkspace();
+  const stepId = formText(formData, "step_id");
+  const { data: step } = await supabase.from("sequence_steps").select("id, sequence_id").eq("id", stepId).eq("workspace_id", context.workspaceId).maybeSingle();
+  if (!step) return { error: "Sequence step not found." };
+  const editable = await editableSequence(supabase, context.workspaceId, step.sequence_id);
+  if ("error" in editable) return editable;
+  const { error } = await supabase.from("sequence_steps").delete().eq("id", step.id).eq("workspace_id", context.workspaceId);
+  if (error) return { error: error.message };
+  revalidatePath(`/app/sequences/${step.sequence_id}`);
   return { ok: true as const };
 }
 
@@ -330,12 +383,19 @@ export async function configureSequenceAction(formData: FormData) {
   const status = formText(formData, "status");
   if (!sequenceId || !["draft", "active", "paused", "archived"].includes(status)) return { error: "Cấu hình sequence không hợp lệ." };
   const senderAccountId = formOptionalId(formData, "sender_account_id");
+  const [{ data: sequence }, { data: account }] = await Promise.all([
+    supabase.from("sequences").select("id").eq("id", sequenceId).eq("workspace_id", context.workspaceId).maybeSingle(),
+    senderAccountId ? supabase.from("engagement_accounts").select("id, status").eq("id", senderAccountId).eq("workspace_id", context.workspaceId).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  if (!sequence) return { error: "Sequence not found." };
+  if (senderAccountId && !account) return { error: "Sending account not found in this workspace." };
   if (status === "active") {
-    const [{ data: step }, { data: account }] = await Promise.all([
-      supabase.from("sequence_steps").select("id").eq("sequence_id", sequenceId).limit(1).maybeSingle(),
-      senderAccountId ? supabase.from("engagement_accounts").select("id, status").eq("id", senderAccountId).eq("workspace_id", context.workspaceId).maybeSingle() : Promise.resolve({ data: null }),
-    ]);
-    if (!step) return { error: "Thêm ít nhất một step trước khi activate." };
+    const { data: steps } = await supabase.from("sequence_steps").select("position, step_type, delay_days, delay_minutes, subject, body").eq("sequence_id", sequenceId).eq("workspace_id", context.workspaceId).order("position");
+    if (!steps?.length) return { error: "Thêm ít nhất một step trước khi activate." };
+    for (const step of steps) {
+      const checked = validateSequenceStep({ stepType: step.step_type, delayDays: step.delay_days, delayMinutes: step.delay_minutes, subject: step.subject, body: step.body });
+      if ("error" in checked) return { error: `Step ${step.position}: ${checked.error}` };
+    }
     if (!account || account.status !== "connected") return { error: "Chọn một sending account đang connected." };
   }
   const { error } = await supabase.from("sequences").update({
