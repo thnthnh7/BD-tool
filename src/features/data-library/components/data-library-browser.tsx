@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Anchor, Badge, Button, Card, Divider, Drawer, Group, NativeSelect, ScrollArea, Stack, Table, Text, UnstyledButton } from "@mantine/core";
-import { Check, ExternalLink, FolderOpen } from "lucide-react";
+import { Anchor, Badge, Button, Card, Divider, Drawer, Group, NativeSelect, Progress, ScrollArea, Stack, Table, Text, UnstyledButton } from "@mantine/core";
+import { Check, Copy, ExternalLink, FolderOpen } from "lucide-react";
 import { DataRecordActions } from "./record-actions";
 import { safeDatasetUrl } from "@/features/leads/dataset";
 import type { Database, Json } from "@/lib/database.types";
@@ -32,6 +32,14 @@ function compactDetails(record: RecordRow) {
   ].filter(Boolean).slice(0, 2).join(" · ");
 }
 
+function statusColor(status: string) {
+  if (status === "ready") return "teal";
+  if (status === "imported") return "blue";
+  if (status === "duplicate") return "orange";
+  if (status === "suppressed") return "red";
+  return "gray";
+}
+
 export function DataLibraryBrowser({ records, collections, selectedCollection, total, locale, labels, typeLabels, footer }: {
   records: RecordRow[];
   collections: Collection[];
@@ -41,6 +49,7 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
   labels: {
     allCollections: string; collections: string; records: string; dataType: string; details: string; rawData: string; open: string;
     createCompany: string; createContact: string; saved: string; unknownCollection: string;
+    quality: string; status: string; source: string; issues: string; duplicate: string; suppress: string; restore: string;
   };
   typeLabels: Record<string, string>;
   footer: React.ReactNode;
@@ -89,6 +98,8 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
               <Table.Th>{labels.records}</Table.Th>
               <Table.Th w={140}>{labels.dataType}</Table.Th>
               <Table.Th>{labels.details}</Table.Th>
+              <Table.Th w={120}>{labels.quality}</Table.Th>
+              <Table.Th w={120}>{labels.status}</Table.Th>
               <Table.Th className={classes.hideMobile}>{labels.collections}</Table.Th>
               <Table.Th w={110} />
             </Table.Tr></Table.Thead>
@@ -101,6 +112,8 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
                 <Table.Td className={classes.primaryCell}><Text size="sm" fw={600} truncate>{record.title}</Text><Text size="xs" c="dimmed">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(record.captured_at))}</Text></Table.Td>
                 <Table.Td><Text size="sm">{typeLabels[record.record_type] || record.record_type}</Text></Table.Td>
                 <Table.Td className={classes.detailCell}><Text size="sm" c={summary ? undefined : "dimmed"} lineClamp={2}>{summary || "—"}</Text></Table.Td>
+                <Table.Td><Stack gap={3}><Text size="xs" fw={600}>{record.quality_score}%</Text><Progress value={record.quality_score} size={4} color={record.quality_score >= 70 ? "teal" : record.quality_score >= 50 ? "yellow" : "red"} /></Stack></Table.Td>
+                <Table.Td><Badge size="sm" variant="light" color={statusColor(record.review_status)} leftSection={record.review_status === "duplicate" ? <Copy size={10} /> : undefined}>{record.review_status}</Badge></Table.Td>
                 <Table.Td className={classes.hideMobile}><Text size="sm" truncate maw={220}>{collection?.name || labels.unknownCollection}</Text><Text size="xs" c="dimmed" truncate maw={220}>{collection?.source_actor_id}</Text></Table.Td>
                 <Table.Td onClick={(event) => event.stopPropagation()}>{promoted ? <Badge size="sm" variant="light" leftSection={<Check size={10} />}>{labels.saved}</Badge> : externalUrl ? <Anchor href={externalUrl} target="_blank" rel="noopener noreferrer" size="xs">{labels.open} <ExternalLink size={10} /></Anchor> : <Text size="xs" c="dimmed">—</Text>}</Table.Td>
               </Table.Tr>;
@@ -115,11 +128,17 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
     <Drawer opened={Boolean(detail)} onClose={() => setDetail(null)} position="right" size="lg" title={<Text fw={700}>{detail?.title}</Text>}>
       {detail ? <Stack gap="md">
         <Group gap={8}><Badge variant="light">{typeLabels[detail.record_type] || detail.record_type}</Badge><Text size="xs" c="dimmed">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(detail.captured_at))}</Text></Group>
+        <Group gap={8}><Badge variant="light" color={statusColor(detail.review_status)}>{detail.review_status}</Badge><Text size="sm" fw={600}>{labels.quality}: {detail.quality_score}%</Text></Group>
+        {detail.quality_issues.length ? <Card withBorder padding="sm"><Text size="xs" fw={650} mb={4}>{labels.issues}</Text><Group gap={5}>{detail.quality_issues.map((issue) => <Badge key={issue} size="xs" variant="light" color="orange">{issue.replaceAll("_", " ")}</Badge>)}</Group></Card> : null}
+        {detail.duplicate_of_id ? <Text size="sm" c="orange">{labels.duplicate}: {detail.duplicate_of_id}</Text> : null}
         {detail.canonical_url && safeDatasetUrl(detail.canonical_url) ? <Button component="a" href={safeDatasetUrl(detail.canonical_url)!} target="_blank" rel="noopener noreferrer" variant="light" size="xs" rightSection={<ExternalLink size={13} />}>{labels.open}</Button> : null}
         <DataRecordActions recordId={detail.id} companyId={detail.promoted_company_id} contactId={detail.promoted_contact_id}
           companyLabel={labels.createCompany} contactLabel={labels.createContact} savedLabel={labels.saved}
-          allowCompany={["organization", "place", "generic_record"].includes(detail.record_type)} allowContact={["person_profile", "generic_record"].includes(detail.record_type)} />
+          allowCompany={["organization", "place", "generic_record"].includes(detail.record_type)} allowContact={["person_profile", "generic_record"].includes(detail.record_type)}
+          reviewStatus={detail.review_status} duplicateOfId={detail.duplicate_of_id} suppressLabel={labels.suppress} restoreLabel={labels.restore} />
         <Divider />
+        <Text size="sm" fw={650}>{labels.source}</Text>
+        <Card withBorder padding="sm" bg="gray.0"><pre style={{ overflow: "auto", maxHeight: 180, margin: 0, fontSize: 11, whiteSpace: "pre-wrap" }}>{JSON.stringify(detail.provenance, null, 2)}</pre></Card>
         <Text size="sm" fw={650}>{labels.rawData}</Text>
         <Card withBorder padding="sm" bg="gray.0"><pre style={{ overflow: "auto", maxHeight: "calc(100vh - 270px)", margin: 0, fontSize: 11, whiteSpace: "pre-wrap" }}>{JSON.stringify(detail.raw_data, null, 2)}</pre></Card>
       </Stack> : null}

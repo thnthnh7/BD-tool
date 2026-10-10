@@ -1275,6 +1275,8 @@ export type Database = {
           source_item_key: string; record_type: string; title: string; canonical_url: string;
           normalized_data: Json; raw_data: Json; identity_keys: Json; content_hash: string;
           promoted_company_id: string | null; promoted_contact_id: string | null;
+          provenance: Json; identity_fingerprint: string; quality_score: number; quality_issues: string[];
+          review_status: string; duplicate_of_id: string | null;
           captured_at: string; created_at: string; updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["data_records"]["Row"]> & {
@@ -1291,6 +1293,17 @@ export type Database = {
         };
         Insert: Partial<Database["public"]["Tables"]["data_assets"]["Row"]> & { workspace_id: string; collection_id: string };
         Update: Partial<Database["public"]["Tables"]["data_assets"]["Row"]>;
+        Relationships: Rel;
+      };
+      data_suppressions: {
+        Row: {
+          id: string; workspace_id: string; identity_type: string; identity_value: string;
+          reason: string; created_by: string | null; created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["data_suppressions"]["Row"]> & {
+          workspace_id: string; identity_type: string; identity_value: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["data_suppressions"]["Row"]>;
         Relationships: Rel;
       };
       data_record_links: {
@@ -2374,6 +2387,14 @@ export type Database = {
       data_library_type_counts: {
         Args: Record<string, never>;
         Returns: { record_type: string; record_count: number }[];
+      };
+      refresh_data_collection_review: {
+        Args: { p_collection_id: string };
+        Returns: void;
+      };
+      set_data_record_suppression: {
+        Args: { p_record_id: string; p_suppressed: boolean; p_reason?: string };
+        Returns: void;
       };
       is_platform_admin: { Args: Record<string, never>; Returns: boolean };
       lookup_companies_for_ingest: {

@@ -362,7 +362,23 @@
     },
     "details": "세부 정보",
     "record": "레코드",
-    "dataType": "데이터 유형"
+    "dataType": "데이터 유형",
+    "quality": "Quality",
+    "status": "Review status",
+    "source": "Source provenance",
+    "issues": "Quality issues",
+    "duplicate": "Original record",
+    "suppress": "Suppress",
+    "restore": "Restore",
+    "allStatuses": "All review statuses",
+    "anyQuality": "Any quality",
+    "statuses": {
+      "pending": "Needs review",
+      "ready": "Ready",
+      "duplicate": "Duplicate",
+      "suppressed": "Suppressed",
+      "imported": "Imported"
+    }
   },
   "Deals": {
     "title": "거래",

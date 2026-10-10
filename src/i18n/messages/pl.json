@@ -362,7 +362,23 @@
     },
     "details": "Szczegóły",
     "record": "Rekord",
-    "dataType": "Typ danych"
+    "dataType": "Typ danych",
+    "quality": "Quality",
+    "status": "Review status",
+    "source": "Source provenance",
+    "issues": "Quality issues",
+    "duplicate": "Original record",
+    "suppress": "Suppress",
+    "restore": "Restore",
+    "allStatuses": "All review statuses",
+    "anyQuality": "Any quality",
+    "statuses": {
+      "pending": "Needs review",
+      "ready": "Ready",
+      "duplicate": "Duplicate",
+      "suppressed": "Suppressed",
+      "imported": "Imported"
+    }
   },
   "Deals": {
     "title": "Oferty",

@@ -449,7 +449,23 @@
     },
     "details": "Chi tiết",
     "record": "Bản ghi",
-    "dataType": "Loại dữ liệu"
+    "dataType": "Loại dữ liệu",
+    "quality": "Chất lượng",
+    "status": "Trạng thái duyệt",
+    "source": "Nguồn dữ liệu",
+    "issues": "Vấn đề chất lượng",
+    "duplicate": "Bản ghi gốc",
+    "suppress": "Loại trừ",
+    "restore": "Khôi phục",
+    "allStatuses": "Mọi trạng thái",
+    "anyQuality": "Mọi mức chất lượng",
+    "statuses": {
+      "pending": "Cần duyệt",
+      "ready": "Sẵn sàng",
+      "duplicate": "Trùng lặp",
+      "suppressed": "Đã loại trừ",
+      "imported": "Đã nhập"
+    }
   },
   "Deals": {
     "title": "Cơ hội",

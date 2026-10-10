@@ -14,7 +14,7 @@ function string(value: Json | undefined) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function listDataLibrary(input: { q?: string; type?: string; collectionId?: string; page?: number }) {
+export async function listDataLibrary(input: { q?: string; type?: string; collectionId?: string; status?: string; minQuality?: number; page?: number }) {
   const { context, supabase } = await withWorkspace();
   const page = Math.max(1, input.page || 1);
   const pageSize = 50;
@@ -33,6 +33,8 @@ export async function listDataLibrary(input: { q?: string; type?: string; collec
     .order("captured_at", { ascending: false });
   if (input.collectionId) query = query.eq("collection_id", input.collectionId);
   if (input.type) query = query.eq("record_type", input.type);
+  if (input.status) query = query.eq("review_status", input.status);
+  if (input.minQuality) query = query.gte("quality_score", input.minQuality);
   if (input.q?.trim()) query = query.or(`title.ilike.%${input.q.trim().replaceAll(",", "") }%,canonical_url.ilike.%${input.q.trim().replaceAll(",", "")}%`);
   const { data: records, count } = await query.range(from, to);
 
@@ -54,6 +56,8 @@ export async function promoteDataRecordAction(formData: FormData) {
     .eq("workspace_id", context.workspaceId)
     .maybeSingle();
   if (error || !row) return { error: error?.message || "Record not found." };
+  if (row.review_status === "suppressed") return { error: "This record is suppressed and cannot be imported." };
+  if (row.duplicate_of_id) return { error: "This is a duplicate. Review the original record before importing." };
   const normalized = object(row.normalized_data);
   const raw = object(row.raw_data);
   const title = row.title || string(normalized.title) || "Untitled";
@@ -87,7 +91,7 @@ export async function promoteDataRecordAction(formData: FormData) {
       notes: `Source record: ${row.id}`,
     }).select("id").single()).data;
     if (!company) return { error: "Could not create company." };
-    await supabase.from("data_records").update({ promoted_company_id: company.id }).eq("id", row.id);
+    await supabase.from("data_records").update({ promoted_company_id: company.id, review_status: "imported" }).eq("id", row.id).eq("workspace_id", context.workspaceId);
   } else if (target === "contact") {
     if (!contactTypes.has(row.record_type)) return { error: "This record type cannot be promoted to a contact." };
     const fullName = title.trim();
@@ -109,12 +113,29 @@ export async function promoteDataRecordAction(formData: FormData) {
       notes: `${url ? `Profile: ${url}\n` : ""}Source record: ${row.id}`,
     }).select("id").single()).data;
     if (!contact) return { error: "Could not create contact." };
-    await supabase.from("data_records").update({ promoted_contact_id: contact.id }).eq("id", row.id);
+    await supabase.from("data_records").update({ promoted_contact_id: contact.id, review_status: "imported" }).eq("id", row.id).eq("workspace_id", context.workspaceId);
   } else {
     return { error: "Unsupported target." };
   }
   revalidatePath("/app/data");
   revalidatePath("/app/companies");
   revalidatePath("/app/contacts");
+  return { ok: true as const };
+}
+
+export async function setDataRecordSuppressionAction(formData: FormData) {
+  await requireModule("data_library");
+  const { context, supabase } = await withWorkspace();
+  if (context.memberRole === "member") return { error: "Only workspace owners and admins can change suppressions." };
+  const recordId = String(formData.get("record_id") || "");
+  const suppressed = String(formData.get("suppressed") || "") === "true";
+  if (!recordId) return { error: "Record not found." };
+  const { error } = await supabase.rpc("set_data_record_suppression", {
+    p_record_id: recordId,
+    p_suppressed: suppressed,
+    p_reason: String(formData.get("reason") || "manual").slice(0, 200),
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/app/data");
   return { ok: true as const };
 }

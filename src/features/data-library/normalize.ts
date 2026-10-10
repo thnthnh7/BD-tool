@@ -18,6 +18,59 @@ function text(...values: unknown[]) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function canonicalEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function canonicalPhone(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length < 7) return trimmed;
+  return trimmed.startsWith("+") ? `+${digits}` : digits;
+}
+
+function canonicalUrl(value: string) {
+  if (!value.trim()) return "";
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+    parsed.hash = "";
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (/^(utm_|fbclid$|gclid$|mc_)/i.test(key)) parsed.searchParams.delete(key);
+    }
+    parsed.hostname = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (parsed.pathname !== "/") parsed.pathname = parsed.pathname.replace(/\/$/, "");
+    return parsed.toString();
+  } catch {
+    return value.trim();
+  }
+}
+
+function identityFingerprint(keys: Record<string, string>) {
+  const candidate = ["email", "phone", "external_id", "url", "username"]
+    .map((key) => keys[key] ? `${key}:${keys[key]}` : "")
+    .find(Boolean);
+  return candidate ? createHash("md5").update(candidate).digest("hex") : "";
+}
+
+function quality(recordType: DataRecordType, input: { title: string; url: string; email: string; phone: string; description: string; fingerprint: string }) {
+  const issues: string[] = [];
+  let score = 0;
+  if (input.title && !/^Record \d+$/.test(input.title)) score += 20; else issues.push("missing_title");
+  if (input.fingerprint) score += 25; else issues.push("missing_identity");
+  if (input.url) score += 20; else issues.push("missing_url");
+  if (input.description) score += 10; else issues.push("missing_description");
+  if (input.email) {
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) score += 15;
+    else issues.push("invalid_email");
+  }
+  if (input.phone) score += 10;
+  if (["person_profile", "organization", "place", "generic_record"].includes(recordType) && !input.email && !input.phone && !input.url) {
+    issues.push("missing_contact_channel");
+  }
+  return { score: Math.min(100, score), issues };
+}
+
 function includesAny(keys: Set<string>, candidates: string[]) {
   return candidates.some((key) => keys.has(key));
 }
@@ -42,30 +95,38 @@ export function inferRecordType(value: unknown): DataRecordType {
 
 export function normalizeDataRecord(value: unknown, index: number, forcedType?: DataRecordType) {
   const raw = record(value);
+  const recordType = forcedType || inferRecordType(raw);
   const title = text(raw.title, raw.name, raw.fullName, raw.full_name, raw.username, raw.companyName, raw.company_name, raw.query, raw.url) || `Record ${index + 1}`;
-  const canonicalUrl = text(raw.url, raw.link, raw.profileUrl, raw.profile_url, raw.website, raw.webUrl, raw.web_url);
-  const email = text(raw.email, Array.isArray(raw.emails) ? raw.emails[0] : "");
-  const phone = text(raw.phone, raw.phoneNumber, raw.phone_number);
-  const username = text(raw.username, raw.handle);
+  const url = canonicalUrl(text(raw.url, raw.link, raw.profileUrl, raw.profile_url, raw.website, raw.webUrl, raw.web_url));
+  const email = canonicalEmail(text(raw.email, Array.isArray(raw.emails) ? raw.emails[0] : ""));
+  const phone = canonicalPhone(text(raw.phone, raw.phoneNumber, raw.phone_number));
+  const username = text(raw.username, raw.handle).toLowerCase().replace(/^@/, "");
   const externalId = text(raw.id, raw.externalId, raw.external_id, raw.placeId, raw.place_id);
+  const description = text(raw.description, raw.biography, raw.bio, raw.snippet, raw.text, raw.caption);
   const normalizedData = {
     title,
-    url: canonicalUrl,
+    url,
     email,
     phone,
     username,
-    description: text(raw.description, raw.biography, raw.bio, raw.snippet, raw.text, raw.caption),
+    domain: (() => { try { return new URL(url).hostname; } catch { return ""; } })(),
+    description,
     image_url: text(raw.imageUrl, raw.image_url, raw.profilePicUrl, raw.profile_pic_url, raw.thumbnailUrl),
   };
-  const identityKeys = Object.fromEntries(Object.entries({ external_id: externalId, url: canonicalUrl, email, phone, username }).filter(([, item]) => item));
+  const identityKeys = Object.fromEntries(Object.entries({ external_id: externalId, url, email, phone, username }).filter(([, item]) => item));
+  const fingerprint = identityFingerprint(identityKeys);
+  const recordQuality = quality(recordType, { title, url, email, phone, description, fingerprint });
   const rawData = raw as Json;
   return {
-    recordType: forcedType || inferRecordType(raw),
+    recordType,
     title: title.slice(0, 300),
-    canonicalUrl: canonicalUrl.slice(0, 2000),
+    canonicalUrl: url.slice(0, 2000),
     normalizedData: normalizedData as Json,
     rawData,
     identityKeys: identityKeys as Json,
+    identityFingerprint: fingerprint,
+    qualityScore: recordQuality.score,
+    qualityIssues: recordQuality.issues,
     contentHash: createHash("sha256").update(JSON.stringify(raw)).digest("hex"),
   };
 }

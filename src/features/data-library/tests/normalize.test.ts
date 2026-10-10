@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { Json } from "@/lib/database.types";
 import { inferRecordType, normalizeDataRecord } from "../normalize";
 
 test("classifies common heterogeneous actor outputs", () => {
@@ -22,13 +23,24 @@ test("keeps the original payload while producing stable searchable metadata", ()
   const second = normalizeDataRecord(actorItem, 0);
 
   assert.equal(first.title, "Ada Lovelace");
-  assert.equal(first.canonicalUrl, actorItem.profileUrl);
+  assert.equal(first.canonicalUrl, "https://linkedin.com/in/ada");
   assert.deepEqual(first.rawData, actorItem);
   assert.equal(first.contentHash, second.contentHash);
   assert.deepEqual(first.identityKeys, {
-    url: actorItem.profileUrl,
+    url: "https://linkedin.com/in/ada",
     email: actorItem.email,
   });
+  assert.equal(first.qualityScore, 80);
+  assert.ok(first.identityFingerprint);
+  assert.deepEqual(first.qualityIssues, ["missing_description"]);
+});
+
+test("canonicalizes identity values so duplicate inputs share a fingerprint", () => {
+  const first = normalizeDataRecord({ name: "Ada", email: " ADA@Example.COM ", url: "https://www.example.com/profile/?utm_source=test" }, 0);
+  const second = normalizeDataRecord({ name: "Ada L.", email: "ada@example.com", url: "https://example.com/profile" }, 1);
+  assert.equal((first.normalizedData as Record<string, Json>).email, "ada@example.com");
+  assert.equal((first.normalizedData as Record<string, Json>).url, "https://example.com/profile");
+  assert.equal(first.identityFingerprint, second.identityFingerprint);
 });
 
 test("supports a known adapter override without losing the raw actor item", () => {

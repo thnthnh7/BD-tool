@@ -127,6 +127,16 @@ async function syncDataLibrary(supabase: Db, job: Job, items: unknown[], forcedT
         normalized_data: normalized.normalizedData,
         raw_data: normalized.rawData,
         identity_keys: normalized.identityKeys,
+        identity_fingerprint: normalized.identityFingerprint,
+        quality_score: normalized.qualityScore,
+        quality_issues: normalized.qualityIssues,
+        provenance: {
+          provider: "apify",
+          actor_id: job.apify_actor_id,
+          dataset_id: job.apify_dataset_id,
+          scrape_job_id: job.id,
+          captured_at: job.finished_at || new Date().toISOString(),
+        } as Json,
         content_hash: normalized.contentHash,
         captured_at: job.finished_at || new Date().toISOString(),
       };
@@ -134,6 +144,8 @@ async function syncDataLibrary(supabase: Db, job: Job, items: unknown[], forcedT
     const { error } = await supabase.from("data_records").upsert(rows, { onConflict: "collection_id,source_item_key" });
     if (error) throw new Error(error.message);
   }
+  const { error: reviewError } = await supabase.rpc("refresh_data_collection_review", { p_collection_id: collection.id });
+  if (reviewError) throw new Error(reviewError.message);
 }
 
 export async function claimScrapeIngest(

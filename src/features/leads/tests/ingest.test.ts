@@ -8,7 +8,12 @@ function fakeDatabase(initial: Stored[] = [], failBatch = 0) {
   const stored = [...initial];
   let inserts = 0;
   let counts: Record<string, unknown> = {};
-  const db = { from(table: string) {
+  const db = {
+    async rpc(name: string) {
+      assert.equal(name, "refresh_data_collection_review");
+      return { error: null };
+    },
+    from(table: string) {
     const chain = {
       select() { return chain; }, eq() { return chain; }, order() { return chain; },
       async maybeSingle() { return { data: { slug: "test/actor", adapter_status: "preview", schema_fetched_at: "2026-09-24" }, error: null }; },
@@ -27,7 +32,8 @@ function fakeDatabase(initial: Stored[] = [], failBatch = 0) {
       then(resolve: (value: { error: null }) => unknown) { return Promise.resolve(resolve({ error: null })); },
     };
     return chain;
-  } };
+    },
+  };
   return { db: db as unknown as Parameters<typeof ingestDatasetItems>[0], stored, counts: () => counts };
 }
 

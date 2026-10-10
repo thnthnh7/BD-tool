@@ -65,6 +65,7 @@ const workspaceGroups: NavGroup[] = [
     items: [
       { href: "/app/leads/sources", label: "sources", icon: Library, roles: ["owner", "admin", "member"], feature: "sources" },
       { href: "/app/leads/scrape", label: "scrape", icon: Radar, roles: ["owner", "admin", "member"], feature: "scraping" },
+      { href: "/app/data", label: "dataLibrary", icon: Library, roles: ["owner", "admin", "member"], feature: "data_library" },
     ],
   },
   {
