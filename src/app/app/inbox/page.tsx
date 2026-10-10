@@ -1,7 +1,6 @@
 import { requireModule } from "@/lib/auth/session";
 import { NativeSelect, SimpleGrid, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { Mail } from "lucide-react";
-import { Table, TableThead, TableTbody, TableTr, TableTh, TableTd } from "@/components/leadely/table";
 import { EmptyState } from "@/components/leadely/empty-state";
 import { ListFooter, ListSearch, ListTable } from "@/components/leadely/list-frame";
 import { PageHeader } from "@/components/leadely/page-header";
@@ -12,6 +11,7 @@ import { listCommunications, sendCommunicationAction } from "@/features/comms/se
 import { listEngagementAccounts } from "@/features/comms/server/accounts";
 import { EngagementAccountsPanel } from "@/features/comms/components/engagement-accounts-panel";
 import { SuppressionPanel } from "@/features/comms/components/suppression-panel";
+import { CommunicationBrowser } from "@/features/comms/components/communication-browser";
 import { listEngagementSuppressions } from "@/features/comms/server/suppression-actions";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 
@@ -61,34 +61,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       >
         {paged.total ? (
           <ListTable footer={<ListFooter path="/app/inbox" q={q} {...paged} singular="email" plural="emails" />}>
-          <Table>
-            <TableThead>
-              <TableTr>
-                <TableTh>Subject</TableTh>
-                <TableTh>Direction</TableTh>
-                <TableTh>Company</TableTh>
-                <TableTh style={{ whiteSpace: "nowrap" }}>When</TableTh>
-              </TableTr>
-            </TableThead>
-            <TableTbody>
-              {paged.rows.map((item) => (
-                <TableTr key={item.id}>
-                  <TableTd>
-                    <Text size="sm" lineClamp={1} maw={320}>
-                      {item.subject}
-                    </Text>
-                  </TableTd>
-                  <TableTd>{item.direction}</TableTd>
-                  <TableTd>
-                    <Text size="sm" lineClamp={1}>
-                      {(item.companies as { name?: string } | null)?.name || "—"}
-                    </Text>
-                  </TableTd>
-                  <TableTd style={{ whiteSpace: "nowrap" }}>{new Date(item.occurred_at).toLocaleString("vi-VN")}</TableTd>
-                </TableTr>
-              ))}
-            </TableTbody>
-          </Table>
+            <CommunicationBrowser items={paged.rows.map((item) => ({ ...item, companies: item.companies as unknown as { name?: string } | null }))} mailboxes={accounts.filter((item) => item.status === "connected").map((item) => ({ id: item.id, account_email: item.account_email, provider: item.provider }))} />
           </ListTable>
         ) : q ? (
           <Text size="sm" c="dimmed">Không thấy email khớp.</Text>
