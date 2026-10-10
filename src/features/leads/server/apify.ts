@@ -6,6 +6,7 @@ import { incrementUsage } from "@/lib/usage";
 import { readAllPages } from "@/features/leads/server/read-pages";
 import { getApifyConnectionToken, syncApifyConnection } from "@/features/leads/server/apify-connection";
 import { normalizeDataRecord, type DataRecordType } from "@/features/data-library/normalize";
+import { normalizeProviderUsd, providerFetch } from "@/features/providers/runtime";
 
 type Db = SupabaseClient<Database>;
 type Job = Database["public"]["Tables"]["lead_scrape_jobs"]["Row"];
@@ -425,43 +426,41 @@ export async function runScrapeIngest(job: Job) {
 }
 
 export async function fetchApifyDatasetItems(datasetId: string, token: string) {
-  const response = await fetch(
-    `https://api.apify.com/v2/datasets/${datasetId}/items?clean=true`,
-    { cache: "no-store", headers: { Authorization: `Bearer ${token}`, "x-apify-integration-platform": "leadely" } },
-  );
-  if (!response.ok) {
-    throw new Error(`Apify dataset ${response.status}: ${(await response.text()).slice(0, 200)}`);
-  }
+  const response = await providerFetch({
+    provider: "apify", operation: "read dataset",
+    url: `https://api.apify.com/v2/datasets/${encodeURIComponent(datasetId)}/items?clean=true`,
+    init: { headers: { Authorization: `Bearer ${token}`, "x-apify-integration-platform": "leadely" } },
+  });
   return (await response.json()) as unknown[];
 }
 
 // https://docs.apify.com/api/v2/actor-run-get
 export async function fetchApifyRun(runId: string, token: string) {
-  const response = await fetch(`https://api.apify.com/v2/actor-runs/${encodeURIComponent(runId)}`, {
-    headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(15000),
+  const response = await providerFetch({
+    provider: "apify", operation: "read run",
+    url: `https://api.apify.com/v2/actor-runs/${encodeURIComponent(runId)}`,
+    init: { headers: { Authorization: `Bearer ${token}` } },
   });
-  if (!response.ok) throw new Error(`Không đọc được lần chạy Apify (${response.status}).`);
   const payload = await response.json() as { data?: { status?: string; usageTotalUsd?: number } };
   if (!payload.data?.status) throw new Error("Apify không trả về trạng thái lần chạy.");
   const usageTotalUsd = payload.data.usageTotalUsd;
-  return { status: payload.data.status, usageTotalUsd: typeof usageTotalUsd === "number" && Number.isFinite(usageTotalUsd) ? usageTotalUsd : null };
+  return { status: payload.data.status, usageTotalUsd: normalizeProviderUsd(usageTotalUsd) };
 }
 
 // https://docs.apify.com/api/v2/actor-run-abort-post
 export async function abortApifyRun(runId: string, token: string) {
-  const response = await fetch(`https://api.apify.com/v2/actor-runs/${encodeURIComponent(runId)}/abort?gracefully=false`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "x-apify-integration-platform": "leadely" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(15000),
+  const response = await providerFetch({
+    provider: "apify", operation: "abort run",
+    url: `https://api.apify.com/v2/actor-runs/${encodeURIComponent(runId)}/abort?gracefully=false`,
+    init: { method: "POST", headers: { Authorization: `Bearer ${token}`, "x-apify-integration-platform": "leadely" } },
+    retryMode: "always",
   });
   const raw = await response.text();
-  if (!response.ok) throw new Error(`Apify abort ${response.status}: ${raw.slice(0, 200)}`);
   const payload = raw ? JSON.parse(raw) as { data?: { status?: string; usageTotalUsd?: number } } : {};
   const usageTotalUsd = payload.data?.usageTotalUsd;
   return {
     status: payload.data?.status || "ABORTING",
-    usageTotalUsd: typeof usageTotalUsd === "number" && Number.isFinite(usageTotalUsd) ? usageTotalUsd : null,
+    usageTotalUsd: normalizeProviderUsd(usageTotalUsd),
   };
 }
 
@@ -476,17 +475,17 @@ export async function startApifyActorRun(input: { actorSlug: string; body: Recor
     "utf8",
   ).toString("base64");
 
-  const response = await fetch(
-    `https://api.apify.com/v2/acts/${apifyActorPath(input.actorSlug)}/runs?webhooks=${encodeURIComponent(webhooks)}`,
-    {
+  const response = await providerFetch({
+    provider: "apify", operation: "start run",
+    url: `https://api.apify.com/v2/acts/${apifyActorPath(input.actorSlug)}/runs?webhooks=${encodeURIComponent(webhooks)}`,
+    init: {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${input.token}`, "x-apify-integration-platform": "leadely" },
       body: JSON.stringify(input.body),
-      cache: "no-store",
     },
-  );
+    retryMode: "never",
+  });
   const raw = await response.text();
-  if (!response.ok) throw new Error(`Apify start ${response.status}: ${raw.slice(0, 240)}`);
   const payload = JSON.parse(raw) as { data?: { id?: string; defaultDatasetId?: string } };
   return {
     runId: payload.data?.id || "",

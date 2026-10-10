@@ -3,6 +3,7 @@ import { decryptSecret, encryptSecret } from "@/lib/crypto-utils";
 import { requireOwnerOrAdmin, requireWorkspace } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formText } from "@/lib/crm";
+import { providerFetch } from "@/features/providers/runtime";
 
 type ApifyUser = {
   id?: string;
@@ -31,12 +32,11 @@ export async function apifyOauthReady() {
 }
 
 async function apifyGet<T>(path: string, token: string): Promise<T> {
-  const response = await fetch(`https://api.apify.com/v2${path}`, {
-    headers: { Authorization: `Bearer ${token}`, "x-apify-integration-platform": "leadely" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(15_000),
+  const response = await providerFetch({
+    provider: "apify", operation: `read ${path}`,
+    url: `https://api.apify.com/v2${path}`,
+    init: { headers: { Authorization: `Bearer ${token}`, "x-apify-integration-platform": "leadely" } },
   });
-  if (!response.ok) throw new Error(`Apify ${response.status}: ${(await response.text()).slice(0, 180)}`);
   const payload = await response.json() as { data?: T };
   if (!payload.data) throw new Error("Apify không trả về dữ liệu.");
   return payload.data;
