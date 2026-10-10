@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/leadely/status-badge";
 import { LinkIcon } from "@/components/mantine-link";
 import { ActionForm } from "@/features/crm/components/action-form";
 import { createSequenceAction, listSequences } from "@/features/comms/server/actions";
+import { SequenceTemplatePicker } from "@/features/comms/components/sequence-template-picker";
 import { matchesQuery, readListQuery, slicePage } from "@/lib/list-page";
 
 export default async function SequencesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
@@ -21,6 +22,9 @@ export default async function SequencesPage({ searchParams }: { searchParams: Pr
   return (
     <Stack gap="md">
       <PageHeader title="Sequences" subtitle="Outbound cadences. Bước gửi thật qua Gmail hoãn đến khi mailbox connected." />
+      <SectionPanel title="Start from a playbook">
+        <SequenceTemplatePicker />
+      </SectionPanel>
       <SectionPanel title="New sequence">
         <ActionForm action={createSequenceAction} submitLabel="Create" redirectTo="/app/sequences/{id}">
           <TextInput name="name" label="Name" required />
