@@ -26,6 +26,7 @@ import {
   PackagePlus,
   Plus,
   Settings,
+  ArrowLeftRight,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -34,7 +35,7 @@ import { TutorialBook } from "@/features/tutorial/components/tutorial-book";
 import { AppLogo } from "@/components/leadely/app-logo";
 import { LinkButton } from "@/components/mantine-link";
 import { ContentContainer } from "@/components/layout/content-container";
-import { signOut } from "@/lib/auth/actions";
+import { signOut, switchWorkspaceAction } from "@/lib/auth/actions";
 import type { SessionContext } from "@/lib/auth/session";
 import classes from "@/styles/leadely-shell.module.css";
 import { useTranslations } from "next-intl";
@@ -224,6 +225,21 @@ export function AppShellNav({
             <Menu.Dropdown>
               {context.kind === "workspace" ? (
                 <>
+                  <Menu.Label>{context.workspaceName}</Menu.Label>
+                  {context.availableWorkspaces.length > 1
+                    ? context.availableWorkspaces.map((workspace) => (
+                        <form action={async (formData) => { await switchWorkspaceAction(formData); }} key={workspace.id}>
+                          <input type="hidden" name="workspace_id" value={workspace.id} />
+                          <Menu.Item type="submit" component="button" leftSection={<ArrowLeftRight size={16} />} disabled={workspace.id === context.workspaceId}>
+                            {workspace.name} · {workspace.role}
+                          </Menu.Item>
+                        </form>
+                      ))
+                    : null}
+                  <Menu.Item component={Link} href="/app/workspaces" leftSection={<Building2 size={16} />}>
+                    Manage workspaces
+                  </Menu.Item>
+                  <Menu.Divider />
                   <Menu.Item component={Link} href="/app/settings" leftSection={<Settings size={16} />}>
                     {tCommon("settings")}
                   </Menu.Item>

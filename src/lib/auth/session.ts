@@ -7,6 +7,11 @@ import type { ModuleKey } from "@/lib/module-catalog";
 
 export type MemberRole = "owner" | "admin" | "member";
 export type PlatformRole = "super_admin" | "support";
+export type WorkspaceOption = { id: string; name: string; type: "personal" | "company"; role: MemberRole };
+
+export function selectActiveMembership<T extends { workspace_id: string }>(memberships: T[], preferredId?: string | null) {
+  return memberships.find((item) => item.workspace_id === preferredId) || memberships[0] || null;
+}
 
 export type SessionContext =
   | {
@@ -34,6 +39,7 @@ export type SessionContext =
       plan: ParsedPlan;
       planStatus: PlanStatus;
       locked: boolean;
+      availableWorkspaces: WorkspaceOption[];
     };
 
 export const getSessionContext = cache(async function getSessionContext(): Promise<SessionContext | null> {
@@ -44,7 +50,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
   const userId = data.user.id;
   const email = data.user.email || "";
 
-  const { data: profile } = await supabase.from("profiles").select("status, preferred_locale").eq("id", userId).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("status, preferred_locale, active_workspace_id").eq("id", userId).maybeSingle();
   const preferredLocale = isAppLocale(profile?.preferred_locale) ? profile.preferred_locale : null;
   if (profile?.status === "suspended" || profile?.status === "deleted") {
     await supabase.auth.signOut();
@@ -61,11 +67,13 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     return { kind: "platform", userId, email, locale: preferredLocale || defaultLocale, platformRole: platform.role };
   }
 
-  const { data: membership } = await supabase
+  const { data: memberships } = await supabase
     .from("workspace_members")
     .select("role, workspace_id")
     .eq("user_id", userId)
-    .maybeSingle();
+    .order("created_at", { ascending: true });
+
+  const membership = selectActiveMembership(memberships || [], profile?.active_workspace_id);
 
   if (!membership) {
     return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
@@ -86,6 +94,17 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
   if (!workspace) {
     return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
+
+  const workspaceIds = (memberships || []).map((item) => item.workspace_id);
+  const { data: availableRows } = workspaceIds.length
+    ? await supabase.from("workspaces").select("id, name, type").in("id", workspaceIds).is("archived_at", null).order("name")
+    : { data: [] };
+  const availableWorkspaces: WorkspaceOption[] = (availableRows || []).map((item) => ({
+    id: item.id,
+    name: item.name,
+    type: item.type as "personal" | "company",
+    role: ((memberships || []).find((member) => member.workspace_id === item.id)?.role || "member") as MemberRole,
+  }));
 
   // Both reads depend on the verified workspace, but not on each other.
   const [{ data: planRow }, { data: override }, { data: subscription }] = await Promise.all([
@@ -122,6 +141,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     plan: applyPlanOverrides(applyEntitlementSnapshot(parsePlan(planRow), snapshot), override?.quotas, override?.features),
     planStatus,
     locked: workspace.locked || Boolean(workspace.archived_at),
+    availableWorkspaces,
   };
 });
 

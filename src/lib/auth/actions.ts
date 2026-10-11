@@ -212,6 +212,34 @@ export async function createWorkspaceAction(formData: FormData) {
   redirect("/app");
 }
 
+export async function createClientWorkspaceAction(formData: FormData) {
+  await requireOwnerOrAdmin();
+  const name = String(formData.get("name") || "").trim();
+  if (!name) return { error: "Client workspace name is required." };
+  const supabase = await createClient();
+  const slug = `${slugify(name)}-${createToken().slice(0, 6).toLowerCase()}`;
+  const { error } = await supabase.rpc("create_agency_workspace", { p_name: name, p_slug: slug });
+  if (error) {
+    if (error.message.includes("workspace_limit_reached")) return { error: "This account has reached the 25 workspace safety limit." };
+    return { error: error.message };
+  }
+  revalidatePath("/app", "layout");
+  redirect("/app");
+}
+
+export async function switchWorkspaceAction(formData: FormData) {
+  const context = await getSessionContext();
+  if (!context || context.kind !== "workspace") redirect("/login");
+  const workspaceId = String(formData.get("workspace_id") || "");
+  const supabase = await createClient();
+  const { data: membership } = await supabase.from("workspace_members").select("workspace_id").eq("workspace_id", workspaceId).eq("user_id", context.userId).maybeSingle();
+  if (!membership) return { error: "Workspace access was not found." };
+  const { error } = await supabase.from("profiles").update({ active_workspace_id: workspaceId }).eq("id", context.userId);
+  if (error) return { error: error.message };
+  revalidatePath("/app", "layout");
+  redirect("/app");
+}
+
 export async function convertToCompanyAction() {
   const supabase = await createClient();
   const context = await getSessionContext();
@@ -241,9 +269,10 @@ export async function createInviteAction(formData: FormData) {
   const supabase = await createClient();
   const { data: existingProfile } = await supabase.from("profiles").select("id").eq("email", email).maybeSingle();
   if (existingProfile) {
-    const { data: taken } = await supabase.from("workspace_members").select("user_id").eq("user_id", existingProfile.id).maybeSingle();
     const { data: platform } = await supabase.from("platform_admins").select("user_id").eq("user_id", existingProfile.id).maybeSingle();
-    if (taken || platform) return { error: "Account này đã thuộc workspace khác hoặc đã có role nền tảng. Hãy dùng email khác." };
+    if (platform) return { error: "Account này có role nền tảng và không thể tham gia workspace." };
+    const { data: existingMember } = await supabase.from("workspace_members").select("user_id").eq("workspace_id", context.workspaceId).eq("user_id", existingProfile.id).maybeSingle();
+    if (existingMember) return { error: "Account này đã là thành viên của workspace." };
   }
 
   const token = createToken();
@@ -265,9 +294,7 @@ export async function createInviteAction(formData: FormData) {
 export async function acceptInvite(rawToken: string) {
   const context = await getSessionContext();
   if (!context) return { error: "Hãy đăng nhập hoặc đăng ký bằng đúng email được mời." };
-  if (context.kind !== "onboarding") {
-    return { error: "Account này đã có role. Một account chỉ được 1 role — hãy dùng email khác." };
-  }
+  if (context.kind === "platform") return { error: "Platform account cannot join a workspace." };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("accept_workspace_invite", {

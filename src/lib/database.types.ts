@@ -792,6 +792,7 @@ export type Database = {
       };
       profiles: {
         Row: {
+          active_workspace_id: string | null;
           created_at: string;
           deleted_at: string | null;
           display_name: string;
@@ -802,6 +803,7 @@ export type Database = {
           suspend_source: string | null;
         };
         Insert: {
+          active_workspace_id?: string | null;
           created_at?: string;
           deleted_at?: string | null;
           display_name?: string;
@@ -2381,6 +2383,14 @@ export type Database = {
       create_workspace_onboarding: {
         Args: { p_name: string; p_slug: string; p_type: string };
         Returns: string;
+      };
+      create_agency_workspace: {
+        Args: { p_name: string; p_slug: string };
+        Returns: string;
+      };
+      list_my_workspaces: {
+        Args: Record<string, never>;
+        Returns: { id: string; name: string; type: string; role: string; provider_cost_usd: number }[];
       };
       claim_billing_webhook_event: {
         Args: { p_provider: string; p_event_id: string; p_event_type: string; p_payload: Json };
