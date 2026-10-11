@@ -13,6 +13,8 @@ import { getTranslations } from "next-intl/server";
 import { AiProviderForm } from "@/features/ai/components/ai-provider-form";
 import { AiProviderOverview } from "@/features/ai/components/ai-provider-overview";
 import { createClient } from "@/lib/supabase/server";
+import { loadProviderBudget } from "@/features/leads/server/provider-budget";
+import { ProviderBudgetControl } from "@/features/leads/components/provider-budget-control";
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ section?: string }> }) {
   const t = await getTranslations("Settings");
@@ -20,7 +22,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const { context, settings } = await loadWorkspaceAppData(["settings"]);
   const supabase = await createClient();
   const { data: agentSettings } = await supabase.from("workspace_agent_settings").select("enabled, write_enabled").eq("workspace_id", context.workspaceId).maybeSingle();
-  const [ai, apify] = await Promise.all([getDefaultAiProvider(), getCurrentWorkspaceApifyStatus()]);
+  const [ai, apify, providerBudget] = await Promise.all([getDefaultAiProvider(), getCurrentWorkspaceApifyStatus(), loadProviderBudget()]);
   const canManage = context.memberRole === "owner" || context.memberRole === "admin";
 
   return (
@@ -31,7 +33,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         isOwner={context.memberRole === "owner"}
         initialSection={params.section}
         languageProvider={<LocaleSettings locale={context.locale} />}
-        apifyProvider={<div data-tutorial-id="settings-apify"><ApifyAccountStatus connection={apify.connection} canManage={apify.canManage} oauthReady={apify.oauthReady} showSetup /></div>}
+        apifyProvider={<div data-tutorial-id="settings-apify"><ApifyAccountStatus connection={apify.connection} canManage={apify.canManage} oauthReady={apify.oauthReady} showSetup /><ProviderBudgetControl {...providerBudget} /></div>}
         aiProvider={
       <SectionPanel title={t("aiTitle")}>
         <AiProviderOverview

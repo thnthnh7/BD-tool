@@ -1048,6 +1048,12 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["workspace_members"]["Insert"]>;
         Relationships: [];
       };
+      workspace_provider_budgets: {
+        Row: { workspace_id: string; provider: string; monthly_limit_usd: number | null; updated_by: string | null; updated_at: string };
+        Insert: { workspace_id: string; provider: string; monthly_limit_usd?: number | null; updated_by?: string | null; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["workspace_provider_budgets"]["Insert"]>;
+        Relationships: [];
+      };
       workspace_settings: {
         Row: {
           about: string;

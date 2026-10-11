@@ -94,6 +94,7 @@ export async function startActorScrapeWithInput(input: {
   if (error?.message?.includes("scrape_concurrency_limit") || error?.code === "23505") {
     return { error: `Your plan supports ${context.plan.quotas.concurrent_scrape_runs} concurrent scrape run${context.plan.quotas.concurrent_scrape_runs === 1 ? "" : "s"}. Wait for an active run to finish or cancel it before starting another.` };
   }
+  if (error?.message?.includes("provider_spending_limit_reached")) return { error: "This workspace has reached its monthly provider spending limit. Increase the limit in Settings or wait for the next month." };
   if (error || !job) return { error: error?.message || "Không tạo được job." };
   const quota = await incrementUsage(supabase, context.workspaceId, "maps_scrapes", 1, -1);
   if (quota.error) {
