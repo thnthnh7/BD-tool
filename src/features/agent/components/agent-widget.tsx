@@ -36,6 +36,7 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
   const [job, setJob] = useState<JobPreview | null>(null);
   const [history, setHistory] = useState<{ id: string; title: string; unread: boolean }[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const skipConversationLoadRef = useRef<string | null>(null);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(storageKey);
@@ -47,9 +48,19 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
 
   useEffect(() => {
     if (!open || !conversationId) return;
-    void fetch(`/api/agent/conversations/${conversationId}`).then((response) => response.json()).then((payload: { items?: Message[] }) => {
-      setMessages(payload.items || []);
-    });
+    if (skipConversationLoadRef.current === conversationId) {
+      skipConversationLoadRef.current = null;
+      return;
+    }
+    const controller = new AbortController();
+    void fetch(`/api/agent/conversations/${conversationId}`, { signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({})) as { items?: Message[] };
+        if (!response.ok) throw new Error("Conversation could not be loaded.");
+        setMessages(payload.items || []);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
   }, [open, conversationId]);
 
   useEffect(() => {
@@ -105,6 +116,7 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
     if (!response.ok || !created.id || !conversationIdPattern.test(created.id)) {
       throw new Error(created.error || t("error"));
     }
+    skipConversationLoadRef.current = created.id;
     setConversationId(created.id);
     window.localStorage.setItem(storageKey, created.id);
     return created.id;
@@ -147,30 +159,34 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
       let buffer = "";
       const assistantId = crypto.randomUUID();
       setMessages((current) => [...current, { id: assistantId, role: "assistant", content: "" }]);
+      const consume = (chunk: string) => {
+        const lines = chunk.split("\n");
+        const dataLine = lines.find((line) => line.startsWith("data:"));
+        const eventLine = lines.find((line) => line.startsWith("event:"));
+        if (!dataLine) return;
+        const data = JSON.parse(dataLine.slice(5)) as { text?: string; message?: string; name?: string; result?: Approval; approvalId?: string };
+        const event = eventLine?.slice(6).trim();
+        if (event === "thinking" || event === "tool_start") setStatus(data.name ? t("tool", { name: data.name }) : t("thinking"));
+        if (event === "token" && data.text) {
+          assistant += data.text;
+          setMessages((current) => current.map((item) => item.id === assistantId ? { ...item, content: assistant } : item));
+        }
+        if (event === "tool_result" && data.result && "approvalId" in data.result) {
+          const next = data.result as Approval;
+          setApprovals((current) => current.some((item) => item.approvalId === next.approvalId) ? current : [...current, next]);
+        }
+        if (event === "error") setMessages((current) => current.map((item) => item.id === assistantId ? { ...item, content: data.message || t("error") } : item));
+      };
       while (true) {
         const step = await reader.read();
         if (step.done) break;
         buffer += decoder.decode(step.value, { stream: true });
         const chunks = buffer.split("\n\n");
         buffer = chunks.pop() || "";
-        for (const chunk of chunks) {
-          const dataLine = chunk.split("\n").find((line) => line.startsWith("data:"));
-          const eventLine = chunk.split("\n").find((line) => line.startsWith("event:"));
-          if (!dataLine) continue;
-          const data = JSON.parse(dataLine.slice(5)) as { text?: string; message?: string; name?: string; result?: Approval; approvalId?: string };
-          const event = eventLine?.slice(6).trim();
-          if (event === "thinking" || event === "tool_start") setStatus(data.name ? t("tool", { name: data.name }) : t("thinking"));
-          if (event === "token" && data.text) {
-            assistant += data.text;
-            setMessages((current) => current.map((item) => item.id === assistantId ? { ...item, content: assistant } : item));
-          }
-          if (event === "tool_result" && data.result && "approvalId" in data.result) {
-            const next = data.result as Approval;
-            setApprovals((current) => current.some((item) => item.approvalId === next.approvalId) ? current : [...current, next]);
-          }
-          if (event === "error") setMessages((current) => current.map((item) => item.id === assistantId ? { ...item, content: data.message || t("error") } : item));
-        }
+        for (const chunk of chunks) consume(chunk);
       }
+      buffer += decoder.decode();
+      if (buffer.trim()) consume(buffer);
     } catch {
       if (!controller.signal.aborted) setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: t("error") }]);
     } finally {

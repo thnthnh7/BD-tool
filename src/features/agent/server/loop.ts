@@ -221,9 +221,11 @@ async function completeWithTools(input: {
 
 async function callProvider(input: { provider: string; baseUrl: string; apiKey: string; model: string; messages: ModelMessage[]; tools: { name: string }[]; signal: AbortSignal }) {
   const started = Date.now();
+  const timeoutSignal = AbortSignal.timeout(45_000);
+  const signal = AbortSignal.any([input.signal, timeoutSignal]);
   try {
     const baseUrl = await validateAiBaseUrl(input.baseUrl, input.provider);
-    if (input.provider === "anthropic") return anthropic(input, baseUrl, started);
+    if (input.provider === "anthropic") return anthropic({ ...input, signal }, baseUrl, started);
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${input.apiKey}`, "Content-Type": "application/json" },
@@ -239,7 +241,7 @@ async function callProvider(input: { provider: string; baseUrl: string; apiKey: 
         })),
         tools: input.tools.map((tool) => ({ type: "function", function: { name: tool.name, description: toolDescription(tool.name), parameters: toolSchema(tool.name) } })),
       }),
-      signal: input.signal,
+      signal,
     });
     const raw = await response.text();
     if (!response.ok) return { ok: false as const, error: explainProviderError(raw), latencyMs: Date.now() - started, toolCalls: [] as ToolCall[], content: "" };
@@ -248,7 +250,8 @@ async function callProvider(input: { provider: string; baseUrl: string; apiKey: 
     const toolCalls = (message?.tool_calls || []).map((call) => ({ id: call.id || "", name: call.function?.name || "", arguments: call.function?.arguments || "{}", raw: call }));
     return { ok: true as const, content: message?.content || "", toolCalls, latencyMs: Date.now() - started, error: "" };
   } catch {
-    return { ok: false as const, error: input.signal.aborted ? "Canceled" : "Provider error", latencyMs: Date.now() - started, toolCalls: [] as ToolCall[], content: "" };
+    const error = input.signal.aborted ? "Canceled" : timeoutSignal.aborted ? "The AI provider timed out. Try again." : "Provider error";
+    return { ok: false as const, error, latencyMs: Date.now() - started, toolCalls: [] as ToolCall[], content: "" };
   }
 }
 
