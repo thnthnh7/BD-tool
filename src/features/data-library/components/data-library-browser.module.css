@@ -5,6 +5,10 @@
   align-items: start;
 }
 
+.singleLayout {
+  display: block;
+}
+
 .collections {
   position: sticky;
   top: 16px;

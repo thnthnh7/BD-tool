@@ -13,8 +13,8 @@ export function WorkflowOutcomesPanel({ outcomes, wonDeals, totalDeals, showData
 }) {
   const items: Outcome[] = [];
   if (showData) {
-    items.push({ label: "Collected", value: outcomes.collected, detail: `${outcomes.ready} ready for review`, href: "/app/data", progress: ratio(outcomes.ready + outcomes.imported, outcomes.collected) });
-    items.push({ label: "Imported to CRM", value: outcomes.imported, detail: `${ratio(outcomes.imported, outcomes.collected)}% of collected`, href: "/app/data?status=imported", progress: ratio(outcomes.imported, outcomes.collected) });
+    items.push({ label: "Collected", value: outcomes.collected, detail: `${outcomes.ready} ready for review`, href: "/app/leads/scrape", progress: ratio(outcomes.ready + outcomes.imported, outcomes.collected) });
+    items.push({ label: "Imported to CRM", value: outcomes.imported, detail: `${ratio(outcomes.imported, outcomes.collected)}% of collected`, href: "/app/leads/scrape", progress: ratio(outcomes.imported, outcomes.collected) });
   }
   if (showSequences) {
     items.push({ label: "Sequence replies", value: outcomes.replied, detail: `${outcomes.enrolled} enrolled`, href: "/app/sequences", progress: ratio(outcomes.replied, outcomes.enrolled) });

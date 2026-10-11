@@ -41,7 +41,7 @@ function statusColor(status: string) {
   return "gray";
 }
 
-export function DataLibraryBrowser({ records, collections, selectedCollection, total, locale, labels, typeLabels, footer }: {
+export function DataLibraryBrowser({ records, collections, selectedCollection, total, locale, labels, typeLabels, footer, showCollections = true }: {
   records: RecordRow[];
   collections: Collection[];
   selectedCollection: string;
@@ -57,6 +57,7 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
   };
   typeLabels: Record<string, string>;
   footer: React.ReactNode;
+  showCollections?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -76,12 +77,12 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
 
   const selectedCollectionRow = collections.find((item) => item.id === selectedCollection);
   return <>
-    <div className={classes.mobileCollection}>
+    {showCollections ? <div className={classes.mobileCollection}>
       <NativeSelect aria-label={labels.allCollections} value={selectedCollection} onChange={(event) => selectCollection(event.currentTarget.value)}
         data={[{ value: "", label: labels.allCollections }, ...collections.map((item) => ({ value: item.id, label: `${item.name} (${item.record_count.toLocaleString(locale)})` }))]} />
-    </div>
-    <div className={classes.layout}>
-      <Card withBorder padding="xs" className={classes.collections}>
+    </div> : null}
+    <div className={showCollections ? classes.layout : classes.singleLayout}>
+      {showCollections ? <Card withBorder padding="xs" className={classes.collections}>
         <Stack gap={2}>
           <UnstyledButton className={`${classes.collectionButton} ${!selectedCollection ? classes.collectionActive : ""}`} onClick={() => selectCollection("")}>
             <Group justify="space-between" wrap="nowrap"><Text size="sm" fw={600}>{labels.allCollections}</Text><Text size="xs" c="dimmed">{collections.reduce((sum, item) => sum + item.record_count, 0).toLocaleString(locale)}</Text></Group>
@@ -93,7 +94,7 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
             </div></Group>
           </UnstyledButton>)}
         </Stack>
-      </Card>
+      </Card> : null}
 
       <Card withBorder padding={0} className={classes.tableCard}>
         <Group justify="space-between" px="md" py="sm">
@@ -110,7 +111,7 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
               <Table.Th>{labels.details}</Table.Th>
               <Table.Th w={120}>{labels.quality}</Table.Th>
               <Table.Th w={120}>{labels.status}</Table.Th>
-              <Table.Th className={classes.hideMobile}>{labels.collections}</Table.Th>
+              {showCollections ? <Table.Th className={classes.hideMobile}>{labels.collections}</Table.Th> : null}
               <Table.Th w={110} />
             </Table.Tr></Table.Thead>
             <Table.Tbody>{records.map((record) => {
@@ -125,7 +126,7 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
                 <Table.Td className={classes.detailCell}><Text size="sm" c={summary ? undefined : "dimmed"} lineClamp={2}>{summary || "—"}</Text></Table.Td>
                 <Table.Td><Stack gap={3}><Text size="xs" fw={600}>{record.quality_score}%</Text><Progress value={record.quality_score} size={4} color={record.quality_score >= 70 ? "teal" : record.quality_score >= 50 ? "yellow" : "red"} /></Stack></Table.Td>
                 <Table.Td><Badge size="sm" variant="light" color={statusColor(record.review_status)} leftSection={record.review_status === "duplicate" ? <Copy size={10} /> : undefined}>{record.review_status}</Badge></Table.Td>
-                <Table.Td className={classes.hideMobile}><Text size="sm" truncate maw={220}>{collection?.name || labels.unknownCollection}</Text><Text size="xs" c="dimmed" truncate maw={220}>{collection?.source_actor_id}</Text></Table.Td>
+                {showCollections ? <Table.Td className={classes.hideMobile}><Text size="sm" truncate maw={220}>{collection?.name || labels.unknownCollection}</Text><Text size="xs" c="dimmed" truncate maw={220}>{collection?.source_actor_id}</Text></Table.Td> : null}
                 <Table.Td onClick={(event) => event.stopPropagation()}>{promoted ? <Badge size="sm" variant="light" leftSection={<Check size={10} />}>{labels.saved}</Badge> : externalUrl ? <Anchor href={externalUrl} target="_blank" rel="noopener noreferrer" size="xs">{labels.open} <ExternalLink size={10} /></Anchor> : <Text size="xs" c="dimmed">—</Text>}</Table.Td>
               </Table.Tr>;
             })}</Table.Tbody>

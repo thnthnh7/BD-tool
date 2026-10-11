@@ -21,17 +21,19 @@ function stringArray(value: unknown): string[] {
     : [];
 }
 
-export async function listDataLibrary(input: { q?: string; type?: string; collectionId?: string; status?: string; minQuality?: number; page?: number }) {
+export async function listDataLibrary(input: { q?: string; type?: string; collectionId?: string; scrapeJobId?: string; status?: string; minQuality?: number; page?: number }) {
   const { context, supabase } = await withWorkspace();
   const page = Math.max(1, input.page || 1);
   const pageSize = 50;
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
-  const { data: collections } = await supabase
+  let collectionsQuery = supabase
     .from("data_collections")
     .select("*")
     .eq("workspace_id", context.workspaceId)
     .order("updated_at", { ascending: false });
+  if (input.scrapeJobId) collectionsQuery = collectionsQuery.eq("scrape_job_id", input.scrapeJobId);
+  const { data: collections } = await collectionsQuery;
 
   let query = supabase
     .from("data_records")
@@ -39,6 +41,10 @@ export async function listDataLibrary(input: { q?: string; type?: string; collec
     .eq("workspace_id", context.workspaceId)
     .order("captured_at", { ascending: false });
   if (input.collectionId) query = query.eq("collection_id", input.collectionId);
+  if (input.scrapeJobId) {
+    const collectionIds = (collections || []).map((collection) => collection.id);
+    query = collectionIds.length ? query.in("collection_id", collectionIds) : query.eq("collection_id", "00000000-0000-0000-0000-000000000000");
+  }
   if (input.type) query = query.eq("record_type", input.type);
   if (input.status) query = query.eq("review_status", input.status);
   if (input.minQuality) query = query.gte("quality_score", input.minQuality);
@@ -50,7 +56,11 @@ export async function listDataLibrary(input: { q?: string; type?: string; collec
   const typeCounts = (counts || []).map((item) => [item.record_type, Number(item.record_count)] as const);
   const normalizedRecords = (records || []).map((record) => ({
     ...record,
+    quality_score: Number.isFinite(Number(record.quality_score)) ? Math.max(0, Math.min(100, Number(record.quality_score))) : 0,
     quality_issues: stringArray(record.quality_issues),
+    review_status: typeof record.review_status === "string" && ["pending", "ready", "duplicate", "suppressed", "imported"].includes(record.review_status)
+      ? record.review_status
+      : "pending",
   }));
   return { collections: collections || [], records: normalizedRecords, total: count || 0, page, pageSize, typeCounts };
 }

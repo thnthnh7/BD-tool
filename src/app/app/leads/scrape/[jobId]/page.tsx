@@ -8,6 +8,9 @@ import { SectionPanel } from "@/components/leadely/section-panel";
 import { StatusBadge } from "@/components/leadely/status-badge";
 import { LinkButton } from "@/components/mantine-link";
 import { ActionForm } from "@/features/crm/components/action-form";
+import { DataLibraryBrowser } from "@/features/data-library/components/data-library-browser";
+import { DATA_RECORD_TYPES } from "@/features/data-library/normalize";
+import { listDataLibrary } from "@/features/data-library/server/actions";
 import { DatasetExplorer } from "@/features/leads/components/dataset-explorer";
 import { ScrapeJobTabs } from "@/features/leads/components/scrape-job-tabs";
 import { ScrapeStatus } from "@/features/leads/components/scrape-status";
@@ -35,8 +38,9 @@ export default async function ScrapeJobPage({ params, searchParams }: {
   const context = await requireModule("scraping");
   const [{ jobId }, search] = await Promise.all([params, searchParams]);
   const { q, page } = readListQuery(search);
-  const [t, common, locale, payload] = await Promise.all([
+  const [t, dataT, common, locale, payload] = await Promise.all([
     getTranslations("Scrape"),
+    getTranslations("DataLibrary"),
     getTranslations("Common"),
     getLocale(),
     getScrapeJob(jobId),
@@ -44,9 +48,10 @@ export default async function ScrapeJobPage({ params, searchParams }: {
   const appLocale = locale as AppLocale;
   if (!payload) notFound();
   const generic = Boolean(payload.job.source_id) && !isMapsActor(payload.job.apify_actor_id);
-  const [lists, sourceTitles] = await Promise.all([
+  const [lists, sourceTitles, reviewPayload] = await Promise.all([
     generic ? Promise.resolve([]) : listLeadLists(),
     listSourceTitles(payload.job.source_id ? [payload.job.source_id] : []),
+    listDataLibrary({ scrapeJobId: payload.job.id, page: search.view === "review" ? page : 1 }),
   ]);
   const actorTitle = sourceTitles[0]?.title || (generic ? payload.job.apify_actor_id : "Google Maps Scraper");
   const canManage = context.memberRole !== "member";
@@ -84,6 +89,31 @@ export default async function ScrapeJobPage({ params, searchParams }: {
   const timestamp = (value: string | null) => value ? formatDate(value, appLocale, { dateStyle: "short", timeStyle: "medium" }) : "—";
   const creator = payload.job.creator?.display_name?.trim() || payload.job.creator?.email || "—";
   const apifyCost = payload.job.apify_usage_usd == null ? "—" : `$${Number(payload.job.apify_usage_usd).toFixed(4)} USD`;
+  const reviewPageCount = Math.max(1, Math.ceil(reviewPayload.total / reviewPayload.pageSize));
+  const reviewLabels = {
+    allCollections: dataT("allCollections"), collections: dataT("collections"), records: dataT("records"), dataType: dataT("dataType"),
+    details: dataT("details"), rawData: dataT("rawData"), open: dataT("open"), createCompany: dataT("createCompany"),
+    createContact: dataT("createContact"), saved: dataT("saved"), unknownCollection: dataT("unknownCollection"), quality: dataT("quality"),
+    status: dataT("status"), source: dataT("source"), issues: dataT("issues"), duplicate: dataT("duplicate"), suppress: dataT("suppress"), restore: dataT("restore"),
+    importSelected: dataT("importSelected"), previewTitle: dataT("previewTitle"), selectedCount: dataT("selectedCount"), target: dataT("target"),
+    companies: dataT("companies"), contacts: dataT("contacts"), duplicatePolicy: dataT("duplicatePolicy"), skipExisting: dataT("skipExisting"),
+    updateExisting: dataT("updateExisting"), runImport: dataT("runImport"), cancel: dataT("cancel"), imported: dataT("imported"), updated: dataT("updated"), skipped: dataT("skipped"), failed: dataT("failed"),
+  };
+  const reviewTypeLabels = Object.fromEntries(DATA_RECORD_TYPES.map((type) => [type, dataT(`types.${type}`)]));
+  const review = <div data-tutorial-id="scrape-review"><DataLibraryBrowser
+    records={reviewPayload.records}
+    collections={reviewPayload.collections}
+    selectedCollection={reviewPayload.collections[0]?.id || ""}
+    total={reviewPayload.total}
+    locale={locale}
+    labels={reviewLabels}
+    typeLabels={reviewTypeLabels}
+    showCollections={false}
+    footer={<ListFooter path={jobPath} q="" page={reviewPayload.page} pageCount={reviewPageCount}
+      from={reviewPayload.total ? (reviewPayload.page - 1) * reviewPayload.pageSize + 1 : 0}
+      to={Math.min(reviewPayload.page * reviewPayload.pageSize, reviewPayload.total)} total={reviewPayload.total}
+      singular={dataT("record")} plural={dataT("records")} ofLabel={common("of")} extra={{ view: "review" }} />}
+  /></div>;
   const crm = generic ? undefined : (
       <div data-tutorial-id="scrape-crm-import"><SectionPanel title={t("selectPlacesTitle")} padded={false}>
         <Box px="md" pt={4} pb="sm">
@@ -197,7 +227,9 @@ export default async function ScrapeJobPage({ params, searchParams }: {
     <Group gap="md"><ScrapeStatus status={payload.job.status} /><Text size="sm" c="dimmed">{t("recordsCount", { count: rows.length })}</Text><Text size="sm" c="dimmed">{timestamp(payload.job.created_at)}</Text></Group>
     {payload.job.error_message && <Alert color="red" title={t("runFailed")}>{payload.job.error_message}</Alert>}
     {["running", "queued", "ingesting"].includes(payload.job.status) && <Alert color="blue">{payload.job.status === "ingesting" ? t("syncingData") : t("waitingActor")}</Alert>}
-    <ScrapeJobTabs key={payload.job.id} status={payload.job.status} initialTab={!generic && (search.view === "crm" || q || page > 1) ? "crm" : "results"} crm={crm}
+    <ScrapeJobTabs key={payload.job.id} status={payload.job.status}
+      initialTab={search.view === "review" ? "review" : !generic && (search.view === "crm" || q || page > 1) ? "crm" : "results"}
+      review={review} reviewLabel={dataT("previewTitle")} crm={crm}
       results={<div data-tutorial-id="scrape-results"><SectionPanel padded={false}><DatasetExplorer rows={rows} filename={`scrape-${payload.job.id}`} emptyMessage={payload.job.status === "succeeded" ? t("emptyActor") : undefined} /></SectionPanel></div>}
       input={<SectionPanel title={t("inputUsed")}><Text size="sm" c="dimmed" mb="sm">{t("rerunHint")}</Text><Code block style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(input, null, 2)}</Code></SectionPanel>}
       processing={<SectionPanel title={t("runInfo")}><SimpleGrid cols={{ base: 1, sm: 2 }}>

@@ -7,8 +7,8 @@ import type { OnboardingProgress } from "@/features/onboarding/server/progress";
 const steps = [
   { key: "providerConnected", label: "Connect your scraping provider", hint: "Use your own provider account and keep usage under your control.", href: "/app/settings?section=apify" },
   { key: "scrapeRunCreated", label: "Run your first targeted scrape", hint: "Choose a source and collect a small sample first.", href: "/app/leads/sources" },
-  { key: "recordsReviewed", label: "Review collected records", hint: "Approve useful records and reject poor or duplicate data.", href: "/app/data" },
-  { key: "recordsImported", label: "Import approved records", hint: "Move reviewed data into the CRM with an auditable batch.", href: "/app/data" },
+  { key: "recordsReviewed", label: "Review collected records", hint: "Open a scrape run to approve useful records and reject poor or duplicate data.", href: "/app/leads/scrape" },
+  { key: "recordsImported", label: "Import approved records", hint: "Open a scrape run and move reviewed data into the CRM with an auditable batch.", href: "/app/leads/scrape" },
   { key: "salesActionCreated", label: "Create the first sales action", hint: "Add a follow-up task or qualify a deal.", href: "/app/tasks" },
 ] as const;
 
