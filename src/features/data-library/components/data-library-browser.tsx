@@ -65,6 +65,7 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const selectable = records.filter((record) => record.review_status === "ready" && !record.promoted_company_id && !record.promoted_contact_id);
   const selected = new Set(selectedIds);
+  const detailQualityIssues = detail && Array.isArray(detail.quality_issues) ? detail.quality_issues : [];
 
   function selectCollection(value: string) {
     const next = new URLSearchParams(searchParams.toString());
@@ -139,7 +140,7 @@ export function DataLibraryBrowser({ records, collections, selectedCollection, t
       {detail ? <Stack gap="md">
         <Group gap={8}><Badge variant="light">{typeLabels[detail.record_type] || detail.record_type}</Badge><Text size="xs" c="dimmed">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(detail.captured_at))}</Text></Group>
         <Group gap={8}><Badge variant="light" color={statusColor(detail.review_status)}>{detail.review_status}</Badge><Text size="sm" fw={600}>{labels.quality}: {detail.quality_score}%</Text></Group>
-        {detail.quality_issues.length ? <Card withBorder padding="sm"><Text size="xs" fw={650} mb={4}>{labels.issues}</Text><Group gap={5}>{detail.quality_issues.map((issue) => <Badge key={issue} size="xs" variant="light" color="orange">{issue.replaceAll("_", " ")}</Badge>)}</Group></Card> : null}
+        {detailQualityIssues.length ? <Card withBorder padding="sm"><Text size="xs" fw={650} mb={4}>{labels.issues}</Text><Group gap={5}>{detailQualityIssues.map((issue) => <Badge key={issue} size="xs" variant="light" color="orange">{issue.replaceAll("_", " ")}</Badge>)}</Group></Card> : null}
         {detail.duplicate_of_id ? <Text size="sm" c="orange">{labels.duplicate}: {detail.duplicate_of_id}</Text> : null}
         {detail.canonical_url && safeDatasetUrl(detail.canonical_url) ? <Button component="a" href={safeDatasetUrl(detail.canonical_url)!} target="_blank" rel="noopener noreferrer" variant="light" size="xs" rightSection={<ExternalLink size={13} />}>{labels.open}</Button> : null}
         <DataRecordActions recordId={detail.id} companyId={detail.promoted_company_id} contactId={detail.promoted_contact_id}

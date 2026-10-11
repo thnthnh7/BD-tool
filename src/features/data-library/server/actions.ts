@@ -15,6 +15,12 @@ function string(value: Json | undefined) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : [];
+}
+
 export async function listDataLibrary(input: { q?: string; type?: string; collectionId?: string; status?: string; minQuality?: number; page?: number }) {
   const { context, supabase } = await withWorkspace();
   const page = Math.max(1, input.page || 1);
@@ -42,7 +48,11 @@ export async function listDataLibrary(input: { q?: string; type?: string; collec
   const { data: counts, error: countsError } = await supabase.rpc("data_library_type_counts");
   if (countsError) console.error("data_library_type_counts failed", countsError.message);
   const typeCounts = (counts || []).map((item) => [item.record_type, Number(item.record_count)] as const);
-  return { collections: collections || [], records: records || [], total: count || 0, page, pageSize, typeCounts };
+  const normalizedRecords = (records || []).map((record) => ({
+    ...record,
+    quality_issues: stringArray(record.quality_issues),
+  }));
+  return { collections: collections || [], records: normalizedRecords, total: count || 0, page, pageSize, typeCounts };
 }
 
 export async function promoteDataRecordAction(formData: FormData) {
