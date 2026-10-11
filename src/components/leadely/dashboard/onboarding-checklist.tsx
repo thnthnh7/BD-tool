@@ -1,7 +1,7 @@
-import Link from "next/link";
-import { Button, Group, Progress, Stack, Text, ThemeIcon } from "@mantine/core";
+import { Group, Progress, Stack, Text, ThemeIcon } from "@mantine/core";
 import { Check, Circle, Rocket } from "lucide-react";
 import { SectionPanel } from "@/components/leadely/section-panel";
+import { LinkButton } from "@/components/mantine-link";
 import type { OnboardingProgress } from "@/features/onboarding/server/progress";
 
 const steps = [
@@ -25,6 +25,6 @@ export function OnboardingChecklist({ progress }: { progress: OnboardingProgress
         <div><Text size="sm" fw={650}>{step.label}</Text><Text size="xs" c="dimmed">{step.hint}</Text></div>
       </Group>)}
     </Stack>
-    <Button component={Link} href={next.href} mt="lg" leftSection={<Rocket size={16} />}>Continue: {next.label}</Button>
+    <LinkButton href={next.href} mt="lg" leftSection={<Rocket size={16} />}>Continue: {next.label}</LinkButton>
   </SectionPanel>;
 }

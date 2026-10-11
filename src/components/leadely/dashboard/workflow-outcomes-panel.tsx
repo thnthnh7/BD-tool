@@ -1,5 +1,5 @@
-import { Anchor, Group, Progress, SimpleGrid, Stack, Text } from "@mantine/core";
-import Link from "next/link";
+import { Group, Progress, SimpleGrid, Stack, Text } from "@mantine/core";
+import { LinkAnchor } from "@/components/mantine-link";
 import { DashboardPanel } from "./dashboard-panel";
 
 type Outcome = { label: string; value: number; detail: string; href: string; progress: number };
@@ -25,7 +25,7 @@ export function WorkflowOutcomesPanel({ outcomes, wonDeals, totalDeals, showData
       <Text size="xs" c="dimmed">Current workspace snapshot from collected data through sales outcomes.</Text>
       <SimpleGrid cols={{ base: 1, sm: 2, lg: items.length }} spacing="lg">
         {items.map((item) => <Stack key={item.label} gap={6}>
-          <Group justify="space-between" align="baseline"><Anchor component={Link} href={item.href} size="sm" fw={650} c="dark">{item.label}</Anchor><Text fw={750} size="xl">{item.value}</Text></Group>
+          <Group justify="space-between" align="baseline"><LinkAnchor href={item.href} size="sm" fw={650} c="dark">{item.label}</LinkAnchor><Text fw={750} size="xl">{item.value}</Text></Group>
           <Progress value={item.progress} size="sm" radius="xl" />
           <Text size="xs" c="dimmed">{item.detail}</Text>
         </Stack>)}
