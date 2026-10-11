@@ -8,6 +8,7 @@ import type { Json } from "@/lib/database.types";
 import { CATALOG_CARD_COLUMNS, getCatalogPage } from "./catalog-page";
 import { requireWorkspaceApifyConnection } from "@/features/leads/server/apify-connection";
 import { requireModule } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
 const SOURCES_PAGE_SIZE = 200;
 
 export type SourceListFilters = {
@@ -24,6 +25,12 @@ function searchNeedle(query: string) {
 
 export async function listScrapeSources(filters: SourceListFilters) {
   const { context, supabase } = await withWorkspace();
+  // The source catalog contains shared public metadata. Reading it with the
+  // workspace client makes PostgreSQL evaluate the workspace RLS helper across
+  // the entire catalog, which can time out for text searches. Authentication is
+  // still enforced by withWorkspace(), while workspace installs remain behind
+  // the caller's RLS-scoped client below.
+  const catalogClient = createAdminClient();
   const installsQuery = supabase
     .from("workspace_scrape_sources")
     .select("source_id")
@@ -33,7 +40,7 @@ export async function listScrapeSources(filters: SourceListFilters) {
   const filtersByInstallation = filters.installed === "yes" || filters.installed === "no";
   const isFiltered = Boolean(needle || filters.category || hasAdapter || filtersByInstallation);
   // The page count is also the catalog count when there are no filters.
-  const catalogQuery = isFiltered ? supabase
+  const catalogQuery = isFiltered ? catalogClient
     .from("scrape_sources")
     .select("id", { count: "exact", head: true })
     .eq("pricing_model", "PAY_PER_EVENT")
@@ -75,7 +82,7 @@ export async function listScrapeSources(filters: SourceListFilters) {
 
   if (filters.installed === "yes" && filterIds.length === 0) return empty;
 
-  let query = supabase.from("scrape_sources").select(CATALOG_CARD_COLUMNS, { count: "exact" }).is("archived_at", null).eq("pricing_model", "PAY_PER_EVENT");
+  let query = catalogClient.from("scrape_sources").select(CATALOG_CARD_COLUMNS, { count: "exact" }).is("archived_at", null).eq("pricing_model", "PAY_PER_EVENT");
   if (filters.adapter === "ready" || filters.adapter === "preview") query = query.eq("adapter_status", filters.adapter);
   if (filters.category) query = query.contains("categories", [filters.category]);
   if (needle) {
