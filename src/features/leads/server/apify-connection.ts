@@ -206,7 +206,7 @@ export async function saveApifyTokenAction(formData: FormData) {
     const { error: linkError } = await admin.from("workspace_apify_connections").upsert({ workspace_id: context.workspaceId, apify_connection_id: connection.id, connected_by: context.userId }, { onConflict: "workspace_id" });
     if (linkError) return { error: linkError.message };
     revalidateApifyPages();
-    return { ok: true as const };
+    return { ok: true as const, tokenLabel: label.slice(0, 80), tokenLastFour: token.slice(-4) };
   } catch (error) {
     return { error: error instanceof Error ? `Không kết nối được Apify: ${error.message}` : "Không kết nối được Apify." };
   }

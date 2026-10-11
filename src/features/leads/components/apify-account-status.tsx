@@ -1,8 +1,7 @@
-import { Anchor, Avatar, Badge, Box, Divider, Group, Paper, Progress, Stack, Text, TextInput } from "@mantine/core";
+import { Anchor, Avatar, Badge, Box, Divider, Group, Paper, Progress, Stack, Text } from "@mantine/core";
 import { LinkButton } from "@/components/mantine-link";
-import { ActionForm } from "@/features/crm/components/action-form";
-import { saveApifyTokenAction } from "@/features/leads/server/apify-actions";
 import { ApifyRefreshButton, ApifyUnlinkButton } from "./apify-refresh-button";
+import { ApifyTokenForm } from "./apify-token-form";
 import classes from "./apify-account-status.module.css";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -26,6 +25,16 @@ type Connection = {
 export function ApifyAccountStatus({ connection, canManage, oauthReady, compact = false, showSetup = false, activitySummary = [] }: { connection: Connection | null; canManage: boolean; oauthReady: boolean; compact?: boolean; showSetup?: boolean; activitySummary?: string[] }) {
   const t = useTranslations("Apify");
   const locale = useLocale();
+  const tokenFormLabels = {
+    currentToken: t("currentToken"),
+    maskedTokenHelp: t("maskedTokenHelp"),
+    savedSuccess: t("tokenSavedSuccess"),
+    saveFailed: t("tokenSaveFailed"),
+    tokenName: t("tokenName"),
+    newToken: t("newToken"),
+    newTokenPlaceholder: t("newTokenPlaceholder"),
+    submit: connection ? t("updateToken") : t("connect"),
+  };
   if (!connection) {
     return <Paper withBorder radius="lg" p="md"><Stack gap="md">
       <Group justify="space-between" align="center" wrap="wrap" gap="md">
@@ -41,10 +50,7 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
           <Text fw={700} size="sm">{t("tokenConnect")}</Text>
           <Text size="xs" c="dimmed">{t("tokenHelp")}</Text>
           <ApifyTokenTutorial />
-          <ActionForm action={saveApifyTokenAction} submitLabel={t("connect")}>
-            <TextInput name="token_label" label={t("tokenName")} defaultValue="Bizcraw" placeholder="Bizcraw" />
-            <TextInput name="api_token" type="password" label="API token" placeholder={t("tokenPlaceholder")} autoComplete="new-password" required />
-          </ActionForm>
+          <ApifyTokenForm initialLabel="Bizcraw" labels={tokenFormLabels} />
         </Stack>
         <Divider label={t("or")} labelPosition="center" />
         {oauthReady ? <Group justify="space-between" wrap="wrap">
@@ -71,7 +77,7 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
   const memoryPercent = memoryMax > 0 ? Math.min(100, memoryCurrent / memoryMax * 100) : 0;
 
   if (compact) {
-    const accountMeta = [connection.apify_plan_id, connection.auth_method === "api_token" ? `Token ••••${connection.token_last_four || ""}` : "OAuth"].filter(Boolean).join(" · ");
+    const accountMeta = [connection.apify_plan_id, connection.auth_method === "api_token" ? `${connection.token_label || "Token"} · Token ••••${connection.token_last_four || ""}` : "OAuth"].filter(Boolean).join(" · ");
     return <Paper withBorder radius="lg" p="sm" className={classes.compactCard}>
       <Box className={classes.compactLayout}>
         <Group wrap="nowrap" gap="sm" className={classes.account}>
@@ -106,7 +112,7 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
         <Avatar src={connection.apify_avatar_url || undefined} radius="xl" size={40}>{connection.apify_username.slice(0, 1).toUpperCase()}</Avatar>
         <Stack gap={1} className={classes.accountText}>
           <Group gap={6} wrap="nowrap"><Text fw={700} size="sm" truncate>{connection.apify_username}</Text><Box className={connection.status === "active" ? classes.statusDot : classes.statusWarning} title={connection.status === "active" ? t("connected") : t("reconnectRequired")} /></Group>
-          <Text size="xs" c="dimmed" truncate>{[connection.apify_email, connection.apify_plan_id, connection.auth_method === "api_token" ? `Token ••••${connection.token_last_four || ""}` : "OAuth"].filter(Boolean).join(" · ")}</Text>
+          <Text size="xs" c="dimmed" truncate>{[connection.apify_email, connection.apify_plan_id, connection.auth_method === "api_token" ? `${connection.token_label || "Token"} · Token ••••${connection.token_last_four || ""}` : "OAuth"].filter(Boolean).join(" · ")}</Text>
         </Stack>
       </Group>
       <Box className={classes.metrics}>
@@ -121,7 +127,7 @@ export function ApifyAccountStatus({ connection, canManage, oauthReady, compact 
     {showSetup && canManage && <>
       <Divider my="sm" />
       <Group justify="space-between" align="flex-start" gap="sm" wrap="wrap">
-        <Box component="details" className={classes.tokenDetails}><Text component="summary" size="sm" fw={600} style={{ cursor: "pointer" }}>{connection.auth_method === "api_token" ? t("replaceToken") : t("switchToken")}</Text><Box pt="sm" maw={620}><ApifyTokenTutorial /><Box mt="md"><ActionForm action={saveApifyTokenAction} submitLabel={t("updateToken")}><TextInput name="token_label" label={t("tokenName")} defaultValue={connection.token_label || "Bizcraw"} /><TextInput name="api_token" type="password" label={t("newToken")} placeholder={t("newTokenPlaceholder")} autoComplete="new-password" required /></ActionForm></Box></Box></Box>
+        <Box component="details" className={classes.tokenDetails}><Text component="summary" size="sm" fw={600} style={{ cursor: "pointer" }}>{connection.auth_method === "api_token" ? t("replaceToken") : t("switchToken")}</Text><Box pt="sm" maw={620}><ApifyTokenTutorial /><Box mt="md"><ApifyTokenForm initialLabel={connection.token_label || "Bizcraw"} currentLastFour={connection.token_last_four} labels={tokenFormLabels} /></Box></Box></Box>
         <Group gap={4}>
           {oauthReady && <LinkButton href="/api/integrations/apify/connect" variant="subtle" size="compact-sm">{t("reconnect")}</LinkButton>}
           <ApifyUnlinkButton />
