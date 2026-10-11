@@ -2083,6 +2083,12 @@ export type Database = {
           picture_url: string | null;
           store_url: string | null;
           categories: string[];
+          use_cases: string[];
+          industries: string[];
+          platforms: string[];
+          data_types: string[];
+          classification_version: string;
+          classified_at: string | null;
           pricing_model: string | null;
           pricing_info: Json | null;
           notice: string | null;
@@ -2117,6 +2123,12 @@ export type Database = {
           picture_url?: string | null;
           store_url?: string | null;
           categories?: string[];
+          use_cases?: string[];
+          industries?: string[];
+          platforms?: string[];
+          data_types?: string[];
+          classification_version?: string;
+          classified_at?: string | null;
           pricing_model?: string | null;
           pricing_info?: Json | null;
           notice?: string | null;
@@ -2284,6 +2296,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      apply_scrape_source_taxonomy: {
+        Args: { p_rows: Json };
+        Returns: number;
+      };
       agent_fuzzy_names: {
         Args: { p_kind: string; p_query: string; p_limit: number };
         Returns: { id: string; label: string; score: number; updated_at: string }[];

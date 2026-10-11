@@ -24,6 +24,7 @@
     "test:beta:production": "node scripts/beta-production-smoke-test.mjs",
     "test:discoverability": "node scripts/check-ai-discoverability.mjs",
     "indexnow:submit": "node scripts/submit-indexnow.mjs",
+    "sources:classify": "tsx scripts/backfill-source-taxonomy.ts",
     "start": "next start",
     "lint": "eslint",
     "seed:demo": "npx tsx scripts/seed-demo.ts"

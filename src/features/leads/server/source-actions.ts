@@ -17,6 +17,10 @@ export type SourceListFilters = {
   adapter: string;
   installed: string;
   category: string;
+  useCase: string;
+  industry: string;
+  platform: string;
+  dataType: string;
 };
 
 function searchNeedle(query: string) {
@@ -38,7 +42,8 @@ export async function listScrapeSources(filters: SourceListFilters) {
   const needle = searchNeedle(filters.q);
   const hasAdapter = filters.adapter === "ready" || filters.adapter === "preview";
   const filtersByInstallation = filters.installed === "yes" || filters.installed === "no";
-  const isFiltered = Boolean(needle || filters.category || hasAdapter || filtersByInstallation);
+  const hasDiscoveryFilter = Boolean(filters.useCase || filters.industry || filters.platform || filters.dataType);
+  const isFiltered = Boolean(needle || filters.category || hasDiscoveryFilter || hasAdapter || filtersByInstallation);
   // The page count is also the catalog count when there are no filters.
   const catalogQuery = isFiltered ? catalogClient
     .from("scrape_sources")
@@ -63,6 +68,10 @@ export async function listScrapeSources(filters: SourceListFilters) {
       picture_url: string | null;
       slug: string;
       categories: string[];
+      use_cases: string[];
+      industries: string[];
+      platforms: string[];
+      data_types: string[];
       pricing_model: string | null;
       pricing_info: Json | null;
       review_rating: number | null;
@@ -85,6 +94,10 @@ export async function listScrapeSources(filters: SourceListFilters) {
   let query = catalogClient.from("scrape_sources").select(CATALOG_CARD_COLUMNS, { count: "exact" }).is("archived_at", null).eq("pricing_model", "PAY_PER_EVENT");
   if (filters.adapter === "ready" || filters.adapter === "preview") query = query.eq("adapter_status", filters.adapter);
   if (filters.category) query = query.contains("categories", [filters.category]);
+  if (filters.useCase) query = query.contains("use_cases", [filters.useCase]);
+  if (filters.industry) query = query.contains("industries", [filters.industry]);
+  if (filters.platform) query = query.contains("platforms", [filters.platform]);
+  if (filters.dataType) query = query.contains("data_types", [filters.dataType]);
   if (needle) {
     const pattern = `"%${needle}%"`;
     query = query.or(`title.ilike.${pattern},description.ilike.${pattern},slug.ilike.${pattern}`);
@@ -125,6 +138,10 @@ export async function listScrapeSources(filters: SourceListFilters) {
     picture_url: row.picture_url,
     slug: row.slug,
     categories: row.categories,
+    use_cases: row.use_cases || [],
+    industries: row.industries || [],
+    platforms: row.platforms || [],
+    data_types: row.data_types || [],
     pricing_model: row.pricing_model,
     pricing_info: row.pricing_info,
     review_rating: row.review_rating,

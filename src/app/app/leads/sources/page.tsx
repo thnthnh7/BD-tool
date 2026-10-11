@@ -1,4 +1,4 @@
-import { Avatar, Button, Group, NativeSelect, Skeleton, Stack, Text, TextInput, Tooltip } from "@mantine/core";
+import { Avatar, Badge, Button, Group, NativeSelect, Skeleton, Stack, Text, TextInput, Tooltip } from "@mantine/core";
 import { Suspense } from "react";
 import Form from "next/form";
 import { CheckCircle2, Library, Search, Star, Users } from "lucide-react";
@@ -16,6 +16,7 @@ import { getCurrentWorkspaceApifyStatus } from "@/features/leads/server/apify-co
 import { getLocale, getTranslations } from "next-intl/server";
 import { SourceCardActions } from "@/features/leads/components/source-card-actions";
 import { getScrapeJobSummary } from "@/features/leads/server/scrape-actions";
+import { facetLabel, SOURCE_DATA_TYPES, SOURCE_INDUSTRIES, SOURCE_PLATFORMS, SOURCE_USE_CASES } from "@/features/leads/source-taxonomy";
 
 const CATEGORIES = ["LEAD_GENERATION", "SOCIAL_MEDIA", "MARKETING", "ECOMMERCE", "SEO_TOOLS", "JOBS", "REAL_ESTATE", "TRAVEL", "AI", "AUTOMATION"];
 
@@ -31,7 +32,7 @@ function initial(title: string) {
 }
 
 export default async function LeadSourcesPage({ searchParams }: {
-  searchParams: Promise<{ q?: string; page?: string; installed?: string; category?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; installed?: string; category?: string; use_case?: string; industry?: string; platform?: string; data_type?: string }>;
 }) {
   await requireModule("sources");
   const params = await searchParams;
@@ -39,19 +40,39 @@ export default async function LeadSourcesPage({ searchParams }: {
   const { q, page } = readListQuery(params);
   const installed = params.installed === "yes" || params.installed === "no" ? params.installed : "";
   const category = CATEGORIES.includes(params.category || "") ? params.category || "" : "";
+  const validFacet = (value: string | undefined, facets: readonly { value: string }[]) => facets.some((item) => item.value === value) ? value || "" : "";
+  const useCase = validFacet(params.use_case, SOURCE_USE_CASES);
+  const industry = validFacet(params.industry, SOURCE_INDUSTRIES);
+  const platform = validFacet(params.platform, SOURCE_PLATFORMS);
+  const dataType = validFacet(params.data_type, SOURCE_DATA_TYPES);
   const context = await requireWorkspace();
-  const payload = await listScrapeSources({ q, page, adapter: "", installed, category });
+  const payload = await listScrapeSources({ q, page, adapter: "", installed, category, useCase, industry, platform, dataType });
   const usersFormat = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 0 });
   const canManage = context.memberRole !== "member" && Boolean(context.plan.features.lead_scrape);
-  const extra = { installed, category };
+  const extra = { installed, category, use_case: useCase, industry, platform, data_type: dataType };
+  const discoveryLabels = locale.startsWith("vi") ? {
+    useCase: "Bạn muốn làm gì?", industry: "Ngành", platform: "Nguồn dữ liệu", dataType: "Loại dữ liệu",
+    allUseCases: "Mọi nhu cầu", allIndustries: "Mọi ngành", allPlatforms: "Mọi nguồn", allDataTypes: "Mọi loại dữ liệu",
+  } : {
+    useCase: "What do you need?", industry: "Industry", platform: "Data source", dataType: "Data available",
+    allUseCases: "All needs", allIndustries: "All industries", allPlatforms: "All sources", allDataTypes: "All data types",
+  };
   return <Stack gap="lg" data-tutorial-id="sources-page">
     <PageHeader title={t("title")} subtitle={t("subtitle", { count: payload.catalogTotal.toLocaleString(locale) })}
       action={<LinkButton href="/app/leads/scrape" variant="light">{scrapeT("title")}</LinkButton>} />
     <Suspense fallback={<Skeleton height={92} radius="lg" />}><SourcesAccount installedCount={payload.installedIds.length} /></Suspense>
     <div data-tutorial-id="sources-filters">
-      <Form key={`${q}:${installed}:${category}`} action="/app/leads/sources" prefetch={false}>
+      <Form action="/app/leads/sources" prefetch={false}>
         <Group gap="sm" wrap="wrap">
         <TextInput name="q" defaultValue={q} placeholder={t("search")} aria-label={t("searchLabel")} leftSection={<Search size={16} />} style={{ flex: "1 1 280px" }} />
+        <NativeSelect name="use_case" aria-label={discoveryLabels.useCase} defaultValue={useCase}
+          data={[{ value: "", label: discoveryLabels.allUseCases }, ...SOURCE_USE_CASES.map((item) => ({ value: item.value, label: facetLabel(SOURCE_USE_CASES, item.value, locale) }))]} />
+        <NativeSelect name="industry" aria-label={discoveryLabels.industry} defaultValue={industry}
+          data={[{ value: "", label: discoveryLabels.allIndustries }, ...SOURCE_INDUSTRIES.map((item) => ({ value: item.value, label: facetLabel(SOURCE_INDUSTRIES, item.value, locale) }))]} />
+        <NativeSelect name="platform" aria-label={discoveryLabels.platform} defaultValue={platform}
+          data={[{ value: "", label: discoveryLabels.allPlatforms }, ...SOURCE_PLATFORMS.map((item) => ({ value: item.value, label: facetLabel(SOURCE_PLATFORMS, item.value, locale) }))]} />
+        <NativeSelect name="data_type" aria-label={discoveryLabels.dataType} defaultValue={dataType}
+          data={[{ value: "", label: discoveryLabels.allDataTypes }, ...SOURCE_DATA_TYPES.map((item) => ({ value: item.value, label: facetLabel(SOURCE_DATA_TYPES, item.value, locale) }))]} />
         <NativeSelect name="installed" aria-label={t("installed")} defaultValue={installed}
           data={[{ value: "", label: t("all") }, { value: "yes", label: t("installed") }, { value: "no", label: t("notInstalled") }]} />
         <NativeSelect name="category" aria-label={t("category")} defaultValue={category}
@@ -83,6 +104,10 @@ export default async function LeadSourcesPage({ searchParams }: {
                 </div>
               </Group>
               <Text size="sm" lineClamp={3} className={classes.description}>{source.description || source.slug}</Text>
+              {(source.platforms.length || source.use_cases.length) ? <Group gap={5} wrap="wrap" className={classes.facets}>
+                {source.platforms.slice(0, 1).map((value) => <Badge key={value} size="xs" variant="light" color="gray">{facetLabel(SOURCE_PLATFORMS, value, locale)}</Badge>)}
+                {(useCase && source.use_cases.includes(useCase) ? [useCase] : source.use_cases.slice(0, 1)).map((value) => <Badge key={value} size="xs" variant="light" color="teal">{facetLabel(SOURCE_USE_CASES, value, locale)}</Badge>)}
+              </Group> : null}
               <div className={classes.price}>
                 <Group justify="space-between" gap="xs" wrap="nowrap" align="center">
                   <Text fw={600} size="sm" c="teal.8" className={classes.priceText}>{pricing ? `${pricing.amount} / ${pricing.unit}` : t("noPrice")}</Text>

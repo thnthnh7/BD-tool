@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { MAPS_APIFY_ID, MAPS_SLUG } from "@/features/leads/maps-source";
 import type { Json } from "@/lib/database.types";
 import type { ActorPricing } from "@/features/leads/source-pricing";
+import { classifyActorSource } from "@/features/leads/source-taxonomy";
 
 const PAGE_SIZE = 100;
 const SAVE_CHUNK = 200;
@@ -32,6 +33,12 @@ type SourceRow = {
   picture_url: string | null;
   store_url: string | null;
   categories: string[];
+  use_cases: string[];
+  industries: string[];
+  platforms: string[];
+  data_types: string[];
+  classification_version: string;
+  classified_at: string;
   pricing_model: string | null;
   pricing_info: Json | null;
   notice: string | null;
@@ -53,14 +60,23 @@ function toRow(item: StoreItem, syncedAt: string): SourceRow | null {
   const title = item.title?.trim();
   if (!id || !username || !name || !title) return null;
   const rating = item.stats?.actorReviewRating;
+  const description = (item.description || "").trim();
+  const categories = Array.isArray(item.categories) ? item.categories.filter((value) => typeof value === "string") : [];
+  const taxonomy = classifyActorSource({ slug: `${username}/${name}`, title, description, categories });
   return {
     apify_id: id,
     slug: `${username}/${name}`,
     title,
-    description: (item.description || "").trim(),
+    description,
     picture_url: item.pictureUrl || null,
     store_url: item.url || `https://apify.com/${username}/${name}`,
-    categories: Array.isArray(item.categories) ? item.categories.filter((value) => typeof value === "string") : [],
+    categories,
+    use_cases: taxonomy.useCases,
+    industries: taxonomy.industries,
+    platforms: taxonomy.platforms,
+    data_types: taxonomy.dataTypes,
+    classification_version: "rules-v1",
+    classified_at: syncedAt,
     pricing_model: item.currentPricingInfo?.pricingModel || null,
     pricing_info: item.currentPricingInfo ? item.currentPricingInfo as unknown as Json : null,
     notice: item.notice || null,
@@ -139,6 +155,12 @@ async function ensureMapsReady(syncedAt: string) {
     description: "Extract data from Google Maps locations and businesses, including contact info.",
     store_url: "https://apify.com/compass/crawler-google-places",
     categories: ["LEAD_GENERATION", "TRAVEL"],
+    use_cases: ["find_companies", "contact_enrichment", "reviews_reputation", "location_research"],
+    industries: ["b2b_saas", "hospitality_travel", "local_business"],
+    platforms: ["google_maps"],
+    data_types: ["companies", "contacts", "reviews", "locations"],
+    classification_version: "rules-v1",
+    classified_at: syncedAt,
     pricing_model: "PAY_PER_EVENT",
     adapter_status: "ready",
     archived_at: null,
@@ -147,7 +169,7 @@ async function ensureMapsReady(syncedAt: string) {
   if (existing) {
     const { error } = await admin
       .from("scrape_sources")
-      .update({ adapter_status: "ready", archived_at: null, synced_at: syncedAt })
+      .update({ ...row, adapter_status: "ready", archived_at: null, synced_at: syncedAt })
       .eq("id", existing.id);
     if (error) throw new Error(error.message);
     return;
