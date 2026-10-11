@@ -74,6 +74,7 @@ async function SelectedActor({ selected, reuse, actorDraft, draftRequested, useE
   canManage: boolean;
 }) {
   const t = await getTranslations("Scrape");
+  const common = await getTranslations("Common");
   const maps = selected && isMapsActor(selected.slug);
   if (!selected) return null;
   // Showing the Maps form needs connection status only. The submit action
@@ -130,6 +131,8 @@ async function SelectedActor({ selected, reuse, actorDraft, draftRequested, useE
         draftApplied={Boolean(draftInput)}
         pricingModel={selected.pricing_model}
         structuredGuide={generatedGuide?.guide}
-      /> : connectionError ? <Alert color="yellow">{connectionError}</Alert> : <Text size="sm" c="dimmed">{!canUseConnection ? (!enabled ? t("planUnavailable") : t("connectFirst")) : contract?.error || t("notReady")}</Text>}
+      /> : connectionError ? <Alert color="yellow" title={connectionError}>
+        {canManage ? <LinkButton href="/app/settings?section=apify" size="xs" variant="light">{common("settings")}</LinkButton> : null}
+      </Alert> : <Text size="sm" c="dimmed">{!canUseConnection ? (!enabled ? t("planUnavailable") : t("connectFirst")) : contract?.error || t("notReady")}</Text>}
     </SectionPanel></div>;
 }
