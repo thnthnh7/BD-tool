@@ -649,16 +649,29 @@ export async function revokeShareAction(formData: FormData) {
 
 export async function loadPlatformHealth() {
   await requirePlatform();
-  const supabase = await createClient();
-  const [{ data: flags }, { data: beats }, sepayConfig] = await Promise.all([
-    supabase.from("platform_flags").select("*").eq("id", 1).maybeSingle(),
-    supabase.from("integration_heartbeats").select("kind, ok, detail, ran_at").order("ran_at", { ascending: false }).limit(40),
+  const admin = createAdminClient();
+  const staleWebhook = new Date(Date.now() - 5 * 60_000).toISOString();
+  const [{ data: flags }, { data: beats }, crmDead, engageFailed, billingStuck, engageWebhookFailed, sepayConfig] = await Promise.all([
+    admin.from("platform_flags").select("*").eq("id", 1).maybeSingle(),
+    admin.from("integration_heartbeats").select("kind, ok, detail, ran_at").order("ran_at", { ascending: false }).limit(40),
+    admin.from("crm_sync_runs").select("id", { count: "exact", head: true }).in("status", ["failed", "dead_letter"]),
+    admin.from("engagement_jobs").select("id", { count: "exact", head: true }).eq("status", "failed"),
+    admin.from("billing_webhook_events").select("id", { count: "exact", head: true }).is("processed_at", null).lt("received_at", staleWebhook),
+    admin.from("engagement_webhook_events").select("id", { count: "exact", head: true }).not("error", "is", null),
     getBillingProviderConfig("sepay"),
   ]);
   const latest = new Map<string, { kind: string; ok: boolean; detail: string; ran_at: string }>();
   for (const beat of beats || []) {
     if (!latest.has(beat.kind)) latest.set(beat.kind, beat);
   }
+  const billingBeat = latest.get("billing_cron");
+  const alerts = [
+    !billingBeat || Date.now() - new Date(billingBeat.ran_at).getTime() > 26 * 60 * 60_000 ? { severity: "critical", label: "Billing cron has not reported successfully in the last 26 hours." } : null,
+    (crmDead.count || 0) > 0 ? { severity: "critical", label: `${crmDead.count} CRM sync run(s) require retry or investigation.` } : null,
+    (engageFailed.count || 0) > 0 ? { severity: "warning", label: `${engageFailed.count} engagement job(s) exhausted their retries.` } : null,
+    (billingStuck.count || 0) > 0 ? { severity: "critical", label: `${billingStuck.count} billing webhook event(s) remain unprocessed.` } : null,
+    (engageWebhookFailed.count || 0) > 0 ? { severity: "warning", label: `${engageWebhookFailed.count} engagement webhook event(s) contain errors.` } : null,
+  ].filter((item): item is { severity: string; label: string } => Boolean(item));
   return {
     flags: flags || { signup_enabled: true, ai_enabled: true, scrape_enabled: true, share_enabled: true },
     heartbeats: ["billing_cron", "sepay_webhook", "apify_webhook"].map((kind) => latest.get(kind) || null),
@@ -667,6 +680,13 @@ export async function loadPlatformHealth() {
       sepayWebhook: Boolean(sepayConfig.enabled && sepayConfig.credentials.webhookSecret),
       apifyOauth: Boolean(process.env.APIFY_OAUTH_CLIENT_ID && process.env.APIFY_OAUTH_CLIENT_SECRET && process.env.APIFY_OAUTH_AUTHORIZATION_URL && process.env.APIFY_OAUTH_TOKEN_URL),
     },
+    queues: {
+      crmDeadLetters: crmDead.count || 0,
+      engagementFailures: engageFailed.count || 0,
+      billingWebhooksStuck: billingStuck.count || 0,
+      engagementWebhookErrors: engageWebhookFailed.count || 0,
+    },
+    alerts,
   };
 }
 
