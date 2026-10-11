@@ -182,7 +182,7 @@ update public.data_records
 set identity_fingerprint = case
       when coalesce(identity_keys ->> 'email', '') <> '' then md5('email:' || lower(identity_keys ->> 'email'))
       when coalesce(identity_keys ->> 'phone', '') <> '' then md5('phone:' || regexp_replace(identity_keys ->> 'phone', '\D', '', 'g'))
-      when coalesce(identity_keys ->> 'external_id', '') <> '' then md5('external_id:' || identity_keys ->> 'external_id')
+      when coalesce(identity_keys ->> 'external_id', '') <> '' then md5('external_id:' || (identity_keys ->> 'external_id'))
       when coalesce(identity_keys ->> 'url', '') <> '' then md5('url:' || lower(identity_keys ->> 'url'))
       when coalesce(identity_keys ->> 'username', '') <> '' then md5('username:' || lower(identity_keys ->> 'username'))
       else ''

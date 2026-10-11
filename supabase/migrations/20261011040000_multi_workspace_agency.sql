@@ -40,7 +40,7 @@ language sql
 stable
 security definer
 set search_path = public
-as $$;
+as $$
   select wm.role
   from public.workspace_members wm
   where wm.user_id = auth.uid()

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Json } from "@/lib/database.types";
-import { actorInputGuide, buildActorInput, readableActorFields, unsupportedActorFields, validateActorInputObject, validateActorJsonInput } from "@/features/leads/actor-input";
+import { actorInputGuide, buildActorInput, canonicalizeActorAliases, readableActorFields, unsupportedActorFields, validateActorInputObject, validateActorJsonInput, withoutActorAliasFields } from "@/features/leads/actor-input";
 import { readableActorMarkdown } from "@/features/leads/actor-guide";
 
 const schema = {
@@ -169,4 +169,29 @@ test("validates complete JSON fallback for required unsupported editors", () => 
   assert.equal(validateActorJsonInput(proxySchema, { proxy: { useApifyProxy: true } }).valid, true);
   const invalid = validateActorJsonInput(proxySchema, { proxy: {} });
   assert.equal(invalid.valid, false);
+});
+
+test("hides documented aliases and submits only the canonical Actor field", () => {
+  const aliasSchema = {
+    type: "object",
+    properties: {
+      maxResults: { title: "Maximum results (alias)", description: "Alias for resultsCount. Used only when resultsCount is not provided.", type: "integer" },
+      resultsCount: { title: "Number of results", type: "integer" },
+    },
+  } as unknown as Json;
+  const fields = readableActorFields(aliasSchema, null);
+  assert.deepEqual(withoutActorAliasFields(fields).map((field) => field.name), ["resultsCount"]);
+  assert.deepEqual(canonicalizeActorAliases(fields, { maxResults: 20 }), { body: { resultsCount: 20 } });
+});
+
+test("rejects conflicting Actor alias values before starting a paid run", () => {
+  const aliasSchema = {
+    type: "object",
+    properties: {
+      maxResults: { title: "Maximum results (alias)", description: "Alias for resultsCount.", type: "integer" },
+      resultsCount: { title: "Number of results", type: "integer" },
+    },
+  } as unknown as Json;
+  const result = canonicalizeActorAliases(readableActorFields(aliasSchema, null), { maxResults: 20, resultsCount: 10 });
+  assert.deepEqual(result, { error: "Maximum results (alias) conflicts with Number of results. Use Number of results only." });
 });

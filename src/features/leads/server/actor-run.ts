@@ -6,7 +6,7 @@ import type { Json } from "@/lib/database.types";
 import { withWorkspace } from "@/lib/events";
 import { incrementUsage } from "@/lib/usage";
 import { isPlatformFlagEnabled } from "@/lib/platform/flags";
-import { actorSecretFieldNames, readableActorFields, unsupportedActorFields, validateActorInputObject, validateActorJsonInput } from "@/features/leads/actor-input";
+import { actorSecretFieldNames, canonicalizeActorAliases, readableActorFields, unsupportedActorFields, validateActorInputObject, validateActorJsonInput } from "@/features/leads/actor-input";
 import { requireWorkspaceApifyConnection } from "@/features/leads/server/apify-connection";
 import { startApifyActorRun } from "@/features/leads/server/apify";
 import { ensureSourceContract } from "@/features/leads/server/actor-schema";
@@ -67,6 +67,9 @@ export async function startActorScrapeWithInput(input: {
     if ("error" in validation) return { error: validation.error || "Actor input is invalid." };
     normalized = validation.body;
   }
+  const canonical = canonicalizeActorAliases(fields, normalized);
+  if ("error" in canonical) return { error: canonical.error };
+  normalized = canonical.body;
   const inputHash = createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
   const summary = Object.values(normalized).find((value) => typeof value === "string" && value.trim());
   const { data: job, error } = await supabase.from("lead_scrape_jobs").insert({

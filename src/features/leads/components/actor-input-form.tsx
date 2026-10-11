@@ -1,7 +1,7 @@
 import { Alert, Anchor, Badge, Box, Checkbox, Group, MultiSelect, NativeSelect, SimpleGrid, Stack, TagsInput, Text, Textarea, TextInput } from "@mantine/core";
 import { Info, TriangleAlert } from "lucide-react";
 import { ActionForm } from "@/features/crm/components/action-form";
-import { actorInputGuide, readableActorFields, unsupportedActorFields, type ActorField } from "@/features/leads/actor-input";
+import { actorInputGuide, readableActorFields, unsupportedActorFields, withoutActorAliasFields, type ActorField } from "@/features/leads/actor-input";
 import { startActorScrapeAction } from "@/features/leads/server/scrape-actions";
 import type { Json } from "@/lib/database.types";
 import { useTranslations } from "next-intl";
@@ -142,7 +142,7 @@ export function ActorInputForm({ sourceId, sourceSlug, schema, initialInput, exa
 }) {
   const t = useTranslations("Scrape");
   const guide = actorInputGuide(schema);
-  const fields = readableActorFields(schema, initialInput);
+  const fields = withoutActorAliasFields(readableActorFields(schema, initialInput));
   const unsupported = unsupportedActorFields(schema);
   const requiredUnsupported = unsupported.filter((field) => field.required);
   const jsonFallbackSafe = requiredUnsupported.length > 0 && requiredUnsupported.every((field) => !["fileupload", "resourcePicker"].includes(field.editor) && !/secret/i.test(field.reason));

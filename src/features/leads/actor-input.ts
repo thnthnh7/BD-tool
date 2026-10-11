@@ -35,6 +35,31 @@ export type ActorField = {
 
 export type UnsupportedActorField = { name: string; label: string; editor: string; type: string; required: boolean; reason: string };
 
+function aliasTarget(field: ActorField, fields: ActorField[]) {
+  const match = field.description.match(/\balias\s+for\s+[`'\"]?([a-zA-Z0-9_-]+)[`'\"]?/i);
+  if (!match) return null;
+  return fields.find((candidate) => candidate.name.toLowerCase() === match[1].toLowerCase()) || null;
+}
+
+export function withoutActorAliasFields(fields: ActorField[]) {
+  return fields.filter((field) => !aliasTarget(field, fields));
+}
+
+export function canonicalizeActorAliases(fields: ActorField[], input: Record<string, unknown>) {
+  const body = { ...input };
+  for (const field of fields) {
+    const target = aliasTarget(field, fields);
+    if (!target || !Object.prototype.hasOwnProperty.call(body, field.name)) continue;
+    if (Object.prototype.hasOwnProperty.call(body, target.name)
+      && JSON.stringify(body[field.name]) !== JSON.stringify(body[target.name])) {
+      return { error: `${field.label} conflicts with ${target.label}. Use ${target.label} only.` };
+    }
+    if (!Object.prototype.hasOwnProperty.call(body, target.name)) body[target.name] = body[field.name];
+    delete body[field.name];
+  }
+  return { body };
+}
+
 type SchemaProperty = {
   title?: string; description?: string; type?: string; editor?: string; default?: unknown; prefill?: unknown; example?: unknown;
   enum?: unknown[]; enumTitles?: unknown[]; enumSuggestedValues?: unknown[];
