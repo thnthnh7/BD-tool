@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
 import { ActionIcon, Button, FileButton, Group, List, ScrollArea, Stack, Text, TextInput, Tooltip } from "@mantine/core";
 import { Archive, Maximize2, Minimize2, Paperclip, Plus, Sparkles, Square, X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -17,7 +16,6 @@ type JobPreview = { jobId: string; headers: string[]; mapping: Record<string, st
 
 export function AgentWidget({ workspaceId, userId }: { workspaceId: string; userId: string }) {
   const t = useTranslations("Agent");
-  const pathname = usePathname();
   const panelId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const storageKey = `bizcraw-agent:${workspaceId}:${userId}`;
@@ -146,7 +144,7 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
       const response = await fetch("/api/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId: id, message: content, pathname, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+        body: JSON.stringify({ conversationId: id, message: content, pathname: `${window.location.pathname}${window.location.search}`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
         signal: controller.signal,
       });
       if (!response.ok || !response.body) {
@@ -298,7 +296,7 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
                 <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "apify" })}>Help me connect Apify</button>
                 <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "mcp" })}>Connect an AI client with MCP</button>
                 <button type="button" className={classes.starter} onClick={() => openTutorial({ chapterId: "workspace" })}>Show me how Bizcraw works</button>
-                <button type="button" className={classes.starter} onClick={() => void send(`Explain what I can do on ${pathname}. Give me the best next action and guide me step by step.`)}>What can I do on this page?</button>
+                <button type="button" className={classes.starter} onClick={() => void send(`Explain what I can do on ${window.location.pathname}${window.location.search}. Give me the best next action and guide me step by step.`)}>What can I do on this page?</button>
               </Stack>
             ) : null}
             <Stack gap="xs">
@@ -306,11 +304,20 @@ export function AgentWidget({ workspaceId, userId }: { workspaceId: string; user
                 message.role === "user" ? (
                   <Text key={message.id} size="sm"><strong>{t("you")}: </strong>{message.content}</Text>
                 ) : (
-                  <List key={message.id} size="sm" spacing={4} className={classes.reply}>
-                    {formatAssistantReply(message.content).map((line, index) => (
-                      <List.Item key={`${message.id}-${index}`}>{line}</List.Item>
+                  <Stack key={message.id} gap={6} className={classes.reply}>
+                    {formatAssistantReply(message.content).map((block, index) => (
+                      block.kind === "heading" ? (
+                        <Text key={`${message.id}-${index}`} size="sm" fw={700}>{block.text}</Text>
+                      ) : block.kind === "bullet" || block.kind === "numbered" ? (
+                        <Group key={`${message.id}-${index}`} gap={7} align="flex-start" wrap="nowrap">
+                          <Text size="sm" c="teal" fw={700}>{block.kind === "bullet" ? "•" : `${block.marker}.`}</Text>
+                          <Text size="sm" className={classes.replyText}>{block.text}</Text>
+                        </Group>
+                      ) : (
+                        <Text key={`${message.id}-${index}`} size="sm" className={classes.replyText}>{block.text}</Text>
+                      )
                     ))}
-                  </List>
+                  </Stack>
                 )
               ))}
               {approvals.length > 0 ? (

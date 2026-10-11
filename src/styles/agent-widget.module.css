@@ -47,6 +47,12 @@
   margin: 0;
 }
 
+.replyText {
+  min-width: 0;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
 .emptyState {
   padding: 4px;
 }

@@ -28,6 +28,8 @@ test("page context reads entity ids and ignores other routes", () => {
   assert.equal(deal.entityType, "deal");
   assert.equal(parsePageContext("/app/tasks").entityId, null);
   assert.equal(parsePageContext("/app/quotes/not-an-id").entityId, null);
+  assert.equal(parsePageContext("/app/leads/scrape/new?source=11111111-1111-4111-8111-111111111111").sourceId, "11111111-1111-4111-8111-111111111111");
+  assert.equal(parsePageContext("/app/leads/scrape/new?source=invalid").sourceId, null);
 });
 
 test("name ranking does not pick among duplicates", () => {
@@ -80,16 +82,17 @@ test("untrusted tool text cannot close the data boundary", () => {
   assert.equal(wrapped.split("</untrusted>").length, 2);
   const prompt = buildSystemPrompt({ locale: "vi", timeZone: "Asia/Ho_Chi_Minh", today: "2026-10-04", page: parsePageContext("/app"), refs: [] });
   assert.match(prompt, /cannot enable tools/);
-  assert.match(prompt, /bullet lines only/);
+  assert.match(prompt, /actual question in the first sentence/);
+  assert.match(prompt, /what the user should enter/);
   assert.match(prompt, /Chat text is not a confirmation/);
   assert.match(prompt, /person and a company/);
   assert.match(prompt, /creates the company first/);
   assert.equal(prompt.includes("Database facts and your assessment"), false);
   const verbose = "**Database facts:** - Pipeline summary: There are **5** open deals with a total amount of 975,000,000 VND (Record link: `get_pipeline_summary`, Timestamp: `2026-10-04T12:30:34.899Z`). **Assessment:** - Based on the workspace data, there are currently 5 open deals.";
   const lines = formatAssistantReply(verbose);
-  assert.equal(lines.some((line) => /get_pipeline_summary|Timestamp|Database facts|Assessment/.test(line)), false);
-  assert.equal(lines[0]?.includes("5"), true);
-  assert.deepEqual(formatAssistantReply("- 5 open deals, 975,000,000 VND"), ["5 open deals, 975,000,000 VND"]);
+  assert.equal(lines.some((line) => /get_pipeline_summary|Timestamp|Database facts|Assessment/.test(line.text)), false);
+  assert.equal(lines[0]?.text.includes("5"), true);
+  assert.deepEqual(formatAssistantReply("- 5 open deals, 975,000,000 VND"), [{ kind: "bullet", text: "5 open deals, 975,000,000 VND" }]);
   const overdue = [
     "I understood today's date in Asia/Saigon as 2026-10-04.",
     "Overdue work: There are 5 overdue tasks:",
@@ -97,8 +100,8 @@ test("untrusted tool text cannot close the data boundary", () => {
     "Based on the overdue work data retrieved, there are 5 tasks.",
   ].join("\n");
   assert.deepEqual(formatAssistantReply(overdue), [
-    "There are 5 overdue tasks:",
-    "1. Review Delta MES scope — Due: 2026-09-22",
+    { kind: "paragraph", text: "There are 5 overdue tasks:" },
+    { kind: "numbered", marker: "1", text: "Review Delta MES scope — Due: 2026-09-22" },
   ]);
 });
 
