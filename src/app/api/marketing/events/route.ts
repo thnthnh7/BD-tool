@@ -8,13 +8,14 @@ export const dynamic = "force-dynamic";
 const payloadSchema = z.object({
   visitorId: z.string().uuid(),
   sessionId: z.string().uuid(),
-  event: z.enum(["page_view", "engagement", "scroll_depth", "cta_click", "signup_started"]),
+  event: z.enum(["page_view", "engagement", "scroll_depth", "cta_click", "pricing_viewed", "plan_selected", "signup_started", "web_vital"]),
   path: z.string().min(1).max(240),
   label: z.string().max(80).optional(),
   referrer: z.string().max(500).optional(),
   utm: z.object({ source: z.string().max(100).optional(), medium: z.string().max(100).optional(), campaign: z.string().max(150).optional(), content: z.string().max(150).optional(), term: z.string().max(150).optional() }).optional(),
   engagementMs: z.number().int().min(0).max(1_800_000).optional(),
   scrollDepth: z.number().int().min(0).max(100).optional(),
+  metricValue: z.number().min(0).max(1_000_000).optional(),
 });
 
 function referrerHost(value?: string) {
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
     p_utm_campaign: data.utm?.campaign || null, p_utm_content: data.utm?.content || null,
     p_utm_term: data.utm?.term || null, p_country_code: (request.headers.get("x-vercel-ip-country") || "").slice(0, 2) || null,
     p_device_type: device, p_browser: browserName(userAgent), p_engagement_ms: data.engagementMs || null,
-    p_scroll_depth: data.scrollDepth || null, p_occurred_at: new Date().toISOString(),
+    p_scroll_depth: data.scrollDepth || null, p_metric_value: data.metricValue ?? null, p_occurred_at: new Date().toISOString(),
   });
   return NextResponse.json({ ok: !error }, { status: error ? 500 : 202 });
 }

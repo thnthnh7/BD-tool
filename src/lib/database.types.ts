@@ -18,9 +18,15 @@ export type Database = {
         Relationships: Rel;
       };
       marketing_events: {
-        Row: { id: string; session_id: string | null; workspace_id: string | null; event_name: string; path: string | null; label: string | null; engagement_ms: number | null; scroll_depth: number | null; dedupe_key: string | null; occurred_at: string };
-        Insert: { id?: string; session_id?: string | null; workspace_id?: string | null; event_name: string; path?: string | null; label?: string | null; engagement_ms?: number | null; scroll_depth?: number | null; dedupe_key?: string | null; occurred_at?: string };
+        Row: { id: string; session_id: string | null; workspace_id: string | null; event_name: string; path: string | null; label: string | null; engagement_ms: number | null; scroll_depth: number | null; metric_value: number | null; dedupe_key: string | null; occurred_at: string };
+        Insert: { id?: string; session_id?: string | null; workspace_id?: string | null; event_name: string; path?: string | null; label?: string | null; engagement_ms?: number | null; scroll_depth?: number | null; metric_value?: number | null; dedupe_key?: string | null; occurred_at?: string };
         Update: Partial<Database["public"]["Tables"]["marketing_events"]["Insert"]>;
+        Relationships: Rel;
+      };
+      marketing_daily_metrics: {
+        Row: { metric_date: string; visitors: number; sessions: number; pageviews: number; engagement_ms: number; engaged_sessions: number; signup_started: number; workspaces_created: number; checkout_started: number; checkout_failed: number; paid_activated: number; sources_installed: number; first_scrapes: number; first_crm_imports: number; updated_at: string };
+        Insert: { metric_date: string; visitors?: number; sessions?: number; pageviews?: number; engagement_ms?: number; engaged_sessions?: number; signup_started?: number; workspaces_created?: number; checkout_started?: number; checkout_failed?: number; paid_activated?: number; sources_installed?: number; first_scrapes?: number; first_crm_imports?: number; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["marketing_daily_metrics"]["Insert"]>;
         Relationships: Rel;
       };
       billing_provider_configs: {
@@ -2309,8 +2315,12 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       record_marketing_event: {
-        Args: { p_session_id: string; p_visitor_id: string; p_event_name: string; p_path: string; p_label?: string | null; p_referrer_host?: string | null; p_utm_source?: string | null; p_utm_medium?: string | null; p_utm_campaign?: string | null; p_utm_content?: string | null; p_utm_term?: string | null; p_country_code?: string | null; p_device_type?: string; p_browser?: string; p_engagement_ms?: number | null; p_scroll_depth?: number | null; p_occurred_at?: string };
+        Args: { p_session_id: string; p_visitor_id: string; p_event_name: string; p_path: string; p_label?: string | null; p_referrer_host?: string | null; p_utm_source?: string | null; p_utm_medium?: string | null; p_utm_campaign?: string | null; p_utm_content?: string | null; p_utm_term?: string | null; p_country_code?: string | null; p_device_type?: string; p_browser?: string; p_engagement_ms?: number | null; p_scroll_depth?: number | null; p_metric_value?: number | null; p_occurred_at?: string };
         Returns: undefined;
+      };
+      refresh_marketing_daily_metrics: {
+        Args: { p_from?: string; p_to?: string };
+        Returns: number;
       };
       apply_scrape_source_taxonomy: {
         Args: { p_rows: Json };

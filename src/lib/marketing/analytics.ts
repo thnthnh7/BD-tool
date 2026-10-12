@@ -1,5 +1,3 @@
-import "server-only";
-
 import { createHmac } from "node:crypto";
 import { cookies } from "next/headers";
 import { createAdminClient, hasServiceRole } from "@/lib/supabase/admin";
@@ -61,5 +59,16 @@ export async function recordPaidMarketingConversion(workspaceId: string, subscri
     }, { onConflict: "dedupe_key", ignoreDuplicates: true });
   } catch (error) {
     console.error("Marketing paid conversion could not be recorded", error);
+  }
+}
+
+export async function recordWorkspaceMarketingEvent(input: { workspaceId: string; eventName: "checkout_started" | "checkout_failed" | "source_installed" | "first_scrape_succeeded" | "first_crm_import"; dedupeKey: string; label?: string }) {
+  if (!hasServiceRole()) return;
+  try {
+    const admin = createAdminClient();
+    const { data: session } = await admin.from("marketing_sessions").select("id").eq("workspace_id", input.workspaceId).order("started_at", { ascending: true }).limit(1).maybeSingle();
+    await admin.from("marketing_events").upsert({ session_id: session?.id || null, workspace_id: input.workspaceId, event_name: input.eventName, label: input.label || null, dedupe_key: input.dedupeKey }, { onConflict: "dedupe_key", ignoreDuplicates: true });
+  } catch (error) {
+    console.error(`Marketing ${input.eventName} event could not be recorded`, error);
   }
 }

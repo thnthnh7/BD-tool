@@ -17,3 +17,14 @@ Check factual accuracy and whether the answer cites a canonical Bizcraw page. Do
 ## Referral measurement
 
 Bizcraw now uses consent-based first-party analytics on public pages. It captures the minimum fields needed for acquisition and conversion reporting: clean landing path, normalized referrer host, campaign parameters, coarse country/device/browser categories, engagement totals and conversion event. Random browser identifiers are HMAC-hashed server-side. The implementation does not store raw IP addresses, full user-agent strings, full URL queries, prompts, access tokens, form contents or workspace content. Raw analytics are retained for up to 90 days.
+
+Super Admin > Marketing reports traffic trends, acquisition, landing-page engagement, conversion and activation funnels, weekly workspace cohorts, Core Web Vitals, campaign URLs and CSV exports. Daily aggregate rows are retained for up to 24 months.
+
+## Search Console connection
+
+The Search Console panel is optional. Enable the Search Console API in a Google Cloud project, create a service account, and grant its email Viewer access to the Bizcraw Search Console property. Then configure these production variables:
+
+- `GOOGLE_SEARCH_CONSOLE_SITE_URL=sc-domain:bizcraw.com`
+- `GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_JSON` with the complete service-account JSON object
+
+The private key stays server-side. The dashboard reads clicks, impressions, CTR, average position, top queries and top pages with a three-day reporting delay.

@@ -9,6 +9,7 @@ import { CATALOG_CARD_COLUMNS, getCatalogPage } from "./catalog-page";
 import { requireWorkspaceApifyConnection } from "@/features/leads/server/apify-connection";
 import { requireModule } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordWorkspaceMarketingEvent } from "@/lib/marketing/analytics";
 const SOURCES_PAGE_SIZE = 200;
 
 export type SourceListFilters = {
@@ -250,6 +251,7 @@ export async function installScrapeSourceAction(formData: FormData) {
     installed_by: context.userId,
   });
   if (error && error.code !== "23505") return { error: error.message };
+  await recordWorkspaceMarketingEvent({ workspaceId: context.workspaceId, eventName: "source_installed", dedupeKey: `source_installed:${context.workspaceId}:${source.id}`, label: source.slug });
   revalidatePath("/app/leads/sources");
   revalidatePath("/app/leads/scrape");
   return { ok: true as const };

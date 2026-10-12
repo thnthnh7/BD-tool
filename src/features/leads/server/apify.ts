@@ -7,6 +7,7 @@ import { readAllPages } from "@/features/leads/server/read-pages";
 import { getApifyConnectionToken, syncApifyConnection } from "@/features/leads/server/apify-connection";
 import { normalizeDataRecord, type DataRecordType } from "@/features/data-library/normalize";
 import { normalizeProviderUsd, providerFetch } from "@/features/providers/runtime";
+import { recordWorkspaceMarketingEvent } from "@/lib/marketing/analytics";
 
 type Db = SupabaseClient<Database>;
 type Job = Database["public"]["Tables"]["lead_scrape_jobs"]["Row"];
@@ -415,6 +416,7 @@ export async function runScrapeIngest(job: Job) {
       .from("lead_scrape_jobs")
       .update({ status: "succeeded", error_message: null, finished_at: new Date().toISOString() })
       .eq("id", job.id);
+    await recordWorkspaceMarketingEvent({ workspaceId: job.workspace_id, eventName: "first_scrape_succeeded", dedupeKey: `first_scrape_succeeded:${job.workspace_id}`, label: job.source_id || undefined });
     await syncApifyConnection(job.apify_connection_id, token).catch(() => null);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Ingest failed";

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import type { Database, Json } from "@/lib/database.types";
 import { withWorkspace } from "@/lib/events";
 import { importEligibility, withoutEmptyValues, type ImportTarget } from "@/features/data-library/import-policy";
+import { recordWorkspaceMarketingEvent } from "@/lib/marketing/analytics";
 
 function object(value: Json): Record<string, Json | undefined> {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -265,6 +266,9 @@ export async function importDataRecordsAction(formData: FormData) {
   if (completeError) {
     await failBatch(completeError.message);
     return { error: completeError.message };
+  }
+  if (counts.imported + counts.updated > 0) {
+    await recordWorkspaceMarketingEvent({ workspaceId: context.workspaceId, eventName: "first_crm_import", dedupeKey: `first_crm_import:${context.workspaceId}`, label: target });
   }
   revalidatePath("/app/data");
   revalidatePath("/app/companies");

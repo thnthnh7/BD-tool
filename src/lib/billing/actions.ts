@@ -12,6 +12,7 @@ import { convertUsdCents, loadUsdRates, marketForLocale } from "@/lib/billing/lo
 import { getBillingProviderConfig } from "@/lib/billing/config";
 import { reconcileExternalSubscriptions } from "@/lib/billing/subscription-service";
 import { syncDefaultBillingCatalog } from "@/lib/billing/catalog-sync";
+import { recordWorkspaceMarketingEvent } from "@/lib/marketing/analytics";
 
 export async function createCheckoutInvoice(formData: FormData) {
   const context = await requireOwner();
@@ -65,6 +66,7 @@ export async function createCheckoutInvoice(formData: FormData) {
     .select("*")
     .single();
   if (error || !invoice) return { error: error?.message || "Không tạo được hóa đơn." };
+  await recordWorkspaceMarketingEvent({ workspaceId: context.workspaceId, eventName: "checkout_started", dedupeKey: `checkout_started:${invoice.id}`, label: `sepay:${plan.id}:${interval}` });
   revalidatePath("/app/billing");
   return { ok: true as const, invoiceId: invoice.id };
 }
@@ -170,6 +172,7 @@ export async function initiateSubscriptionCheckout(formData: FormData) {
     status: "pending",
   }).select("*").single();
   if (error || !invoice) return { error: error?.message || "Không tạo được hóa đơn." };
+  await recordWorkspaceMarketingEvent({ workspaceId: context.workspaceId, eventName: "checkout_started", dedupeKey: `checkout_started:${invoice.id}`, label: `${provider}:${plan.id}:${interval}` });
 
   try {
     if (changingExisting && subscription?.external_subscription_id) {
@@ -218,6 +221,7 @@ export async function initiateSubscriptionCheckout(formData: FormData) {
   } catch (checkoutError) {
     const message = checkoutError instanceof Error ? checkoutError.message : "Không tạo được checkout.";
     await admin.from("invoices").update({ status: "failed", provider_status: "checkout_failed" }).eq("id", invoice.id);
+    await recordWorkspaceMarketingEvent({ workspaceId: context.workspaceId, eventName: "checkout_failed", dedupeKey: `checkout_failed:${invoice.id}`, label: provider });
     return { error: message };
   }
 }
@@ -356,6 +360,13 @@ export async function runBillingCron() {
     if (analyticsEventError) throw analyticsEventError;
     const { error: analyticsSessionError } = await admin.from("marketing_sessions").delete().lt("last_seen_at", analyticsCutoff);
     if (analyticsSessionError) throw analyticsSessionError;
+    const today = new Date().toISOString().slice(0, 10);
+    const rollupFrom = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const { error: rollupError } = await admin.rpc("refresh_marketing_daily_metrics", { p_from: rollupFrom, p_to: today });
+    if (rollupError) throw rollupError;
+    const aggregateCutoff = new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const { error: aggregatePruneError } = await admin.from("marketing_daily_metrics").delete().lt("metric_date", aggregateCutoff);
+    if (aggregatePruneError) throw aggregatePruneError;
     await anonymizeDeletedProfiles(admin);
     const healthy = reconciliation.failed === 0 && catalog.errors.length === 0;
     await recordHeartbeat("billing_cron", healthy, `catalog synced ${catalog.synced}; catalog errors ${catalog.errors.length}; updated ${updated}; reconciled ${reconciliation.reconciled}; failed ${reconciliation.failed}; raw rows pruned ${pruned || 0}`);
