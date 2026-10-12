@@ -37,7 +37,8 @@
     "audit": "Denetim",
     "dataLibrary": "Veri kütüphanesi",
     "crmIntegration": "CRM Entegrasyonu",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "Çalışma alanı kilitlendi",

@@ -37,7 +37,8 @@
     "audit": "Rewizja",
     "dataLibrary": "Biblioteka danych",
     "crmIntegration": "Integracja CRM",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "Obszar roboczy zablokowany",

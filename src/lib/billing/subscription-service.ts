@@ -4,6 +4,7 @@ import { loadPayPalSubscription, loadStripeSubscription } from "@/lib/billing/pr
 import { createEntitlementSnapshot, parsePlan } from "@/lib/entitlements";
 import { createPaymentCode } from "@/lib/crypto-utils";
 import { canceledProviderStatuses, providerAccessStatus } from "@/lib/billing/subscription-state";
+import { recordPaidMarketingConversion } from "@/lib/marketing/analytics";
 
 type SubscriptionSync = {
   provider: "stripe" | "paypal";
@@ -120,6 +121,9 @@ export async function syncExternalSubscription(input: SubscriptionSync) {
   };
   if (["active", "trialing", "past_due"].includes(status)) workspacePatch.plan_id = verifiedPlanId;
   await admin.from("workspaces").update(workspacePatch as never).eq("id", input.workspaceId);
+  if (["active", "trialing"].includes(status) && (!existing || !["active", "trialing"].includes(existing.status))) {
+    await recordPaidMarketingConversion(input.workspaceId, String(saved?.id || existing?.id || input.externalSubscriptionId));
+  }
 }
 
 function secondsToIso(value: unknown) {

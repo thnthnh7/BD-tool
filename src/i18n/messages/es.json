@@ -37,7 +37,8 @@
     "audit": "Auditoría",
     "dataLibrary": "Biblioteca de datos",
     "crmIntegration": "Integración CRM",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "Espacio de trabajo bloqueado",

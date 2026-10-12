@@ -40,7 +40,8 @@
     "audit": "Nhật ký",
     "dataLibrary": "Kho dữ liệu",
     "crmIntegration": "Tích hợp CRM",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "Workspace bị khóa",

@@ -8,6 +8,7 @@ import { createAdminClient, hasServiceRole } from "@/lib/supabase/admin";
 import { addDays, createToken, hashToken, slugify } from "@/lib/crypto-utils";
 import { getSessionContext, requireModule, requireOwner, requireOwnerOrAdmin } from "@/lib/auth/session";
 import { defaultSettings } from "@/lib/default-data";
+import { linkMarketingSessionToWorkspace } from "@/lib/marketing/analytics";
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -207,6 +208,8 @@ export async function createWorkspaceAction(formData: FormData) {
     default_warranty_months: settings.defaultWarrantyMonths,
     default_maintenance_fee: settings.defaultMaintenanceFee,
   });
+
+  await linkMarketingSessionToWorkspace(workspaceId);
 
   if (requestedPaidPlanId) redirect(`/app/billing?plan=${encodeURIComponent(requestedPaidPlanId)}`);
   redirect("/app");

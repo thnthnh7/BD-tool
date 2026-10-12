@@ -11,6 +11,18 @@ type Rel = [];
 export type Database = {
   public: {
     Tables: {
+      marketing_sessions: {
+        Row: { id: string; visitor_id: string; workspace_id: string | null; landing_path: string; referrer_host: string | null; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; utm_content: string | null; utm_term: string | null; country_code: string | null; device_type: string; browser: string; page_view_count: number; engagement_ms: number; max_scroll_depth: number; started_at: string; last_seen_at: string };
+        Insert: { id: string; visitor_id: string; workspace_id?: string | null; landing_path: string; referrer_host?: string | null; utm_source?: string | null; utm_medium?: string | null; utm_campaign?: string | null; utm_content?: string | null; utm_term?: string | null; country_code?: string | null; device_type?: string; browser?: string; page_view_count?: number; engagement_ms?: number; max_scroll_depth?: number; started_at?: string; last_seen_at?: string };
+        Update: Partial<Database["public"]["Tables"]["marketing_sessions"]["Insert"]>;
+        Relationships: Rel;
+      };
+      marketing_events: {
+        Row: { id: string; session_id: string | null; workspace_id: string | null; event_name: string; path: string | null; label: string | null; engagement_ms: number | null; scroll_depth: number | null; dedupe_key: string | null; occurred_at: string };
+        Insert: { id?: string; session_id?: string | null; workspace_id?: string | null; event_name: string; path?: string | null; label?: string | null; engagement_ms?: number | null; scroll_depth?: number | null; dedupe_key?: string | null; occurred_at?: string };
+        Update: Partial<Database["public"]["Tables"]["marketing_events"]["Insert"]>;
+        Relationships: Rel;
+      };
       billing_provider_configs: {
         Row: { provider: string; enabled: boolean; mode: string; account_label: string; public_config: Json; encrypted_credentials: Json; updated_by: string | null; created_at: string; updated_at: string };
         Insert: { provider: string; enabled?: boolean; mode?: string; account_label?: string; public_config?: Json; encrypted_credentials?: Json; updated_by?: string | null; created_at?: string; updated_at?: string };
@@ -2296,6 +2308,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      record_marketing_event: {
+        Args: { p_session_id: string; p_visitor_id: string; p_event_name: string; p_path: string; p_label?: string | null; p_referrer_host?: string | null; p_utm_source?: string | null; p_utm_medium?: string | null; p_utm_campaign?: string | null; p_utm_content?: string | null; p_utm_term?: string | null; p_country_code?: string | null; p_device_type?: string; p_browser?: string; p_engagement_ms?: number | null; p_scroll_depth?: number | null; p_occurred_at?: string };
+        Returns: undefined;
+      };
       apply_scrape_source_taxonomy: {
         Args: { p_rows: Json };
         Returns: number;

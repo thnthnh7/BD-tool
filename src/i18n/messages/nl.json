@@ -37,7 +37,8 @@
     "audit": "Controle",
     "dataLibrary": "Databibliotheek",
     "crmIntegration": "CRM-integratie",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "Werkruimte vergrendeld",

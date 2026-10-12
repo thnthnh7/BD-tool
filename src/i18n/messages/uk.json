@@ -37,7 +37,8 @@
     "audit": "Аудит",
     "dataLibrary": "Бібліотека даних",
     "crmIntegration": "Інтеграція CRM",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "Робоча область заблокована",

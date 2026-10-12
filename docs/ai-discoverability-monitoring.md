@@ -14,6 +14,6 @@ Use a clean, signed-out session in each target search or answer product and reco
 
 Check factual accuracy and whether the answer cites a canonical Bizcraw page. Do not optimize around one model response; update public pages when a recurring misunderstanding reveals missing or ambiguous facts.
 
-## Referral measurement specification
+## Referral measurement
 
-No new visitor telemetry is added by the discoverability work. Before implementing referral attribution, choose an analytics provider, document retention and consent behavior, update the privacy notice, and capture only the minimum fields needed: landing path, normalized referrer host, campaign parameters, timestamp bucket and conversion event. Do not store prompts, access tokens or workspace content in marketing analytics.
+Bizcraw now uses consent-based first-party analytics on public pages. It captures the minimum fields needed for acquisition and conversion reporting: clean landing path, normalized referrer host, campaign parameters, coarse country/device/browser categories, engagement totals and conversion event. Random browser identifiers are HMAC-hashed server-side. The implementation does not store raw IP addresses, full user-agent strings, full URL queries, prompts, access tokens, form contents or workspace content. Raw analytics are retained for up to 90 days.

@@ -37,7 +37,8 @@
     "audit": "Prüfung",
     "dataLibrary": "Datenbibliothek",
     "crmIntegration": "CRM-Integration",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "Arbeitsbereich gesperrt",

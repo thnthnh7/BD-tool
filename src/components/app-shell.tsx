@@ -29,6 +29,7 @@ import {
   ArrowLeftRight,
   UserPlus,
   Users,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import { AgentWidget } from "@/features/agent/components/agent-widget";
 import { TutorialBook } from "@/features/tutorial/components/tutorial-book";
@@ -113,6 +114,7 @@ const platformGroups: NavGroup[] = [
     id: "platform",
     items: [
       { href: "/app/platform", label: "overview", icon: LayoutDashboard, roles: ["super_admin", "support"] },
+      { href: "/app/platform/marketing", label: "marketing", icon: ChartNoAxesCombined, roles: ["super_admin"] },
       { href: "/app/platform/accounts", label: "accounts", icon: Users, roles: ["super_admin", "support"] },
       { href: "/app/platform/workspaces", label: "workspaces", icon: Building2, roles: ["super_admin", "support"] },
       { href: "/app/platform/plans", label: "plans", icon: PackagePlus, roles: ["super_admin", "support"] },

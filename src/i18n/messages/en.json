@@ -40,7 +40,8 @@
     "audit": "Audit",
     "dataLibrary": "Data Library",
     "crmIntegration": "CRM Integration",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "Workspace locked",

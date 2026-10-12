@@ -6,6 +6,7 @@ import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "./globals.css";
 import { SOCIAL_IMAGE } from "@/lib/seo";
+import { MarketingTracker } from "@/components/marketing-tracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="en" dir="ltr" {...mantineHtmlProps} className={`${geistSans.variable} ${geistMono.variable} ${deckSans.variable} ${deckSerif.variable}`}>
       <body>
-        <LeadelyProvider>{children}</LeadelyProvider>
+        <LeadelyProvider>{children}<MarketingTracker /></LeadelyProvider>
       </body>
     </html>
   );

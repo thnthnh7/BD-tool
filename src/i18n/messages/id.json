@@ -37,7 +37,8 @@
     "audit": "Audit",
     "dataLibrary": "Pustaka data",
     "crmIntegration": "Integrasi CRM",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "Ruang kerja terkunci",

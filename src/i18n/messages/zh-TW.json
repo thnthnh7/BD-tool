@@ -37,7 +37,8 @@
     "audit": "審計",
     "dataLibrary": "資料庫",
     "crmIntegration": "CRM 整合",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "工作區已鎖定",

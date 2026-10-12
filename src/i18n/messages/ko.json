@@ -37,7 +37,8 @@
     "audit": "심사",
     "dataLibrary": "데이터 라이브러리",
     "crmIntegration": "CRM 연동",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "작업공간이 잠겼습니다.",

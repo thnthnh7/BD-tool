@@ -37,7 +37,8 @@
     "audit": "การตรวจสอบ",
     "dataLibrary": "คลังข้อมูล",
     "crmIntegration": "การเชื่อมต่อ CRM",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "marketing": "Marketing"
   },
   "Shell": {
     "lockedTitle": "พื้นที่ทำงานถูกล็อค",

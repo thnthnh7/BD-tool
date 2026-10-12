@@ -351,6 +351,11 @@ export async function runBillingCron() {
     }
     const { data: pruned, error: pruneError } = await admin.rpc("prune_expired_scrape_results");
     if (pruneError) throw pruneError;
+    const analyticsCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const { error: analyticsEventError } = await admin.from("marketing_events").delete().lt("occurred_at", analyticsCutoff);
+    if (analyticsEventError) throw analyticsEventError;
+    const { error: analyticsSessionError } = await admin.from("marketing_sessions").delete().lt("last_seen_at", analyticsCutoff);
+    if (analyticsSessionError) throw analyticsSessionError;
     await anonymizeDeletedProfiles(admin);
     const healthy = reconciliation.failed === 0 && catalog.errors.length === 0;
     await recordHeartbeat("billing_cron", healthy, `catalog synced ${catalog.synced}; catalog errors ${catalog.errors.length}; updated ${updated}; reconciled ${reconciliation.reconciled}; failed ${reconciliation.failed}; raw rows pruned ${pruned || 0}`);
