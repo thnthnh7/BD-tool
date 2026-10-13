@@ -64,6 +64,7 @@ export default async function PlatformPlansPage({ searchParams }: { searchParams
                   <TextInput name="badge" label="Badge" defaultValue={plan.badge} placeholder="Badge" />
                   <TextInput name="trial_days" label="Trial days" type="number" defaultValue={String(plan.trialDays)} />
                   <TextInput name="seats" label="Seats" type="number" defaultValue={String(plan.quotas.seats)} />
+                  <TextInput name="client_workspaces" label="Client workspaces" type="number" min={0} defaultValue={String(plan.quotas.client_workspaces)} />
                   <TextInput name="quotes_per_month" label="Quotes / month" type="number" defaultValue={String(plan.quotas.quotes_per_month)} />
                   <TextInput label="AI actions" value="Unlimited" disabled />
                   <TextInput name="concurrent_scrape_runs" label="Concurrent scrape runs" type="number" min={1} defaultValue={String(plan.quotas.concurrent_scrape_runs)} />

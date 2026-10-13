@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { applyEntitlementSnapshot, applyPlanOverrides, isPlanLocked, parsePlan, type ParsedPlan, type PlanStatus } from "@/lib/entitlements";
+import { applyEntitlementSnapshot, applyPlanOverrides, effectiveSubscriptionStatus, isPlanLocked, parsePlan, type ParsedPlan, type PlanStatus } from "@/lib/entitlements";
 import { defaultLocale, isAppLocale, type AppLocale } from "@/i18n/config";
 import type { ModuleKey } from "@/lib/module-catalog";
 
@@ -73,17 +73,19 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
-  const membership = selectActiveMembership(memberships || [], profile?.active_workspace_id);
-
-  if (!membership) {
+  if (!memberships?.length) {
     return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
-
-  const { data: seatActive, error: seatError } = await supabase.rpc("has_workspace_seat", {
-    p_workspace_id: membership.workspace_id,
-    p_user_id: userId,
-  });
-  if (seatError || !seatActive) redirect("/seat-unavailable");
+  const seatChecks = await Promise.all(memberships.map(async (candidate) => {
+    const { data: active, error: seatError } = await supabase.rpc("has_workspace_seat", {
+      p_workspace_id: candidate.workspace_id,
+      p_user_id: userId,
+    });
+    return !seatError && active ? candidate : null;
+  }));
+  const seatedMemberships = seatChecks.filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
+  const membership = selectActiveMembership(seatedMemberships, profile?.active_workspace_id);
+  if (!membership) redirect("/seat-unavailable");
 
   const { data: workspace } = await supabase
     .from("workspaces")
@@ -95,7 +97,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
 
-  const workspaceIds = (memberships || []).map((item) => item.workspace_id);
+  const workspaceIds = seatedMemberships.map((item) => item.workspace_id);
   const { data: availableRows } = workspaceIds.length
     ? await supabase.from("workspaces").select("id, name, type").in("id", workspaceIds).is("archived_at", null).order("name")
     : { data: [] };
@@ -103,27 +105,31 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     id: item.id,
     name: item.name,
     type: item.type as "personal" | "company",
-    role: ((memberships || []).find((member) => member.workspace_id === item.id)?.role || "member") as MemberRole,
+    role: (seatedMemberships.find((member) => member.workspace_id === item.id)?.role || "member") as MemberRole,
   }));
 
   // Both reads depend on the verified workspace, but not on each other.
   const [{ data: planRow }, { data: override }, { data: subscription }] = await Promise.all([
     supabase.from("plans").select("*").eq("id", workspace.plan_id).single(),
     supabase.from("workspace_overrides").select("quotas, features").eq("workspace_id", workspace.id).maybeSingle(),
-    supabase.from("subscriptions").select("plan_id, status, entitlement_snapshot").eq("workspace_id", workspace.id).maybeSingle(),
+    supabase.from("subscriptions").select("plan_id, status, entitlement_snapshot, current_period_end, grace_ends_at, grace_days").eq("workspace_id", workspace.id).maybeSingle(),
   ]);
   if (!planRow) {
     return { kind: "onboarding", userId, email, locale: preferredLocale || defaultLocale };
   }
 
+  const rawSubscriptionStatus = subscription?.plan_id === workspace.plan_id
+    ? subscription.status as PlanStatus
+    : null;
+  const subscriptionStatus = rawSubscriptionStatus
+    ? effectiveSubscriptionStatus(rawSubscriptionStatus, subscription?.current_period_end, subscription?.grace_ends_at, subscription?.grace_days)
+    : null;
   const snapshot = subscription?.plan_id === workspace.plan_id
-    && ["active", "trialing", "past_due"].includes(subscription.status)
+    && subscriptionStatus
+    && !isPlanLocked(subscriptionStatus)
     ? subscription.entitlement_snapshot
     : null;
   const workspaceStatus = workspace.plan_status as PlanStatus;
-  const subscriptionStatus = subscription?.plan_id === workspace.plan_id
-    ? subscription.status as PlanStatus
-    : null;
   const planStatus = isPlanLocked(workspaceStatus)
     ? workspaceStatus
     : !planRow.is_free && (!subscriptionStatus || isPlanLocked(subscriptionStatus))

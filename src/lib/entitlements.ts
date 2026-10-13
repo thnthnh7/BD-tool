@@ -1,5 +1,6 @@
 export type PlanQuotas = {
   seats: number;
+  client_workspaces: number;
   quotes_per_month: number;
   ai_briefs_per_month: number;
   concurrent_scrape_runs: number;
@@ -94,6 +95,7 @@ export function parsePlan(row: {
     trialDays: row.trial_days,
     quotas: {
       seats: Number(quotas.seats ?? 1),
+      client_workspaces: Math.max(0, Number(quotas.client_workspaces ?? 0)),
       quotes_per_month: Number(quotas.quotes_per_month ?? 0),
       // AI usage is metered for operations and abuse detection, but is never a
       // commercial plan quota. Keep the legacy key in snapshots while always
@@ -145,6 +147,25 @@ export function canUsePaidFeatures(status: PlanStatus) {
   return status === "trialing" || status === "active" || status === "past_due";
 }
 
+export function effectiveSubscriptionStatus(
+  status: PlanStatus,
+  currentPeriodEnd?: string | null,
+  graceEndsAt?: string | null,
+  graceDays = 0,
+  now = Date.now(),
+): PlanStatus {
+  if (!canUsePaidFeatures(status)) return status;
+  const periodEnd = currentPeriodEnd ? new Date(currentPeriodEnd).getTime() : Number.NaN;
+  if (!Number.isFinite(periodEnd)) return "expired";
+  const explicitGraceEnd = graceEndsAt ? new Date(graceEndsAt).getTime() : Number.NaN;
+  const accessEnd = Number.isFinite(explicitGraceEnd)
+    ? explicitGraceEnd
+    : periodEnd + Math.max(0, graceDays) * 86_400_000;
+  if (now > accessEnd) return "expired";
+  if (now > periodEnd) return "past_due";
+  return status;
+}
+
 export function quotaReached(used: number, limit: number) {
   if (limit < 0) return false;
   return used >= limit;
@@ -161,6 +182,7 @@ export function applyPlanOverrides(
     ...plan,
     quotas: {
       seats: numberOr(quotaPatch.seats, plan.quotas.seats),
+      client_workspaces: Math.max(0, numberOr(quotaPatch.client_workspaces, plan.quotas.client_workspaces)),
       quotes_per_month: numberOr(quotaPatch.quotes_per_month, plan.quotas.quotes_per_month),
       ai_briefs_per_month: -1,
       concurrent_scrape_runs: Math.max(1, numberOr(quotaPatch.concurrent_scrape_runs, plan.quotas.concurrent_scrape_runs)),

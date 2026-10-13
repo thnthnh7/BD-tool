@@ -3,6 +3,7 @@ import { decryptSecret } from "@/lib/crypto-utils";
 import { requireOwnerOrAdmin } from "@/lib/auth/session";
 import { exchangeEngagementCode, getEngagementProfile, isEngagementProvider } from "@/features/comms/server/providers";
 import { saveEngagementAccount } from "@/features/comms/server/accounts";
+import { isPlanLocked } from "@/lib/entitlements";
 
 type State = { state: string; provider: string; workspaceId: string; userId: string; createdAt: number };
 
@@ -23,6 +24,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const stored = JSON.parse(decryptSecret(cookie)) as State;
     const context = await requireOwnerOrAdmin();
+    if (context.locked || isPlanLocked(context.planStatus) || (!context.plan.features.inbox && !context.plan.features.calendar && !context.plan.features.sequences)) {
+      return finish("plan_unavailable");
+    }
     if (stored.state !== state || stored.provider !== rawProvider || stored.workspaceId !== context.workspaceId || stored.userId !== context.userId || Date.now() - stored.createdAt > 10 * 60_000) {
       return finish("invalid_state");
     }

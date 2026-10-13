@@ -2,7 +2,7 @@ import { createMcpHandler, isLegacyRequest } from "@modelcontextprotocol/server"
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { authenticateMcpToken } from "@/features/mcp/server/service";
 import { createBizcrawMcpServer } from "@/features/mcp/server/mcp-server";
-import { isPlanLocked, type PlanStatus } from "@/lib/entitlements";
+import { effectiveSubscriptionStatus, isPlanLocked, type PlanStatus } from "@/lib/entitlements";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { admit } from "@/lib/admission";
 import { appOrigin, mcpResource } from "@/features/mcp/server/oauth";
@@ -32,7 +32,7 @@ async function handle(request: Request) {
   const [{ data: plan }, { data: override }, { data: subscription }] = await Promise.all([
     admin.from("plans").select("features, is_free").eq("id", workspace.plan_id).maybeSingle(),
     admin.from("workspace_overrides").select("features").eq("workspace_id", connection.workspace_id).maybeSingle(),
-    admin.from("subscriptions").select("plan_id, status, entitlement_snapshot").eq("workspace_id", connection.workspace_id).maybeSingle(),
+    admin.from("subscriptions").select("plan_id, status, entitlement_snapshot, current_period_end, grace_ends_at, grace_days").eq("workspace_id", connection.workspace_id).maybeSingle(),
   ]);
   const planFeatures = (plan?.features || {}) as Record<string, unknown>;
   const snapshot = subscription?.entitlement_snapshot && typeof subscription.entitlement_snapshot === "object" && !Array.isArray(subscription.entitlement_snapshot)
@@ -42,7 +42,10 @@ async function handle(request: Request) {
     ? snapshot.features as Record<string, unknown>
     : {};
   const overrideFeatures = (override?.features || {}) as Record<string, unknown>;
-  const useSnapshot = subscription?.plan_id === workspace.plan_id && ["active", "trialing", "past_due"].includes(subscription.status);
+  const subscriptionStatus = subscription?.plan_id === workspace.plan_id
+    ? effectiveSubscriptionStatus(subscription.status as PlanStatus, subscription.current_period_end, subscription.grace_ends_at, subscription.grace_days)
+    : null;
+  const useSnapshot = Boolean(subscriptionStatus && !isPlanLocked(subscriptionStatus));
   const entitlementFeatures = useSnapshot ? { ...planFeatures, ...snapshotFeatures } : plan?.is_free ? planFeatures : {};
   const effectiveFeatures = Object.fromEntries(
     [...new Set([...Object.keys(entitlementFeatures), ...Object.keys(overrideFeatures)])].map((key) => [

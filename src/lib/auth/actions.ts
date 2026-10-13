@@ -9,6 +9,7 @@ import { addDays, createToken, hashToken, slugify } from "@/lib/crypto-utils";
 import { getSessionContext, requireModule, requireOwner, requireOwnerOrAdmin } from "@/lib/auth/session";
 import { defaultSettings } from "@/lib/default-data";
 import { linkMarketingSessionToWorkspace } from "@/lib/marketing/analytics";
+import { isPlanLocked } from "@/lib/entitlements";
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -216,7 +217,10 @@ export async function createWorkspaceAction(formData: FormData) {
 }
 
 export async function createClientWorkspaceAction(formData: FormData) {
-  await requireOwnerOrAdmin();
+  const context = await requireOwnerOrAdmin();
+  if (!context.plan.features.team || context.locked || isPlanLocked(context.planStatus) || context.plan.quotas.client_workspaces < 1) {
+    return { error: "Your plan does not include client workspaces." };
+  }
   const name = String(formData.get("name") || "").trim();
   if (!name) return { error: "Client workspace name is required." };
   const supabase = await createClient();

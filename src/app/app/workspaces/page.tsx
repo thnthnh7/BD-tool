@@ -10,5 +10,8 @@ export default async function WorkspacesPage() {
     id: workspace.id, name: workspace.name, type: workspace.type, role: workspace.role,
     providerCostUsd: Number(workspace.provider_cost_usd || 0),
   })) : context.availableWorkspaces.map((workspace) => ({ ...workspace, providerCostUsd: 0 }));
-  return <WorkspaceManager canCreate={context.memberRole !== "member"} currentId={context.workspaceId} workspaces={workspaces} />;
+  const canCreate = context.memberRole !== "member"
+    && context.plan.features.team
+    && context.plan.quotas.client_workspaces > Math.max(0, workspaces.length - 1);
+  return <WorkspaceManager canCreate={canCreate} currentId={context.workspaceId} workspaces={workspaces} />;
 }

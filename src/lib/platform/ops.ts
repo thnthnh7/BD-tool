@@ -15,6 +15,7 @@ import { getBillingProviderConfig } from "@/lib/billing/config";
 
 const QUOTA_KEYS: (keyof PlanQuotas)[] = [
   "seats",
+  "client_workspaces",
   "quotes_per_month",
   "ai_briefs_per_month",
   "concurrent_scrape_runs",

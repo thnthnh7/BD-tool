@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decryptSecret } from "@/lib/crypto-utils";
-import { getSessionContext } from "@/lib/auth/session";
+import { requireOwnerOrAdmin } from "@/lib/auth/session";
 import { exchangeCrmAuthorizationCode, storeCrmTokens } from "@/features/crm-integrations/server/oauth";
+import { isPlanLocked } from "@/lib/entitlements";
 
 type State = { state: string; provider: string; connectionId: string; workspaceId: string; userId: string; accountLabel: string; createdAt: number };
 
@@ -15,8 +16,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!code || !state || !cookie) return finish("invalid_callback");
   try {
     const stored = JSON.parse(decryptSecret(cookie)) as State;
-    const context = await getSessionContext();
-    if (!context || context.kind !== "workspace" || context.memberRole === "member") return finish("forbidden");
+    const context = await requireOwnerOrAdmin();
+    if (!context.plan.features.crm_integrations || context.locked || isPlanLocked(context.planStatus)) return finish("plan_unavailable");
     if (stored.state !== state || stored.provider !== provider || stored.workspaceId !== context.workspaceId || stored.userId !== context.userId || Date.now() - stored.createdAt > 600_000) return finish("invalid_state");
     const redirectUri = new URL(`/api/integrations/crm/${provider}/callback`, request.url).toString();
     const token = await exchangeCrmAuthorizationCode({ provider, accountLabel: stored.accountLabel, code, redirectUri, tokenUrlOverride: request.nextUrl.searchParams.get("accounts-server") ? `${request.nextUrl.searchParams.get("accounts-server")}/oauth/v2/token` : undefined });

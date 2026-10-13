@@ -25,6 +25,7 @@ export async function updatePlanAction(formData: FormData) {
   const requestedSeats = Number(formData.get("seats") || 1);
   const nextQuotas = {
     seats: requestedSeats < 0 ? -1 : Math.max(1, requestedSeats),
+    client_workspaces: Math.max(0, Number(formData.get("client_workspaces") || 0)),
     quotes_per_month: Number(formData.get("quotes_per_month") || 0),
     ai_briefs_per_month: -1,
     concurrent_scrape_runs: Math.max(1, Number(formData.get("concurrent_scrape_runs") || 1)),
@@ -243,6 +244,7 @@ export async function createPlanAction(formData: FormData) {
     trial_days: 0,
     quotas: {
       seats: 1,
+      client_workspaces: 0,
       quotes_per_month: 0,
       ai_briefs_per_month: -1,
       concurrent_scrape_runs: 1,

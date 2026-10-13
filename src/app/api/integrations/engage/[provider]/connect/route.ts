@@ -3,12 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { encryptSecret } from "@/lib/crypto-utils";
 import { requireOwnerOrAdmin } from "@/lib/auth/session";
 import { engagementAuthorizationUrl, engagementProviderReady, isEngagementProvider } from "@/features/comms/server/providers";
+import { isPlanLocked } from "@/lib/entitlements";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const context = await requireOwnerOrAdmin();
   const { provider: rawProvider } = await params;
   if (!isEngagementProvider(rawProvider)) return NextResponse.redirect(new URL("/app/inbox?oauth=unsupported", request.url));
-  if (!context.plan.features.inbox && !context.plan.features.calendar && !context.plan.features.sequences) {
+  if (context.locked || isPlanLocked(context.planStatus) || (!context.plan.features.inbox && !context.plan.features.calendar && !context.plan.features.sequences)) {
     return NextResponse.redirect(new URL("/app/billing?required=inbox", request.url));
   }
   if (!engagementProviderReady(rawProvider)) return NextResponse.redirect(new URL(`/app/inbox?oauth=${rawProvider}_not_configured`, request.url));

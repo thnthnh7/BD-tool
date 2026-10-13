@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyEntitlementSnapshot, canUsePaidFeatures, createEntitlementSnapshot, isPlanLocked, parsePlan } from "@/lib/entitlements";
+import { applyEntitlementSnapshot, canUsePaidFeatures, createEntitlementSnapshot, effectiveSubscriptionStatus, isPlanLocked, parsePlan } from "@/lib/entitlements";
 
 function row(features: Record<string, boolean> = {}, quotas: Record<string, number> = {}) {
   return {
@@ -80,4 +80,13 @@ test("legacy AI quotas are always interpreted as unlimited while capacity defaul
   assert.equal(effective.quotas.ai_briefs_per_month, -1);
   assert.equal(effective.quotas.concurrent_scrape_runs, 1);
   assert.equal(effective.quotas.raw_data_retention_days, 7);
+  assert.equal(effective.quotas.client_workspaces, 0);
+});
+
+test("subscription access expires from timestamps even before the billing cron reconciles it", () => {
+  const periodEnd = "2026-10-10T00:00:00.000Z";
+  assert.equal(effectiveSubscriptionStatus("active", periodEnd, null, 3, Date.parse("2026-10-09T00:00:00.000Z")), "active");
+  assert.equal(effectiveSubscriptionStatus("active", periodEnd, null, 3, Date.parse("2026-10-11T00:00:00.000Z")), "past_due");
+  assert.equal(effectiveSubscriptionStatus("past_due", periodEnd, null, 3, Date.parse("2026-10-14T00:00:00.001Z")), "expired");
+  assert.equal(effectiveSubscriptionStatus("active", null, null, 3, Date.parse("2026-10-09T00:00:00.000Z")), "expired");
 });

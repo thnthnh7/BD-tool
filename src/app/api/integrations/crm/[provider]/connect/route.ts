@@ -3,14 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { crmOAuthDefinition } from "@/features/crm-integrations/server/oauth";
 import { getCrmProviderCredentials } from "@/features/crm-integrations/server/credentials";
 import { encryptSecret } from "@/lib/crypto-utils";
-import { getSessionContext } from "@/lib/auth/session";
+import { requireOwnerOrAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { isPlanLocked } from "@/lib/entitlements";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
-  const context = await getSessionContext();
+  const context = await requireOwnerOrAdmin();
   const provider = (await params).provider;
-  if (!context || context.kind !== "workspace") return NextResponse.redirect(new URL("/login", request.url));
-  if (context.memberRole === "member") return NextResponse.redirect(new URL(`/app/crm-integrations?provider=${provider}&oauth=forbidden`, request.url));
+  if (!context.plan.features.crm_integrations || context.locked || isPlanLocked(context.planStatus)) {
+    return NextResponse.redirect(new URL(`/app/billing?required=crm_integrations`, request.url));
+  }
   const supabase = await createClient();
   const [{ data: connection }, { data: availability }] = await Promise.all([
     supabase.from("crm_connections").select("id, account_label").eq("workspace_id", context.workspaceId).eq("provider", provider).maybeSingle(),
