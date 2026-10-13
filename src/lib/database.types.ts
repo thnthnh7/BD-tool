@@ -11,6 +11,48 @@ type Rel = [];
 export type Database = {
   public: {
     Tables: {
+      mail_marketing_settings: {
+        Row: { id: number; enabled: boolean; sender_name: string; sender_email: string; reply_to: string; daily_marketing_limit: number; weekly_marketing_limit: number; updated_by: string | null; updated_at: string };
+        Insert: { id?: number; enabled?: boolean; sender_name?: string; sender_email?: string; reply_to?: string; daily_marketing_limit?: number; weekly_marketing_limit?: number; updated_by?: string | null; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mail_marketing_settings"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mail_marketing_campaigns: {
+        Row: { id: string; slug: string; name: string; status: string; trigger_key: string; category: string; delay_hours: number; subject_template: string; body_template: string; cta_label: string; cta_path: string; send_once: boolean; sort_order: number; updated_by: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; slug: string; name: string; status?: string; trigger_key: string; category: string; delay_hours?: number; subject_template: string; body_template: string; cta_label?: string; cta_path?: string; send_once?: boolean; sort_order?: number; updated_by?: string | null; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mail_marketing_campaigns"]["Insert"]>;
+        Relationships: Rel;
+      };
+      email_preferences: {
+        Row: { user_id: string; product_tips: boolean; beta_updates: boolean; announcements: boolean; unsubscribed_all: boolean; consent_source: string; consent_at: string | null; unsubscribed_at: string | null; updated_at: string };
+        Insert: { user_id: string; product_tips?: boolean; beta_updates?: boolean; announcements?: boolean; unsubscribed_all?: boolean; consent_source?: string; consent_at?: string | null; unsubscribed_at?: string | null; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["email_preferences"]["Insert"]>;
+        Relationships: Rel;
+      };
+      user_product_activity: {
+        Row: { user_id: string; workspace_id: string; first_seen_at: string; last_seen_at: string; last_path: string; session_count: number };
+        Insert: { user_id: string; workspace_id: string; first_seen_at?: string; last_seen_at?: string; last_path?: string; session_count?: number };
+        Update: Partial<Database["public"]["Tables"]["user_product_activity"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mail_marketing_deliveries: {
+        Row: { id: string; campaign_id: string; user_id: string; workspace_id: string | null; beta_enrollment_id: string | null; to_email: string; to_name: string; status: string; dedupe_key: string; available_at: string; attempt_count: number; max_attempts: number; provider_message_id: string | null; subject_rendered: string | null; variables: Json; last_error: string | null; sent_at: string | null; delivered_at: string | null; clicked_at: string | null; returned_at: string | null; bounced_at: string | null; complained_at: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; campaign_id: string; user_id: string; workspace_id?: string | null; beta_enrollment_id?: string | null; to_email: string; to_name?: string; status?: string; dedupe_key: string; available_at?: string; attempt_count?: number; max_attempts?: number; provider_message_id?: string | null; subject_rendered?: string | null; variables?: Json; last_error?: string | null; sent_at?: string | null; delivered_at?: string | null; clicked_at?: string | null; returned_at?: string | null; bounced_at?: string | null; complained_at?: string | null; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mail_marketing_deliveries"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mail_marketing_provider_events: {
+        Row: { id: string; provider: string; provider_event_id: string; event_type: string; provider_message_id: string | null; payload: Json; processed_at: string | null; created_at: string };
+        Insert: { id?: string; provider?: string; provider_event_id: string; event_type: string; provider_message_id?: string | null; payload?: Json; processed_at?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mail_marketing_provider_events"]["Insert"]>;
+        Relationships: Rel;
+      };
+      mail_marketing_suppressions: {
+        Row: { email: string; reason: string; user_id: string | null; source: string; created_at: string };
+        Insert: { email: string; reason: string; user_id?: string | null; source?: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["mail_marketing_suppressions"]["Insert"]>;
+        Relationships: Rel;
+      };
       marketing_sessions: {
         Row: { id: string; visitor_id: string; workspace_id: string | null; landing_path: string; referrer_host: string | null; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; utm_content: string | null; utm_term: string | null; country_code: string | null; device_type: string; browser: string; page_view_count: number; engagement_ms: number; max_scroll_depth: number; started_at: string; last_seen_at: string };
         Insert: { id: string; visitor_id: string; workspace_id?: string | null; landing_path: string; referrer_host?: string | null; utm_source?: string | null; utm_medium?: string | null; utm_campaign?: string | null; utm_content?: string | null; utm_term?: string | null; country_code?: string | null; device_type?: string; browser?: string; page_view_count?: number; engagement_ms?: number; max_scroll_depth?: number; started_at?: string; last_seen_at?: string };
@@ -2328,6 +2370,8 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      record_product_activity: { Args: { p_workspace_id: string; p_path: string }; Returns: undefined };
+      claim_mail_marketing_deliveries: { Args: { p_limit?: number }; Returns: Database["public"]["Tables"]["mail_marketing_deliveries"]["Row"][] };
       record_marketing_event: {
         Args: { p_session_id: string; p_visitor_id: string; p_event_name: string; p_path: string; p_label?: string | null; p_referrer_host?: string | null; p_utm_source?: string | null; p_utm_medium?: string | null; p_utm_campaign?: string | null; p_utm_content?: string | null; p_utm_term?: string | null; p_country_code?: string | null; p_device_type?: string; p_browser?: string; p_engagement_ms?: number | null; p_scroll_depth?: number | null; p_metric_value?: number | null; p_occurred_at?: string };
         Returns: undefined;
