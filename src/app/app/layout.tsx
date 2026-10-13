@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth/session";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "@/i18n/messages";
 import { LocaleDocument } from "@/i18n/locale-document";
+import { ProductActivityTracker } from "@/components/product-activity-tracker";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -16,6 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <NextIntlClientProvider locale={context.locale} messages={getMessages(context.locale)}>
       <LocaleDocument locale={context.locale} />
+      {context.kind === "workspace" ? <ProductActivityTracker workspaceId={context.workspaceId} /> : null}
       <AppShell context={context}>{children}</AppShell>
     </NextIntlClientProvider>
   );
