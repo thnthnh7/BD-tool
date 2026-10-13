@@ -4,17 +4,11 @@ import { useState } from "react";
 import { Alert, Box, Button, Group, Paper, Radio, SimpleGrid, Stack, Text, TextInput, ThemeIcon } from "@mantine/core";
 import { Building2, Check, UserRound } from "lucide-react";
 import { createWorkspaceAction } from "@/lib/auth/actions";
+import type { PublicBetaOffer } from "@/lib/platform/beta";
 
 type WorkspaceType = "personal" | "company";
 
-const nextSteps = [
-  "You’ll become the workspace owner.",
-  "Your workspace starts on the Free plan.",
-  "Add leads, contacts and deals after setup.",
-  "Upgrade only when you need more features.",
-];
-
-export function OnboardingForm({ requestedPlanId }: { requestedPlanId?: string }) {
+export function OnboardingForm({ requestedPlanId, betaOffer }: { requestedPlanId?: string; betaOffer?: PublicBetaOffer | null }) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [type, setType] = useState<WorkspaceType>("personal");
@@ -29,6 +23,17 @@ export function OnboardingForm({ requestedPlanId }: { requestedPlanId?: string }
   }
 
   const isCompany = type === "company";
+  const nextSteps = betaOffer ? [
+    "You’ll become the workspace owner.",
+    `Full Bizcraw access is included for ${betaOffer.accessMonths} months.`,
+    "No payment card is required.",
+    "You can choose a paid plan at any time.",
+  ] : [
+    "You’ll become the workspace owner.",
+    "Your workspace starts on the Free plan.",
+    "Add leads, contacts and deals after setup.",
+    "Upgrade only when you need more features.",
+  ];
 
   return (
     <form action={onSubmit}>
@@ -44,6 +49,10 @@ export function OnboardingForm({ requestedPlanId }: { requestedPlanId?: string }
               Choose the setup that fits how you work today.
             </Text>
           </Box>
+
+          {betaOffer ? <Alert color="teal" title={betaOffer.headline}>
+            {betaOffer.description} {betaOffer.remaining} of {betaOffer.maxParticipants} places remain. Your exact member number is confirmed when this workspace is created.
+          </Alert> : null}
 
           <Radio.Group value={type} onChange={(value) => setType(value as WorkspaceType)} label="Workspace type">
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mt="xs">
@@ -111,10 +120,10 @@ export function OnboardingForm({ requestedPlanId }: { requestedPlanId?: string }
 
           <Box mt="auto" pt="sm">
             <Button type="submit" loading={pending} fullWidth size="md">
-              {pending ? "Creating workspace…" : "Create free workspace"}
+              {pending ? "Creating workspace…" : betaOffer ? "Claim Beta access" : "Create free workspace"}
             </Button>
             <Text size="xs" c="dimmed" ta="center" mt="xs">
-              Free plan · No credit card required
+              {betaOffer ? `Full access for ${betaOffer.accessMonths} months · No credit card required` : "Free plan · No credit card required"}
             </Text>
           </Box>
         </Stack>

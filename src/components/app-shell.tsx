@@ -30,6 +30,7 @@ import {
   UserPlus,
   Users,
   ChartNoAxesCombined,
+  FlaskConical,
 } from "lucide-react";
 import { AgentWidget } from "@/features/agent/components/agent-widget";
 import { TutorialBook } from "@/features/tutorial/components/tutorial-book";
@@ -49,6 +50,7 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   roles: NavRole[];
   feature?: ModuleKey;
+  title?: string;
 };
 type NavGroup = {
   id: string;
@@ -118,6 +120,7 @@ const platformGroups: NavGroup[] = [
       { href: "/app/platform/accounts", label: "accounts", icon: Users, roles: ["super_admin", "support"] },
       { href: "/app/platform/workspaces", label: "workspaces", icon: Building2, roles: ["super_admin", "support"] },
       { href: "/app/platform/plans", label: "plans", icon: PackagePlus, roles: ["super_admin", "support"] },
+      { href: "/app/platform/beta", label: "plans", title: "Beta Program", icon: FlaskConical, roles: ["super_admin"] },
       { href: "/app/platform/payments", label: "payments", icon: CreditCard, roles: ["super_admin", "support"] },
       { href: "/app/platform/crm-integrations", label: "crmIntegration", icon: Share2, roles: ["super_admin", "support"] },
       { href: "/app/platform/mcp", label: "mcp", icon: Network, roles: ["super_admin", "support"] },
@@ -194,7 +197,7 @@ export function AppShellNav({
               <div key={group.id} className={classes.navGroup} data-tutorial-id={`nav-group-${group.id}`}>
                 {group.label ? <Text className={classes.navSection}>{tNav(group.id)}</Text> : null}
                 {group.items.map((item) => (
-                  <ShellLink key={item.href} item={item} label={tNav(item.label)} pathname={pathname} onClick={close} tutorialId={`nav-${item.label}`} />
+                  <ShellLink key={item.href} item={item} label={item.title || tNav(item.label)} pathname={pathname} onClick={close} tutorialId={`nav-${item.label}`} />
                 ))}
               </div>
             ))}

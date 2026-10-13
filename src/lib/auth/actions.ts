@@ -167,11 +167,15 @@ export async function createWorkspaceAction(formData: FormData) {
   }
 
   const slug = slugify(name);
-  const { data: workspaceId, error: wsError } = await supabase.rpc("create_workspace_onboarding", {
+  const { data: onboardingResult, error: wsError } = await supabase.rpc("create_workspace_onboarding", {
     p_name: name,
     p_slug: slug,
     p_type: type,
   });
+  const onboarding = onboardingResult && typeof onboardingResult === "object" && !Array.isArray(onboardingResult)
+    ? onboardingResult as Record<string, unknown>
+    : null;
+  const workspaceId = typeof onboarding?.workspace_id === "string" ? onboarding.workspace_id : "";
   if (wsError || !workspaceId) return { error: wsError?.message || "Không tạo được workspace." };
 
   const settings = type === "company" ? defaultSettings : {
@@ -212,6 +216,7 @@ export async function createWorkspaceAction(formData: FormData) {
 
   await linkMarketingSessionToWorkspace(workspaceId);
 
+  if (onboarding?.beta_granted === true) redirect("/app/beta-welcome");
   if (requestedPaidPlanId) redirect(`/app/billing?plan=${encodeURIComponent(requestedPaidPlanId)}`);
   redirect("/app");
 }

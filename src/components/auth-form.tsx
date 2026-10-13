@@ -6,17 +6,20 @@ import { AppLogo } from "@/components/leadely/app-logo";
 import { LinkAnchor } from "@/components/mantine-link";
 import { signInWithGoogle, signInWithPassword, signUpWithPassword, resetPassword } from "@/lib/auth/actions";
 import classes from "@/styles/leadely-surfaces.module.css";
+import type { PublicBetaOffer } from "@/lib/platform/beta";
 
 export function AuthForm({
   mode,
   invite,
   inviteKind,
   next,
+  betaOffer,
 }: {
   mode: "login" | "signup" | "forgot";
   invite?: string;
   inviteKind?: "workspace" | "platform";
   next?: string;
+  betaOffer?: PublicBetaOffer | null;
 }) {
   const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED !== "false";
   const [error, setError] = useState("");
@@ -62,6 +65,9 @@ export function AuthForm({
       <Text size="sm" c="dimmed" mt="xs">
         One account = one role. Don’t share an email across roles.
       </Text>
+      {mode === "signup" && betaOffer ? <Alert color="teal" mt="md" title={betaOffer.headline}>
+        {betaOffer.description} <b>{betaOffer.remaining} of {betaOffer.maxParticipants}</b> places remain. Your place is confirmed after email verification and workspace setup.
+      </Alert> : null}
       <form action={onSubmit}>
         <Stack mt="lg" gap="md">
           {next ? <input type="hidden" name="next" value={next} /> : null}

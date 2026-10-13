@@ -35,6 +35,18 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["billing_provider_configs"]["Insert"]>;
         Relationships: Rel;
       };
+      beta_campaigns: {
+        Row: { id: string; plan_id: string; fallback_plan_id: string; name: string; status: string; max_participants: number; claimed_count: number; access_months: number; starts_at: string; enrollment_ends_at: string | null; new_accounts_only: boolean; require_verified_email: boolean; headline: string; description: string; terms_url: string; updated_by: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; plan_id: string; fallback_plan_id: string; name: string; status?: string; max_participants?: number; claimed_count?: number; access_months?: number; starts_at?: string; enrollment_ends_at?: string | null; new_accounts_only?: boolean; require_verified_email?: boolean; headline?: string; description?: string; terms_url?: string; updated_by?: string | null; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["beta_campaigns"]["Insert"]>;
+        Relationships: Rel;
+      };
+      beta_campaign_enrollments: {
+        Row: { id: string; campaign_id: string; user_id: string; workspace_id: string; position: number; status: string; granted_at: string; access_starts_at: string; access_ends_at: string; converted_at: string | null; converted_plan_id: string | null; revoked_at: string | null; revoke_reason: string | null; metadata: Json; created_at: string; updated_at: string };
+        Insert: { id?: string; campaign_id: string; user_id: string; workspace_id: string; position: number; status?: string; granted_at?: string; access_starts_at?: string; access_ends_at: string; converted_at?: string | null; converted_plan_id?: string | null; revoked_at?: string | null; revoke_reason?: string | null; metadata?: Json; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["beta_campaign_enrollments"]["Insert"]>;
+        Relationships: Rel;
+      };
       mcp_connections: {
         Row: { id: string; workspace_id: string; created_by: string | null; name: string; token_hash: string; token_prefix: string; scopes: string[]; status: string; last_used_at: string | null; expires_at: string | null; created_at: string; updated_at: string };
         Insert: { id?: string; workspace_id: string; created_by?: string | null; name: string; token_hash: string; token_prefix: string; scopes?: string[]; status?: string; last_used_at?: string | null; expires_at?: string | null; created_at?: string; updated_at?: string };
@@ -966,6 +978,7 @@ export type Database = {
       };
       subscriptions: {
         Row: {
+          access_source: string;
           billing_interval: string;
           created_at: string;
           current_period_end: string;
@@ -995,6 +1008,7 @@ export type Database = {
           provider_event_at: string | null;
         };
         Insert: {
+          access_source?: string;
           billing_interval?: string;
           created_at?: string;
           current_period_end: string;
@@ -2430,7 +2444,11 @@ export type Database = {
       };
       create_workspace_onboarding: {
         Args: { p_name: string; p_slug: string; p_type: string };
-        Returns: string;
+        Returns: Json;
+      };
+      manage_beta_enrollment: {
+        Args: { p_enrollment_id: string; p_action: string; p_months?: number; p_reason?: string };
+        Returns: undefined;
       };
       create_agency_workspace: {
         Args: { p_name: string; p_slug: string };

@@ -37,7 +37,7 @@ export function BillingPanel({ plans, providerPrices, usdRates, locale, invoices
   currentPlanId: string;
   canPay: boolean;
   qrUrl?: string;
-  subscription?: { provider?: string; status: string; current_period_end: string; cancel_at_period_end?: boolean; billing_interval?: string } | null;
+  subscription?: { provider?: string; access_source?: string; status: string; current_period_end: string; cancel_at_period_end?: boolean; billing_interval?: string } | null;
   providers: { stripe: boolean; paypal: boolean };
   requestedPlanId?: string;
 }) {
@@ -89,13 +89,14 @@ export function BillingPanel({ plans, providerPrices, usdRates, locale, invoices
   const selectedUsd = usdPrice(selectedPlanId);
   const localTotal = displayPrice(selectedPlanId);
   const currentCycle = subscription?.billing_interval === "yearly" ? "yearly" : "monthly";
+  const betaAccess = subscription?.access_source === "beta_campaign";
 
   return <Stack gap="md" className={classes.page}>
     <PageHeader title={t("title")} subtitle={t("subtitle")} />
     <SectionPanel><div className={classes.summaryRow}>
       <div><Group gap={7}><Text size="xs" c="dimmed">{t("currentPlan")}</Text>{subscription ? <span className={classes.planStatus} data-status={subscription.status}><i />{subscription.status.replace(/_/g, " ")}</span> : null}</Group><Text fw={750} fz="lg" mt={2}>{current?.name || "—"}</Text></div>
       <div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("price")}</Text><Text size="sm" fw={650}>{current?.isFree ? t("free") : displayPrice(current?.id, currentCycle) || t("notConfigured")}</Text></div>
-      {subscription ? <><div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("method")}</Text><Text size="sm" fw={650}>{subscription.provider?.toUpperCase() || "SEPAY"}</Text></div><div className={classes.summaryItem}><Text size="xs" c="dimmed">{subscription.cancel_at_period_end ? t("ends") : t("renews")}</Text><Text size="sm" fw={650}>{new Date(subscription.current_period_end).toLocaleDateString(locale)}</Text></div></> : null}
+      {subscription ? <><div className={classes.summaryItem}><Text size="xs" c="dimmed">{t("method")}</Text><Text size="sm" fw={650}>{betaAccess ? "Promotional access" : subscription.provider?.toUpperCase() || "SEPAY"}</Text></div><div className={classes.summaryItem}><Text size="xs" c="dimmed">{betaAccess || subscription.cancel_at_period_end ? t("ends") : t("renews")}</Text><Text size="sm" fw={650}>{new Date(subscription.current_period_end).toLocaleDateString(locale)}</Text></div></> : null}
       {canPay ? <Button size="xs" variant={editing ? "light" : "filled"} onClick={() => setEditing((value) => !value)}>{editing ? t("close") : t("changePlan")}</Button> : null}
       {canPay && subscription && ["stripe", "paypal"].includes(subscription.provider || "") ? <form action={subscriptionControl}>
         <input type="hidden" name="mode" value={subscription.cancel_at_period_end ? "resume" : "cancel"} />
