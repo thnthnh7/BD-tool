@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Alert, Badge, Button, Checkbox, Group, NumberInput, Select, SimpleGrid, Stack, Table, Text, TextInput, Textarea, Title } from "@mantine/core";
+import { Alert, Badge, Button, Checkbox, Group, NumberInput, Select, SimpleGrid, Stack, Table, TableScrollContainer, TableTbody, TableTd, TableTh, TableThead, TableTr, Text, TextInput, Textarea, Title } from "@mantine/core";
 import { SectionPanel } from "@/components/leadely/section-panel";
 import { PageHeader } from "@/components/leadely/page-header";
 import { loadBetaProgram, manageBetaEnrollmentFormAction, updateBetaCampaignFormAction } from "@/lib/platform/beta";
@@ -54,23 +54,23 @@ export default async function PlatformBetaPage() {
     </SectionPanel>
 
     <SectionPanel title="Participants" padded={false}>
-      <Table.ScrollContainer minWidth={1000}>
+      <TableScrollContainer minWidth={1000}>
         <Table striped highlightOnHover>
-          <Table.Thead><Table.Tr><Table.Th>#</Table.Th><Table.Th>Member</Table.Th><Table.Th>Workspace</Table.Th><Table.Th>Status</Table.Th><Table.Th>Granted</Table.Th><Table.Th>Access ends</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>{enrollments.map((row) => <Table.Tr key={row.id}>
-            <Table.Td>{row.position}</Table.Td>
-            <Table.Td><Text size="sm" fw={600}>{row.displayName || row.email}</Text><Text size="xs" c="dimmed">{row.email}</Text></Table.Td>
-            <Table.Td>{row.workspaceName}</Table.Td>
-            <Table.Td><Badge variant="light" color={row.status === "active" ? "teal" : row.status === "converted" ? "blue" : "gray"}>{row.status}</Badge></Table.Td>
-            <Table.Td>{new Date(row.granted_at).toLocaleString()}</Table.Td>
-            <Table.Td>{new Date(row.access_ends_at).toLocaleString()}</Table.Td>
-            <Table.Td>{row.status === "active" ? <Group gap="xs" wrap="nowrap">
+          <TableThead><TableTr><TableTh>#</TableTh><TableTh>Member</TableTh><TableTh>Workspace</TableTh><TableTh>Status</TableTh><TableTh>Granted</TableTh><TableTh>Access ends</TableTh><TableTh>Actions</TableTh></TableTr></TableThead>
+          <TableTbody>{enrollments.map((row) => <TableTr key={row.id}>
+            <TableTd>{row.position}</TableTd>
+            <TableTd><Text size="sm" fw={600}>{row.displayName || row.email}</Text><Text size="xs" c="dimmed">{row.email}</Text></TableTd>
+            <TableTd>{row.workspaceName}</TableTd>
+            <TableTd><Badge variant="light" color={row.status === "active" ? "teal" : row.status === "converted" ? "blue" : "gray"}>{row.status}</Badge></TableTd>
+            <TableTd>{new Date(row.granted_at).toLocaleString()}</TableTd>
+            <TableTd>{new Date(row.access_ends_at).toLocaleString()}</TableTd>
+            <TableTd>{row.status === "active" ? <Group gap="xs" wrap="nowrap">
               <form action={manageBetaEnrollmentFormAction}><input type="hidden" name="enrollment_id" value={row.id} /><input type="hidden" name="mode" value="extend" /><input type="hidden" name="months" value="1" /><Button type="submit" size="compact-xs" variant="light">+1 month</Button></form>
               <form action={manageBetaEnrollmentFormAction}><input type="hidden" name="enrollment_id" value={row.id} /><input type="hidden" name="mode" value="revoke" /><Button type="submit" size="compact-xs" variant="subtle" color="red">Revoke</Button></form>
-            </Group> : null}</Table.Td>
-          </Table.Tr>)}</Table.Tbody>
+            </Group> : null}</TableTd>
+          </TableTr>)}</TableTbody>
         </Table>
-      </Table.ScrollContainer>
+      </TableScrollContainer>
     </SectionPanel>
   </Stack>;
 }
