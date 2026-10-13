@@ -20,7 +20,7 @@
     },
     {
       "path": "/api/mail-marketing/cron",
-      "schedule": "0 * * * *"
+      "schedule": "45 2 * * *"
     }
   ]
 }
