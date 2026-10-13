@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Alert, Button, Divider, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Button, Checkbox, Divider, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { AppLogo } from "@/components/leadely/app-logo";
 import { LinkAnchor } from "@/components/mantine-link";
 import { signInWithGoogle, signInWithPassword, signUpWithPassword, resetPassword } from "@/lib/auth/actions";
@@ -73,6 +73,7 @@ export function AuthForm({
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <TextInput name="email" type="email" required placeholder="Email" />
           {mode !== "forgot" ? <PasswordInput name="password" required minLength={8} placeholder="Password" /> : null}
+          {mode === "signup" && !invite ? <Checkbox name="marketing_consent" label="Send me useful product tips and Beta updates. I can unsubscribe at any time." /> : null}
           {error ? <Alert color="red">{error}</Alert> : null}
           {message ? <Alert color="leadely">{message}</Alert> : null}
           <Button type="submit" fullWidth>

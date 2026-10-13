@@ -26,6 +26,7 @@ export async function signUpWithPassword(formData: FormData) {
   const inviteToken = String(formData.get("invite") || "");
   const inviteKind = String(formData.get("invite_kind") || "") === "platform" ? "platform" : "workspace";
   const requestedNext = safeInternalNext(formData.get("next"));
+  const marketingConsent = !inviteToken && formData.get("marketing_consent") === "on";
   if (!email || password.length < 8) {
     return { error: "Email và mật khẩu (tối thiểu 8 ký tự) là bắt buộc." };
   }
@@ -37,7 +38,10 @@ export async function signUpWithPassword(formData: FormData) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(confirmationNext)}` },
+    options: {
+      emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(confirmationNext)}`,
+      data: { marketing_consent: marketingConsent, marketing_consent_at: marketingConsent ? new Date().toISOString() : null },
+    },
   });
   if (error) return { error: error.message };
 

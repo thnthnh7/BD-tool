@@ -4,6 +4,7 @@ import { Check, Sparkles } from "lucide-react";
 import { requireWorkspace } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { SectionPanel } from "@/components/leadely/section-panel";
+import { enableBetaEmailsAction } from "@/lib/mail-marketing/preferences";
 
 export default async function BetaWelcomePage() {
   const context = await requireWorkspace();
@@ -16,6 +17,7 @@ export default async function BetaWelcomePage() {
     .maybeSingle();
   if (!enrollment) return <Center mih="60vh"><Stack align="center"><Title order={2}>Your workspace is ready</Title><Button component={Link} href="/app">Open Bizcraw</Button></Stack></Center>;
   const campaign = Array.isArray(enrollment.beta_campaigns) ? enrollment.beta_campaigns[0] : enrollment.beta_campaigns;
+  const { data: emailPreferences } = await supabase.from("email_preferences").select("product_tips,beta_updates").eq("user_id", context.userId).maybeSingle();
   return <Center mih="70vh" p="md">
     <Container size="sm" w="100%">
       <SectionPanel>
@@ -26,6 +28,7 @@ export default async function BetaWelcomePage() {
           <Text c="dimmed" maw={560}>{campaign?.description}</Text>
           <Group gap="xs"><Check size={17} color="var(--mantine-color-teal-7)" /><Text fw={650}>Full access until {new Date(enrollment.access_ends_at).toLocaleDateString(context.locale, { dateStyle: "long" })}</Text></Group>
           <Text size="sm" c="dimmed">No payment card is required. You can choose a paid plan at any time.</Text>
+          {!emailPreferences?.product_tips || !emailPreferences?.beta_updates ? <form action={enableBetaEmailsAction}><Button type="submit" variant="light">Email me Beta tips and reminders</Button></form> : <Badge color="teal" variant="light">Beta email tips enabled</Badge>}
           <Group><Button component={Link} href="/app">Start using Bizcraw</Button><Button component={Link} href="/app/billing" variant="light">View plan</Button></Group>
           {campaign?.terms_url ? <Text component={Link} href={campaign.terms_url} size="xs" c="dimmed">Program terms</Text> : null}
         </Stack>
