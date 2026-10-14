@@ -1,16 +1,19 @@
 import { Alert, Badge, Button, Card, Checkbox, Group, NumberInput, Select, SimpleGrid, Stack, Table, TableTbody, TableTd, TableTh, TableThead, TableTr, Text, TextInput, Textarea, Title } from "@mantine/core";
 import { PageHeader } from "@/components/leadely/page-header";
 import { SectionPanel } from "@/components/leadely/section-panel";
-import { loadMailMarketing, runMailMarketingAction, updateMailCampaignAction, updateMailMarketingSettingsAction } from "@/lib/platform/mail-marketing";
+import { loadMailMarketing, runMailMarketingAction, sendMailMarketingTestAction, updateMailCampaignAction, updateMailMarketingSettingsAction } from "@/lib/platform/mail-marketing";
 
 function Metric({ label, value }: { label: string; value: number }) { return <Card withBorder><Text size="xs" c="dimmed" tt="uppercase" fw={700}>{label}</Text><Title order={3} mt={4}>{value}</Title></Card>; }
 
-export default async function MailMarketingPage() {
+export default async function MailMarketingPage({ searchParams }: { searchParams: Promise<{ test?: string }> }) {
+  const params = await searchParams;
   const data = await loadMailMarketing();
   const ready = data.readiness.apiKey && data.readiness.webhookSecret && data.readiness.signingSecret;
   return <Stack gap="md">
     <PageHeader title="Mail Marketing" subtitle="Lifecycle emails for Bizcraw accounts and Beta participants. This is separate from workspace sales Sequences." />
+    {params.test === "sent" ? <Alert color="teal" title="Test email accepted">Resend accepted a test email for {data.adminEmail}. Check its inbox and the delivery webhook before enabling the worker.</Alert> : null}
     {!ready ? <Alert color="orange" title="Provider setup is incomplete">Sending remains safe while disabled. Add RESEND_API_KEY, RESEND_WEBHOOK_SECRET and EMAIL_SIGNING_SECRET in production, verify the sender domain, then enable sending here.</Alert> : <Alert color="teal" title="Provider configuration detected">API key, webhook verification and signed preference links are configured.</Alert>}
+    <SectionPanel title="Provider readiness"><Group gap="xs"><Badge color={data.readiness.apiKey ? "teal" : "gray"}>Resend API {data.readiness.apiKey ? "ready" : "missing"}</Badge><Badge color={data.readiness.webhookSecret ? "teal" : "gray"}>Webhook {data.readiness.webhookSecret ? "ready" : "missing"}</Badge><Badge color={data.readiness.signingSecret ? "teal" : "gray"}>Signed links {data.readiness.signingSecret ? "ready" : "missing"}</Badge><form action={sendMailMarketingTestAction}><Button type="submit" variant="light" disabled={!data.readiness.apiKey || !data.readiness.signingSecret}>Send test to {data.adminEmail}</Button></form></Group></SectionPanel>
     <SimpleGrid cols={{ base: 2, md: 4, xl: 8 }}><Metric label="Queued" value={data.metrics.queued} /><Metric label="Sent" value={data.metrics.sent} /><Metric label="Delivered" value={data.metrics.delivered} /><Metric label="Bounced" value={data.metrics.bounced} /><Metric label="Complaints" value={data.metrics.complained} /><Metric label="Clicked" value={data.metrics.clicked} /><Metric label="Returned" value={data.metrics.returned} /><Metric label="Suppressed" value={data.suppressions} /></SimpleGrid>
     <SectionPanel title="Sending controls"><form action={updateMailMarketingSettingsAction}><Stack>
       <Checkbox name="enabled" defaultChecked={data.settings.enabled} label="Enable lifecycle email delivery" description="Keep this off until the Resend domain and webhook are verified." />

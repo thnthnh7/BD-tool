@@ -1,14 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatform } from "@/lib/auth/session";
 import { recordPlatformAudit } from "@/lib/platform/audit";
-import { providerReadiness } from "@/lib/mail-marketing/provider";
+import { emailHtml, providerReadiness, sendLifecycleEmail } from "@/lib/mail-marketing/provider";
 import { runMailMarketingWorker } from "@/lib/mail-marketing/engine";
+import { signMailToken } from "@/lib/mail-marketing/tokens";
 
 export async function loadMailMarketing() {
-  await requirePlatform("super_admin");
+  const context = await requirePlatform("super_admin");
   const admin = createAdminClient();
   const [{ data: settings, error: settingsError }, { data: campaigns, error: campaignError }, { data: deliveries, error: deliveryError }, { data: suppressions }] = await Promise.all([
     admin.from("mail_marketing_settings").select("*").eq("id", 1).single(),
@@ -21,7 +23,7 @@ export async function loadMailMarketing() {
   if (deliveryError) throw deliveryError;
   const rows = deliveries || [];
   const count = (status: string) => rows.filter((row) => row.status === status).length;
-  return { settings, campaigns: campaigns || [], deliveries: rows.slice(0, 50), readiness: providerReadiness(), suppressions: suppressions?.length || 0,
+  return { settings, campaigns: campaigns || [], deliveries: rows.slice(0, 50), readiness: providerReadiness(), adminEmail: context.email, suppressions: suppressions?.length || 0,
     metrics: { queued: count("queued") + count("failed"), sent: count("sent") + count("delivered"), delivered: count("delivered"), bounced: count("bounced"), complained: count("complained"), clicked: rows.filter((row) => row.clicked_at).length, returned: rows.filter((row) => row.returned_at).length } };
 }
 
@@ -68,4 +70,26 @@ export async function runMailMarketingAction() {
   const result = await runMailMarketingWorker();
   await recordPlatformAudit({ action: "mail_marketing.worker_run", entityType: "mail_marketing", after: result });
   revalidatePath("/app/platform/mail-marketing");
+}
+
+export async function sendMailMarketingTestAction() {
+  const context = await requirePlatform("super_admin");
+  const readiness = providerReadiness();
+  if (!readiness.apiKey || !readiness.signingSecret) throw new Error("Configure RESEND_API_KEY and EMAIL_SIGNING_SECRET before sending a test.");
+  const admin = createAdminClient();
+  const { data: settings, error } = await admin.from("mail_marketing_settings").select("*").eq("id", 1).single();
+  if (error) throw error;
+  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+  const tokenBase = { userId: context.userId, email: context.email, exp: Date.now() + 86_400_000 };
+  const unsubscribeUrl = `${baseUrl}/api/mail-marketing/unsubscribe?token=${encodeURIComponent(signMailToken({ ...tokenBase, purpose: "unsubscribe" }))}`;
+  const preferencesUrl = `${baseUrl}/email-preferences?token=${encodeURIComponent(signMailToken({ ...tokenBase, purpose: "preferences" }))}`;
+  await sendLifecycleEmail({
+    fromName: settings.sender_name, fromEmail: settings.sender_email, replyTo: settings.reply_to, to: context.email,
+    subject: "Bizcraw Mail Marketing test",
+    html: emailHtml({ body: "This is a delivery test from Bizcraw Mail Marketing. Resend accepted the message and signed links were generated successfully.", ctaLabel: "Open Mail Marketing", clickUrl: `${baseUrl}/app/platform/mail-marketing`, preferencesUrl, unsubscribeUrl }),
+    unsubscribeUrl,
+  });
+  await recordPlatformAudit({ action: "mail_marketing.test_sent", entityType: "mail_marketing", after: { recipient: context.email } });
+  revalidatePath("/app/platform/mail-marketing");
+  redirect("/app/platform/mail-marketing?test=sent");
 }
