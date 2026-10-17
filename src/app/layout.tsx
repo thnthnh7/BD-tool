@@ -38,10 +38,6 @@ export const metadata: Metadata = {
   authors: [{ name: "Bizcraw" }],
   creator: "Bizcraw",
   publisher: "Bizcraw",
-  icons: {
-    icon: [{ url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" }],
-    apple: [{ url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" }],
-  },
   openGraph: {
     siteName: "Bizcraw",
     type: "website",
